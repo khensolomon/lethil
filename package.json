@@ -1,0 +1,48 @@
+{
+  "name": "@scriptive/evh",
+  "version": "1.0.0",
+  "description": "...a framework based Node.js server using Express with vhost with mysql or mongodb!",
+  "main": "index.js",
+  "scripts": {
+    "test": "tsc",
+    "test:tmp": "mocha -r ts-node/register test/index.spec.ts",
+    "package": "node test/package",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scriptive/evh.git"
+  },
+  "keywords": [
+    "framework",
+    "vhost"
+  ],
+  "author": "Khen Solomon Lethil",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/scriptive/evh/issues"
+  },
+  "homepage": "https://github.com/scriptive/evh#readme",
+  "dependencies": {
+    "cookie-parser": "^1.4.3",
+    "debug": "^3.1.0",
+    "dotenv": "^6.0.0",
+    "express": "^4.16.3",
+    "fs-extra": "^7.0.0",
+    "morgan": "^1.9.0",
+    "mysql": "^2.16.0",
+    "node-sass-middleware": "^0.11.0",
+    "pug": "^2.0.3",
+    "vhost": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/mocha": "^5.2.5",
+    "@types/node": "^10.9.4",
+    "mocha": "^5.2.0",
+    "ts-loader": "^5.0.0",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.0.3",
+    "webpack": "^4.17.2",
+    "webpack-cli": "^3.1.0"
+  }
+}
