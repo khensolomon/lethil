@@ -32,11 +32,12 @@ export const sassMiddleWare = $.sassMiddleWare;
 export const httpErrors = $.httpErrors;
 
 // TODO: ??
-import * as database from './database';
-export const mysql = database.connection.mysql;
-export const mongodb = database.connection.mongodb;
-
-export const world:string = 'world';
-export const hello:string = 'Hello';
+import * as db from './database';
+export const database = db.connection;
+// export const mysql = db.connection.mysql;
+// export const mongodb = db.connection.mongodb;
 
 export default assignment;
+
+// module.exports = myanmarNotation;
+// module.exports.default = myanmarNotation;

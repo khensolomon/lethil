@@ -12,7 +12,7 @@ export const morgan = require('morgan');
 export const sassMiddleWare = require('node-sass-middleware');
 export const httpErrors = require('http-errors');
 const applications = express();
-// NOTE: environments.config({path: root.request.path.join(__dirname,'.env')});
+// NOTE: environments.config({path: rootRequest.path.join(__dirname,'.env')});
 // TODO: expressVirtual,express,environments,debug
 
 const rootRequest=root.request;
@@ -38,6 +38,7 @@ export class http {
     rootSetting.root = dir || process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
   }
   port(port?:string) {
+    // TODO: port from environments (process.env.PORT)
     // NOTE: Normalize a port into a number, string, or false.
     if (port) rootSetting.port = port;
 
@@ -57,10 +58,9 @@ export class http {
   start() {
     // TODO: if http is on listening????
     // environments.config();
-    let configEnv = root.request.path.join(rootSetting.root,'config.env');
-    if (root.request.fs.existsSync(configEnv)) {
-      // let env = environments.parse(root.request.fs.readFileSync(root.request.path.join(rootSetting.root,'config.env')))
-      let env = environments.parse(root.request.fs.readFileSync(configEnv));
+    let configEnv = rootRequest.path.join(rootSetting.root,rootSetting.env);
+    if (rootRequest.fs.existsSync(configEnv)) {
+      let env = environments.parse(rootRequest.fs.readFileSync(configEnv));
       root.utility.objects.merge(rootSetting,env);
     }
     this.port();
@@ -122,28 +122,29 @@ export class http {
       if (callback && callback instanceof Function) {
         callback(this);
       } else {
-        console.log('listening on ' + this.bind);
-        if (root.utility.check.isString(rootSetting.listening))console.log(rootSetting.listening);
+        // if (root.utility.check.isString(rootSetting.listening))console.log(rootSetting.listening);
+        console.log('listening on',this.bind,Object.keys(rootSetting.listening).length == 0?'but no app were found!':'');
       }
     });
   }
 }
 const virtualHost = () => {
-  rootDirectory.app=root.request.path.join(rootSetting.root,rootSetting.app);
-  rootDirectory.share=root.request.path.join(rootSetting.root,rootSetting.share);
+  rootDirectory.app=rootRequest.path.join(rootSetting.root,rootSetting.app);
+  rootDirectory.share=rootRequest.path.join(rootSetting.root,rootSetting.share);
   rootSetting.listening={};
   // NOTE: available Application rootSetting
-  if (root.request.fs.existsSync(rootDirectory.app)) {
-    root.request.fs.readdirSync(rootDirectory.app).forEach((dirName:string)=>{
+  if (rootRequest.fs.existsSync(rootDirectory.app)) {
+   rootRequest.fs.readdirSync(rootDirectory.app).forEach((dirName:string)=>{
       if (rootSetting.hasOwnProperty(dirName)) {
         rootSetting[dirName].split(',').forEach((Domain:string)=>{
-          let appMain = root.request.path.join(rootDirectory.app,dirName,rootSetting.main);
-          if (root.request.fs.existsSync(appMain)) {
+          let appMain = rootRequest.path.join(rootDirectory.app,dirName,rootSetting.main);
+          if (rootRequest.fs.existsSync(appMain)) {
             try {
               const app = express();
               const user = require(appMain);
               // NOTE: environments
-              const score= environments.parse(root.request.fs.readFileSync(root.request.path.join(rootDirectory.app,dirName,'config.env')));
+              // TODO: if .env not found
+              const score = environments.parse(rootRequest.fs.readFileSync(rootRequest.path.join(rootDirectory.app,dirName,rootSetting.env)));
 
               if (!score.hasOwnProperty('name')) score.name=dirName;
               if (!score.hasOwnProperty('version')) score.version='1.0';
@@ -158,12 +159,12 @@ const virtualHost = () => {
               score.dir={
                 root: rootSetting.root,
                 share: rootDirectory.share,
-                app: root.request.path.join(rootDirectory.app,dirName),
+                app: rootRequest.path.join(rootDirectory.app,dirName),
 
-                public: root.request.path.join(rootDirectory.app,dirName,'public'),
-                assets: root.request.path.join(rootDirectory.app,dirName,'assets'),
-                views: root.request.path.join(rootDirectory.app,dirName,'views'),
-                routes: root.request.path.join(rootDirectory.app,dirName,'routes')
+                public: rootRequest.path.join(rootDirectory.app,dirName,'public'),
+                assets: rootRequest.path.join(rootDirectory.app,dirName,'assets'),
+                views: rootRequest.path.join(rootDirectory.app,dirName,'views'),
+                routes: rootRequest.path.join(rootDirectory.app,dirName,'routes')
               };
 
               rootObject.merge(user.score,rootObject.merge(score,user.score));
@@ -185,8 +186,8 @@ const virtualHost = () => {
                 // NOTE: css middleware
                 if (user.score.dir.assets){
                   let sassMiddleWareOption:any = {
-                    src: root.request.path.join(user.score.dir.assets, 'scss'),
-                    dest: root.request.path.join(user.score.dir.public,'css'),
+                    src: rootRequest.path.join(user.score.dir.assets, 'scss'),
+                    dest: rootRequest.path.join(user.score.dir.public,'css'),
                     // prefix: '/css',
                     indentedSyntax: false,
                     debug: false,
@@ -212,9 +213,10 @@ const virtualHost = () => {
               // NOTE: vhost
               applications.use(vhost(Domain, app));
               // NOTE: catch 404 and forward to error handler
-              app.use(function(req?:any, res?:any, next?:any) {
-                next(httpErrors(404));
-              });
+              // app.use(function(req?:any, res?:any, next?:any) {
+              //   next(httpErrors(404));
+              // });
+              app.use((req?:any, res?:any, next?:any) => next(httpErrors(404)));
 
               // NOTE: error handler
               app.use(function(err?:any, req?:any, res?:any, next?:any) {
@@ -238,8 +240,6 @@ const virtualHost = () => {
         });
       }
     });
-  } else {
-    rootSetting.listening = '[No] app directory found';
-    // throw '[No] app directory found';
   }
+  // NOTE: else -> [No] app directory found
 }

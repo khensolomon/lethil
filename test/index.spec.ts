@@ -1,6 +1,3 @@
-// import evh from '../asset/';
-// import * as evh from '../asset/';
-// import evh,{configuration as rootConfiguration} from '../asset/';
 import evh, {scriptive,rootSetting,rootDirectory} from '../asset/';
 import * as assert from 'assert';
 
@@ -9,7 +6,7 @@ import 'mocha';
 describe('evh', () => {
 	it('Initial', () => {
 		// console.log(scriptive);
-		// console.log(evh);
+		console.log(evh,process.env.NODE_ENV);
 		assert.ok(evh);
 		// assert.ok(evh.assignment.testing);
 		// assert.equal('Ok',evh.testing);

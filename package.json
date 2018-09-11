@@ -1,9 +1,11 @@
 {
   "name": "@scriptive/evh",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "...a framework based Node.js server using Express with vhost with mysql or mongodb!",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
+    "prepublish": "npm run build",
     "test": "mocha -r ts-node/register test/index.spec.ts",
     "package": "node test/package",
     "build": "tsc"

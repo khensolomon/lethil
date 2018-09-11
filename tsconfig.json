@@ -1,14 +1,14 @@
 {
 	"compilerOptions": {
 		"target": "es6",
-		"module": "commonjs",
+		"module": "CommonJS",
 		"noImplicitAny": true,
 		"outDir": "./",
 		"strict": true,
-		"allowJs": true,
+		"allowJs": false,
 		"removeComments":true,
 		"esModuleInterop": false,
-		"declaration": false,
+		"declaration": true,
 		"pretty":false,
 		"strictNullChecks": false,
 

@@ -1,6 +1,7 @@
 assetJs/
 dist/
 /*.js
+/*.d.ts
 
 # Logs
 logs
