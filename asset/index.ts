@@ -5,10 +5,32 @@
  */
 // NOTE: path,fs,rootConfiguration,rootAssist,rootObject,rootArray
 declare function require(path: string): any;
-import './essential';
+// NOTE: Essential
+import * as root from './essential';
+export const utility=root.utility;
+export const rootSetting=root.configuration.setting;
+export const rootDirectory=root.configuration.directory;
+export const path=root.request.path;
+export const fs=root.request.fs;
 
-// NOTE:  Module dependencies.
-import * as scriptive from './scriptive';
+// NOTE: Assignment
+export const assignment:any = {};
+// const assignment:any = module.exports = root;
+
+// NOTE:  Scriptive
+import * as $ from './scriptive';
+
+export const scriptive=$.http;
+export const express=$.express;
+// TODO: ?
+export const cookieParser = $.cookieParser;
+export const morgan = $.morgan;
+export const sassMiddleWare = $.sassMiddleWare;
+
+// TODO: ?
+export const httpErrors = $.httpErrors;
+
+// console.log(scriptive);
 // scriptive.serve.http
 // const {expressVirtual,express,environments,debug} = require('./virtual');
 // const expressTest = require('./express-test');
@@ -26,18 +48,20 @@ server.error();
 server.listening();
 */
 // NOTE: Configurations
-const assignment:any = module.exports = {rootConfiguration,path,fs,rootAssist,rootObject,rootArray};
+// const assignment:any = module.exports = {rootConfiguration,path,fs,rootAssist,rootObject,rootArray};
 
-// TODO: ??
-// assignment.moduleElemental
-assignment.cookieParser = require('cookie-parser');
-assignment.morgan = require('morgan');
-assignment.sassMiddleWare = require('node-sass-middleware');
+// export const assignment:any = {config};
+// export default assignment;
 
-// TODO: ??
-assignment.httpErrors = require('http-errors');
 
 // TODO: ??
 import * as database from './database';
-assignment.mysql = database.connection.mysql;
-assignment.mongo = database.connection.mongo;
+// assignment.mysql = database.connection.mysql;
+export const mysql = database.connection.mysql;
+// assignment.mongodb = database.connection.mongodb;
+export const mongodb = database.connection.mongodb;
+// assignment.testing = database.connection.testing;
+
+export const world:string = 'world';
+export const hello:string = 'Hello';
+export default assignment;

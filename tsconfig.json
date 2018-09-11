@@ -11,10 +11,18 @@
 		"declaration": false,
 		"pretty":false,
 		"strictNullChecks": false,
+
+		"forceConsistentCasingInFileNames": true,
+		"noImplicitReturns": true,
+  	"noUnusedLocals": false,
+
+		"lib": ["es6"],
+		"moduleResolution": "node",
+		"keyofStringsOnly":false,
+
 		"types": ["node"],
 		"baseUrl": ".",
 		"paths": {
-      "jquery": ["node_modules/jquery/dist/jquery"],
       "http": ["node_modules"]
     }
 	},

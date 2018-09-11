@@ -4,8 +4,7 @@
   "description": "...a framework based Node.js server using Express with vhost with mysql or mongodb!",
   "main": "index.js",
   "scripts": {
-    "test": "tsc",
-    "test:tmp": "mocha -r ts-node/register test/index.spec.ts",
+    "test": "mocha -r ts-node/register test/index.spec.ts",
     "package": "node test/package",
     "build": "tsc"
   },
@@ -41,8 +40,6 @@
     "mocha": "^5.2.0",
     "ts-loader": "^5.0.0",
     "ts-node": "^7.0.1",
-    "typescript": "^3.0.3",
-    "webpack": "^4.17.2",
-    "webpack-cli": "^3.1.0"
+    "typescript": "^3.0.3"
   }
 }

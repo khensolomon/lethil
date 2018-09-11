@@ -1,6 +1,6 @@
 import mysqlConnection from "./mysql";
 export namespace connection {
-  export class mongo {}
+  export class mongodb {}
   export const mysql:any=mysqlConnection;
-  export const what:string='??';
+  export const testing:string='Ok';
 }
