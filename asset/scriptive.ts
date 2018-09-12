@@ -162,11 +162,21 @@ const virtualHost = () => {
                 app: rootRequest.path.join(rootDirectory.app,dirName),
 
                 public: rootRequest.path.join(rootDirectory.app,dirName,'public'),
+                static: rootRequest.path.join(rootDirectory.app,dirName,'static'),
                 assets: rootRequest.path.join(rootDirectory.app,dirName,'assets'),
                 views: rootRequest.path.join(rootDirectory.app,dirName,'views'),
                 routes: rootRequest.path.join(rootDirectory.app,dirName,'routes')
               };
-
+              score.sassMiddleWare = {
+                // src: rootRequest.path.join(score.dir.assets, 'scss'),
+                // dest: rootRequest.path.join(score.dir.static,'css'),
+                // prefix: '/css',
+                indentedSyntax: false,
+                debug: false,
+                response:false,
+                // NOTE: nested, expanded, compact, compressed -->outputStyle: 'compressed',
+                sourceMap: false
+              };
               rootObject.merge(user.score,rootObject.merge(score,user.score));
 
               // NOTE: database
@@ -182,30 +192,18 @@ const virtualHost = () => {
               app.use(cookieParser());
 
               // TODO: improve
-              if(user.score.dir.public) {
+              if(user.score.dir.static) {
                 // NOTE: css middleware
                 if (user.score.dir.assets){
-                  let sassMiddleWareOption:any = {
-                    src: rootRequest.path.join(user.score.dir.assets, 'scss'),
-                    dest: rootRequest.path.join(user.score.dir.public,'css'),
-                    // prefix: '/css',
-                    indentedSyntax: false,
-                    debug: false,
-                    response:false,
-                    // NOTE: nested, expanded, compact, compressed -->outputStyle: 'compressed',
-                    sourceMap: false
-                  };
-                  if (user.hasOwnProperty('sassMiddleWare')){
-                    if (user.sassMiddleWare) {
-                      rootObject.merge(sassMiddleWareOption,user.sassMiddleWare);
-                    } else {
-                      sassMiddleWareOption=false;
-                    }
+                  if (root.utility.check.isObject(user.score.sassMiddleWare)){
+                    // TODO: reading custom scss and css 
+                    user.score.sassMiddleWare.src=rootRequest.path.join(user.score.dir.assets, 'scss');
+                    user.score.sassMiddleWare.dest=rootRequest.path.join(user.score.dir.static,'css');
+                    app.use(sassMiddleWare(user.score.sassMiddleWare));
                   }
-                  if (sassMiddleWareOption) app.use(sassMiddleWare(sassMiddleWareOption));
                 }
                 // NOTE: static should be defined in user Applications
-                app.use(express.static(user.score.dir.public));
+                app.use(express.static(user.score.dir.static));
               }
 
               // NOTE: routing must be defined in user Applications

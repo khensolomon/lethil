@@ -8,8 +8,7 @@ export namespace configuration {
     app:'app',
     share:'share',
     main:'index.js',
-    env:'locale.env',
-    local:'local.env'
+    env:'.env'
   };
   export let directory:any={};
 }
@@ -19,7 +18,7 @@ export namespace utility {
       return value && typeof value === 'object' || value.constructor === Object;
     },
     isArray:function(value:any){
-      return value && typeof value === 'object' || value.constructor === Array;
+      return value && Array.isArray(value) || value instanceof Array;
     },
     isFunction:function(value:any){
       return value && value instanceof Function;
@@ -33,7 +32,7 @@ export namespace utility {
       for (var p in n) {
          try {
            // Property in destination object set; update its value.
-           if (check.isObject(n[p])) {
+           if (utility.check.isObject(n[p])) {
              s[p] = this.merge(s[p], n[p]);
            } else {
              s[p] = n[p];
