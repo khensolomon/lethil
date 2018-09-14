@@ -75,7 +75,7 @@ export class http {
     // this.server = http.createServer(applications);
     this.server = createServer(applications);
     this.server.listen(rootSetting.port);
-    //
+
     let address = this.server.address();
     this.bind = typeof address === 'string'?'pipe:' + address:'port:' + address.port;
     return this.server;
@@ -84,7 +84,7 @@ export class http {
     this.server.close();
   }
   close(callback?:any) {
-    return this.server.on('close', ()=>root.utility.check.isFunction(callback)?callback():console.log("closed"));
+    if(root.utility.check.isFunction(callback))this.server.on('close', callback);
   }
   error(callback?:any) {
     // NOTE: Event listener for HTTP server "error" event.
@@ -119,62 +119,59 @@ export class http {
   listening(callback?:any) {
     // NOTE: Event listener for HTTP server "listening" event.
     this.server.on('listening', ()=>{
-      if (callback && callback instanceof Function) {
+      if (root.utility.check.isFunction(callback)) {
         callback(this);
       } else {
-        // if (root.utility.check.isString(rootSetting.listening))console.log(rootSetting.listening);
-        console.log('listening on',this.bind,Object.keys(rootSetting.listening).length == 0?'but no app were found!':'');
+        console.log('listening on',this.bind,Object.keys(rootSetting.listening).length == 0?'but no app were found!':'...');
       }
     });
   }
 }
+// const virtualListening = () => {
+// }
+// const virtualError = () => {
+// }
+// const virtualClose = () => {
+// }
+const virtualEnvironment = (e:string) => {
+  if (rootRequest.fs.existsSync(e)) return environments.parse(rootRequest.fs.readFileSync(e));
+  return new Object();
+}
 const virtualHost = () => {
-  rootDirectory.app=rootRequest.path.join(rootSetting.root,rootSetting.app);
-  rootDirectory.share=rootRequest.path.join(rootSetting.root,rootSetting.share);
-  rootSetting.listening={};
-  // NOTE: available Application rootSetting
-  if (rootRequest.fs.existsSync(rootDirectory.app)) {
-   rootRequest.fs.readdirSync(rootDirectory.app).forEach((dirName:string)=>{
-      if (rootSetting.hasOwnProperty(dirName)) {
-        rootSetting[dirName].split(',').forEach((Domain:string)=>{
-          let appMain = rootRequest.path.join(rootDirectory.app,dirName,rootSetting.main);
+  let virtual = rootRequest.fs.readJsonSync(rootRequest.path.join(rootSetting.root,rootSetting.json));
+  if (virtual.hasOwnProperty('host') && root.utility.check.isObject(virtual.host)){
+    let virtualHost = virtual.host;
+
+    for (var dirName in virtualHost) {
+      if (virtualHost.hasOwnProperty(dirName)) {
+        let appDir = dirName;
+        if (rootRequest.fs.existsSync(appDir)) {
+          let appMain = rootRequest.path.resolve(appDir,rootSetting.main);
           if (rootRequest.fs.existsSync(appMain)) {
             try {
               const app = express();
               const user = require(appMain);
               // NOTE: environments
-              // TODO: if .env not found
-              const score = environments.parse(rootRequest.fs.readFileSync(rootRequest.path.join(rootDirectory.app,dirName,rootSetting.env)));
+              const score = virtualEnvironment(rootRequest.path.join(appDir,rootSetting.env));
 
               if (!score.hasOwnProperty('name')) score.name=dirName;
-              if (!score.hasOwnProperty('version')) score.version='1.0';
-
-              if (rootSetting.listening.hasOwnProperty(dirName)){
-                rootSetting.listening[dirName].push(Domain)
-              } else {
-                rootSetting.listening[dirName]=new Array(Domain);
-                console.log('[Ok] '+score.name);
-              }
+              if (!score.hasOwnProperty('version')) score.version=rootSetting.version;
               // NOTE: directory
               score.dir={
-                root: rootSetting.root,
-                share: rootDirectory.share,
-                app: rootRequest.path.join(rootDirectory.app,dirName),
-
-                public: rootRequest.path.join(rootDirectory.app,dirName,'public'),
-                static: rootRequest.path.join(rootDirectory.app,dirName,'static'),
-                assets: rootRequest.path.join(rootDirectory.app,dirName,'assets'),
-                views: rootRequest.path.join(rootDirectory.app,dirName,'views'),
-                routes: rootRequest.path.join(rootDirectory.app,dirName,'routes')
+                root: appDir,
+                // public: rootRequest.path.resolve(appDir,'public'),
+                static: rootRequest.path.resolve(appDir,'static'),
+                assets: rootRequest.path.resolve(appDir,'assets'),
+                views: rootRequest.path.resolve(appDir,'views'),
+                routes: rootRequest.path.resolve(appDir,'routes')
               };
               score.sassMiddleWare = {
-                // src: rootRequest.path.join(score.dir.assets, 'scss'),
-                // dest: rootRequest.path.join(score.dir.static,'css'),
-                // prefix: '/css',
+                prefix: '/css',
                 indentedSyntax: false,
-                debug: false,
+                debug: true,
                 response:false,
-                // NOTE: nested, expanded, compact, compressed -->outputStyle: 'compressed',
+                // NOTE: nested, expanded, compact, compressed
+                outputStyle: 'compressed',
                 sourceMap: false
               };
               rootObject.merge(user.score,rootObject.merge(score,user.score));
@@ -193,51 +190,53 @@ const virtualHost = () => {
 
               // TODO: improve
               if(user.score.dir.static) {
+                // NOTE: static should be defined in user Applications
+                app.use(express.static(user.score.dir.static));
                 // NOTE: css middleware
                 if (user.score.dir.assets){
                   if (root.utility.check.isObject(user.score.sassMiddleWare)){
-                    // TODO: reading custom scss and css 
-                    user.score.sassMiddleWare.src=rootRequest.path.join(user.score.dir.assets, 'scss');
-                    user.score.sassMiddleWare.dest=rootRequest.path.join(user.score.dir.static,'css');
+                    // TODO: reading custom scss and css
+                    user.score.sassMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'scss');
+                    user.score.sassMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'css');
                     app.use(sassMiddleWare(user.score.sassMiddleWare));
                   }
                 }
-                // NOTE: static should be defined in user Applications
-                app.use(express.static(user.score.dir.static));
               }
-
               // NOTE: routing must be defined in user Applications
               user(app);
+              // rootSetting.listening[dirName]=new Array();
+              // virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, app),rootSetting.listening[dirName].push(k)));
+
               // NOTE: vhost
-              applications.use(vhost(Domain, app));
+              if(root.utility.check.isArray(virtualHost[dirName])) {
+                virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, app)));
+                rootSetting.listening[dirName]=virtualHost[dirName];
+              }
+              console.log(rootSetting.Ok,user.score.name);
               // NOTE: catch 404 and forward to error handler
-              // app.use(function(req?:any, res?:any, next?:any) {
-              //   next(httpErrors(404));
-              // });
               app.use((req?:any, res?:any, next?:any) => next(httpErrors(404)));
 
               // NOTE: error handler
-              app.use(function(err?:any, req?:any, res?:any, next?:any) {
-                // NOTE: set locals, only providing error in development
-                res.locals.message = err.message;
-                res.locals.error = req.app.get('env') === 'development' ? err : {};
-                // NOTE: render the error page
-                res.status(err.status || 500);
-                res.render('error');
-                // res.status(404).send('Sorry, we cannot find that!');
-                // res.redirect(301, '/');
-                // console.log(req.path);
-                // res.redirect(307,'/');
-                // res.render('index');
-                next();
-              });
+              // app.use(function(err?:any, req?:any, res?:any, next?:any) {
+              //   // NOTE: set locals, only providing error in development
+              //   res.locals.message = err.message;
+              //   res.locals.error = req.app.get('env') === 'development' ? err : {};
+              //   // NOTE: render the error page
+              //   res.status(err.status || 500);
+              //   res.render('error');
+              //   // res.status(404).send('Sorry, we cannot find that!');
+              //   // res.redirect(301, '/');
+              //   // console.log(req.path);
+              //   // res.redirect(307,'/');
+              //   // res.render('index');
+              //   next();
+              // });
             } catch (e) {
               console.log(e);
             }
           }
-        });
+        }
       }
-    });
+    }
   }
-  // NOTE: else -> [No] app directory found
-}
+};

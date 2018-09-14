@@ -8,7 +8,11 @@ export namespace configuration {
     app:'app',
     share:'share',
     main:'index.js',
-    env:'.env'
+    env:'.env',
+    json:'scriptive.json',
+    Ok:'[app]',
+    version:'1.0',
+    listening:{}
   };
   export let directory:any={};
 }

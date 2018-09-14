@@ -1,0 +1,10 @@
+{
+	"port": "80",
+	"app": "app",
+	"share": "share",
+	"main": "index.js",
+	"host": {
+		"../out_side":["domainname.*","subdomain.*.*"],
+		"./app/default":["127.0.0.1","*"]
+	}
+}
