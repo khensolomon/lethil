@@ -14,6 +14,7 @@ export const httpErrors = require('http-errors');
 const applications = express();
 // NOTE: environments.config({path: rootRequest.path.join(__dirname,'.env')});
 // TODO: expressVirtual,express,environments,debug
+// TODO: different port configuration
 
 const rootRequest=root.request;
 
@@ -47,7 +48,7 @@ export class http {
     if (isNaN(rootSetting.port)) {
       // NOTE: named pipe
       rootSetting.port = k;
-    } else if(rootSetting.port <= 0) {
+    } else if (rootSetting.port <= 0) {
       // NOTE: port number
       rootSetting.port = false;
     }
@@ -55,7 +56,7 @@ export class http {
   main(main?: string){
     rootSetting.main = main || rootSetting.main;
   }
-  start() {
+  listen() {
     // TODO: if http is on listening????
     // environments.config();
     let configEnv = rootRequest.path.join(rootSetting.root,rootSetting.env);
@@ -74,72 +75,55 @@ export class http {
     }
     // this.server = http.createServer(applications);
     this.server = createServer(applications);
-    this.server.listen(rootSetting.port);
+    this.server.listen(rootSetting.port/*,'0.0.0.0'*/);
 
     let address = this.server.address();
-    this.bind = typeof address === 'string'?'pipe:' + address:'port:' + address.port;
+    rootSetting.bind = typeof address === 'string'?'pipe:' + address:'port:' + address.port;
     return this.server;
   }
   stop() {
     this.server.close();
   }
   close(callback?:any) {
-    if(root.utility.check.isFunction(callback))this.server.on('close', callback);
+    // HACK: <http>.close(); callbackClose
+    this.server.on('close', rootValidate.isFunction(callback)?callback:callbackClose);
   }
   error(callback?:any) {
     // NOTE: Event listener for HTTP server "error" event.
-    this.server.on('error', (e:any)=>{
-      if (e.syscall !== 'listen')throw e;
-      let bind = this.bind;
-      // NOTE: handle specific listen errors with friendly messages
-      switch (e.code) {
-        case 'EACCES':
-          // if (callback && callback instanceof Function) {
-          //   callback(bind + ' requires elevated privileges');
-          // } else {
-          //   console.error(bind + ' requires elevated privileges');
-          // }
-          root.utility.check.isFunction(callback)?callback(bind + ' requires elevated privileges'):console.error(bind + ' requires elevated privileges');
-          process.exit(1);
-        break;
-        case 'EADDRINUSE':
-          // if (callback && callback instanceof Function) {
-          //   callback(bind + ' is already in use');
-          // } else {
-          //   console.error(bind + ' is already in use');
-          // }
-          root.utility.check.isFunction(callback)?callback(bind + ' is already in use'):console.error(bind + ' is already in use');
-          process.exit(1);
-        break;
-        default:
-          throw e;
-      }
-    });
+    this.server.on('error', rootValidate.isFunction(callback)?callback:callbackError);
   }
   listening(callback?:any) {
     // NOTE: Event listener for HTTP server "listening" event.
-    this.server.on('listening', ()=>{
-      if (root.utility.check.isFunction(callback)) {
-        callback(this);
-      } else {
-        console.log('listening on',this.bind,Object.keys(rootSetting.listening).length == 0?'but no app were found!':'...');
-      }
-    });
+    this.server.on('listening', rootValidate.isFunction(callback)?callback:callbackListening);
   }
 }
-// const virtualListening = () => {
-// }
-// const virtualError = () => {
-// }
-// const virtualClose = () => {
-// }
-const virtualEnvironment = (e:string) => {
+const callbackListening = () => {
+  console.log('listening on',rootSetting.bind,Object.keys(rootSetting.listening).length == 0?'but no app were found!':'...');
+},
+callbackError = (e:any) => {
+  if (e.syscall !== 'listen')throw e;
+  // NOTE: handle specific listen errors with friendly messages
+  switch (e.code) {
+    case 'EACCES':
+      console.error(rootSetting.bind,'requires elevated privileges'); process.exit(1);
+    break;
+    case 'EADDRINUSE':
+      console.error(rootSetting.bind,'is already in use'); process.exit(1);
+    break;
+    default:
+      throw e;
+  }
+},
+callbackClose = () => {
+  console.log(`...successfully closed!`);
+},
+virtualEnvironment = (e:string) => {
   if (rootRequest.fs.existsSync(e)) return environments.parse(rootRequest.fs.readFileSync(e));
   return new Object();
-}
-const virtualHost = () => {
+},
+virtualHost = () => {
   let virtual = rootRequest.fs.readJsonSync(rootRequest.path.join(rootSetting.root,rootSetting.json));
-  if (virtual.hasOwnProperty('host') && root.utility.check.isObject(virtual.host)){
+  if (virtual.hasOwnProperty('host') && rootValidate.isObject(virtual.host)){
     let virtualHost = virtual.host;
 
     for (var dirName in virtualHost) {
@@ -178,7 +162,7 @@ const virtualHost = () => {
 
               // NOTE: database
               app.use(function(req?:any, res?:any, next?:any) {
-                if(user.score.hasOwnProperty('mysqlConnection')) user.score.sql = new database.connection.mysql(user.score.mysqlConnection);
+                if (user.score.hasOwnProperty('mysqlConnection')) user.score.sql = new database.connection.mysql(user.score.mysqlConnection);
                 next();
               });
               app.set('views', user.score.dir.views);
@@ -189,12 +173,12 @@ const virtualHost = () => {
               app.use(cookieParser());
 
               // TODO: improve
-              if(user.score.dir.static) {
+              if (user.score.dir.static) {
                 // NOTE: static should be defined in user Applications
                 app.use(express.static(user.score.dir.static));
                 // NOTE: css middleware
                 if (user.score.dir.assets){
-                  if (root.utility.check.isObject(user.score.sassMiddleWare)){
+                  if (rootValidate.isObject(user.score.sassMiddleWare)){
                     // TODO: reading custom scss and css
                     user.score.sassMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'scss');
                     user.score.sassMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'css');
@@ -208,7 +192,7 @@ const virtualHost = () => {
               // virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, app),rootSetting.listening[dirName].push(k)));
 
               // NOTE: vhost
-              if(root.utility.check.isArray(virtualHost[dirName])) {
+              if (rootValidate.isArray(virtualHost[dirName])) {
                 virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, app)));
                 rootSetting.listening[dirName]=virtualHost[dirName];
               }

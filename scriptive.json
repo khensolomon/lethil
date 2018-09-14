@@ -5,6 +5,6 @@
 	"main": "index.js",
 	"host": {
 		"../out_side":["domainname.*","subdomain.*.*"],
-		"./app/default":["127.0.0.1","*"]
+		"./in_side":["127.0.0.1","*"]
 	}
 }
