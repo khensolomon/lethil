@@ -28,13 +28,15 @@ const rootDirectory=root.configuration.directory;
 const rootObject=root.utility.objects;
 const rootArray=root.utility.arrays;
 const rootValidate=root.utility.check;
+const log=root.utility.log;
 
 // export namespace serve {}
 export class http {
   private server?:any;
   private bind?:any;
-  constructor() {
+  constructor(appName?:string) {
     if (!rootSetting.hasOwnProperty('root')) this.root();
+    if (appName)rootSetting.name = appName;
   }
   test(){
     console.log('Ok evh');
@@ -102,31 +104,29 @@ export class http {
 export class navMiddleWare extends nav.middleware {
 };
 const callbackListening = () => {
-  console.log('listening on',rootSetting.bind,Object.keys(rootSetting.listening).length == 0?'but no app were found!':'');
+  if (Object.keys(rootSetting.listening).length == 0){
+    log.msg('listening',rootSetting.bind,'but no app were found');
+  } else {
+    let on = rootSetting.bind.split(':');
+    log.msg('listening',on[0],on[1]);
+  }
 },
 callbackError = (e:any) => {
   if (e.syscall !== 'listen')throw e;
   // NOTE: handle specific listen errors with friendly messages
   switch (e.code) {
     case 'EACCES':
-      console.error(rootSetting.bind,'requires elevated privileges'); process.exit(1);
+      log.msg(e.code.toLowerCase(),rootSetting.bind,'requires elevated privileges');process.exit(1);
     break;
     case 'EADDRINUSE':
-      console.error(rootSetting.bind,'is already in use'); process.exit(1);
+      log.msg(e.code.toLowerCase(),rootSetting.bind,'already in use');process.exit(1);
     break;
     default:
       throw e;
   }
 },
 callbackClose = () => {
-  console.log(`...successfully closed!`);
-},
-callbackLog = (severity?:any, key?:string, val?:string, text?:string) => {
-  // console.log(`...successfully closed!`);
-  // og('debug', 'skip', path, 'nothing to do');
-  // severity?:any, key?:string, val?:string, text?:string
-  // \u001b[32;1m
-  // console.log('[www]  \x1B[90m%s:\x1B[0m \u001b[32;1m%s %s\x1B[0m', key, val, text);
+  log.msg('successfully','closed');
 },
 virtualEnvironment = (e:string) => {
   if (rootRequest.fs.existsSync(e)) return environments.parse(rootRequest.fs.readFileSync(e));
@@ -197,7 +197,6 @@ virtualHost = () => {
               user.app.use(express.json());
               user.app.use(express.urlencoded({ extended: false }));
               user.app.use(cookieParser());
-
               // user.app.use(compression());
 
               // TODO: improve (conditionals, installation)
@@ -210,19 +209,6 @@ virtualHost = () => {
                     user.score.sassMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'css');
                     user.app.use(sassMiddleWare(user.score.sassMiddleWare));
                   }
-                  user.app.use((req?:any, res?:any, next?:any) => {
-                    // if (req.method !== 'GET' && req.method !== 'HEAD') {
-                    //   return next();
-                    // }
-                    //
-                    // var path = url.parse(req.url).pathname;
-                    //
-                    // if (!/\.js$/.test(path)) {
-                    //   log('debug', 'skip', path, 'nothing to do');
-                    //   return next();
-                    // }
-                    next();
-                  });
                 }
                 // NOTE: static should be defined in user Applications
                 user.app.use(express.static(user.score.dir.static));
@@ -237,7 +223,9 @@ virtualHost = () => {
                 virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, user.app)));
                 rootSetting.listening[dirName]=virtualHost[dirName];
               }
-              console.log(rootSetting.Ok,user.score.name);
+              // console.log(rootSetting.Ok,user.score.name);
+              log.msg(rootSetting.Ok,user.score.name);
+
               // NOTE: catch 404 and forward to error handler
               user.app.use((req?:any, res?:any, next?:any) => next(httpErrors(404)));
 

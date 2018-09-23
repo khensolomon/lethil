@@ -6,18 +6,24 @@ export namespace request {
 export namespace configuration {
   export let setting:any={
     port:3000,
+    name:'evh',
     // app:'app',
     // share:'share',
     main:'index.js',
     env:'.env',
     json:'scriptive.json',
-    Ok:'[app]',
+    Ok:'serving',
     version:'1.0',
     listening:{}
   };
   export let directory:any={};
 }
 export namespace utility {
+  export const log:any={
+    msg:function(task:string, id:string, msg:string=''){
+      console.log('[%s] \x1B[90m%s\x1B[0m \u001b[33;1m%s \u001b[32;1m%s\x1B[0m', configuration.setting.name, task, id, msg);
+    }
+  };
   export const check:any={
     isObject:function(value:any){
       return value && typeof value === 'object' || value.constructor === Object;

@@ -8,9 +8,9 @@ describe('evh', () => {
 		// console.log(scriptive);
 		// console.log(evh,process.env.NODE_ENV);
 		assert.ok(evh);
-
+		console.log(process.env.npm_package_name,process.env.npm_package_config_app);
 		// console.log('[www]  \x1B[90m%s:\x1B[0m \u001b[32;1m%s %s\x1B[0m', 'key', 'val', 'text');
-		console.log('\u001b[32;1m>\x1B[0m [www]  \x1B[90m%s:\x1B[0m \x1B[36m%s \u001b[32;1m%s\x1B[0m', 'key', 'val', '');
+
 		// assert.ok(evh.assignment.testing);
 		// assert.equal('Ok',evh.testing);
 		// NOTE: import * as evh from '../asset/';
@@ -96,4 +96,5 @@ describe('evh', () => {
 	it('rootDirectory', () => {
 		assert.ok(rootDirectory.constructor === Object);
 	});
+
 });
