@@ -1,7 +1,6 @@
 import * as root from './essential';
-import * as nav from './nav';
-// export const navMiddleWare = nav.middleware;
-import * as database from './database';
+import * as middleware from './middleware/';
+import * as database from './database/';
 
 export const express = require('express');
 export const environments = require('dotenv');
@@ -14,21 +13,19 @@ export const morgan = require('morgan');
 export const sassMiddleWare = require('node-sass-middleware');
 export const httpErrors = require('http-errors');
 
-// const compression = require('compression')
-
 // NOTE: environments.config({path: rootRequest.path.join(__dirname,'.env')});
 // TODO: multi ports configuration
 const applications = express();
 
 const rootRequest=root.request;
+const rootUtility=root.utility;
 
 const rootSetting=root.configuration.setting;
 const rootDirectory=root.configuration.directory;
 
-const rootObject=root.utility.objects;
-const rootArray=root.utility.arrays;
-const rootValidate=root.utility.check;
-const log=root.utility.log;
+const rootObject=rootUtility.objects;
+const rootArray=rootUtility.arrays;
+const rootValidate=rootUtility.check;
 
 // export namespace serve {}
 export class http {
@@ -101,14 +98,14 @@ export class http {
   }
 };
 // export const navMiddleWare = nav.middleware;
-export class navMiddleWare extends nav.middleware {
-};
+// export class navMiddleWare extends nav.middleware {
+// };
 const callbackListening = () => {
   if (Object.keys(rootSetting.listening).length == 0){
-    log.msg('listening',rootSetting.bind,'but no app were found');
+    rootUtility.log.msg('listening',rootSetting.bind,'but no app were found');
   } else {
     let on = rootSetting.bind.split(':');
-    log.msg('listening',on[0],on[1]);
+    rootUtility.log.msg('listening',on[0],on[1]);
   }
 },
 callbackError = (e:any) => {
@@ -116,17 +113,17 @@ callbackError = (e:any) => {
   // NOTE: handle specific listen errors with friendly messages
   switch (e.code) {
     case 'EACCES':
-      log.msg(e.code.toLowerCase(),rootSetting.bind,'requires elevated privileges');process.exit(1);
+      rootUtility.log.msg(e.code.toLowerCase(),rootSetting.bind,'requires elevated privileges');process.exit(1);
     break;
     case 'EADDRINUSE':
-      log.msg(e.code.toLowerCase(),rootSetting.bind,'already in use');process.exit(1);
+      rootUtility.log.msg(e.code.toLowerCase(),rootSetting.bind,'already in use');process.exit(1);
     break;
     default:
       throw e;
   }
 },
 callbackClose = () => {
-  log.msg('successfully','closed');
+  rootUtility.log.msg('successfully','closed');
 },
 virtualEnvironment = (e:string) => {
   if (rootRequest.fs.existsSync(e)) return environments.parse(rootRequest.fs.readFileSync(e));
@@ -172,22 +169,9 @@ virtualHost = () => {
               if (!user.hasOwnProperty('score')) user.score=new Object();
               rootObject.merge(user.score,rootObject.merge(score,user.score));
 
-              // NOTE: to be continuous using uglify-es
-              // nodeMinify.minify({
-              //   compressor: 'uglify-es',
-              //   // input: 'foo.js',
-              //   input: rootRequest.path.join(user.score.dir.assets,'script/*.js'),
-              //   // output: './static/bar.js',
-              //   output: rootRequest.path.join(user.score.dir.static,'node-minify.js'),
-              //   // output: rootRequest.path.resolve(user.score.dir.static,'node-minify.js'),
-              //   callback: (err:any, min:any)=> {
-              //     // if (err)console.log(err);
-              //     // console.log(min);
-              //   }
-              // });
-              // TODO: improve (position,installation,making var)
               // NOTE: database
               user.app.use((req?:any, res?:any, next?:any) => {
+              // TODO: improve (position,installation,making var)
                 if (user.score.hasOwnProperty('mysqlConnection')) user.score.sql = new database.connection.mysql(user.score.mysqlConnection);
                 next();
               });
@@ -197,54 +181,44 @@ virtualHost = () => {
               user.app.use(express.json());
               user.app.use(express.urlencoded({ extended: false }));
               user.app.use(cookieParser());
-              // user.app.use(compression());
+              // user.app.use(middleware.compression());
 
               // TODO: improve (conditionals, installation)
               if (user.score.dir.static) {
                 // NOTE: css middleware
                 if (user.score.dir.assets){
                   if (rootValidate.isObject(user.score.sassMiddleWare)){
-                    // TODO: reading custom scss and css
+                    // TODO: reading custom path scss and css
                     user.score.sassMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'scss');
                     user.score.sassMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'css');
                     user.app.use(sassMiddleWare(user.score.sassMiddleWare));
                   }
+                  // NOTE: to be continuous using uglify-es
+                  user.app.use(middleware.js());
                 }
                 // NOTE: static should be defined in user Applications
                 user.app.use(express.static(user.score.dir.static));
               }
-              var nav = new navMiddleWare(user);
-              user.app.use(nav.register());
+              var nav = new middleware.nav(user);
+              user.app.use(nav.register);
               user.nav = (Id:string)=>nav.insert(Id);
               // NOTE: routing must be defined in user Applications
-              user(user);
+              if (rootValidate.isFunction(user)) user(user);
+              let appRoute = rootRequest.path.resolve(appDir,rootSetting.route);
+              if (rootRequest.fs.existsSync(appRoute)) require(appRoute);
+
               // NOTE: vhost
               if (rootValidate.isArray(virtualHost[dirName])) {
                 virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, user.app)));
                 rootSetting.listening[dirName]=virtualHost[dirName];
               }
-              // console.log(rootSetting.Ok,user.score.name);
-              log.msg(rootSetting.Ok,user.score.name);
+              rootUtility.log.msg(rootSetting.Ok,user.score.name);
 
               // NOTE: catch 404 and forward to error handler
               user.app.use((req?:any, res?:any, next?:any) => next(httpErrors(404)));
 
-              // TODO: decide whether to include in production
               // NOTE: error handler
-              // user.app.use((err?:any, req?:any, res?:any, next?:any) => {
-              //   // NOTE: set locals, only providing error in development
-              //   res.locals.message = err.message;
-              //   res.locals.error = req.app.get('env') === 'development' ? err : {};
-              //   // NOTE: render the error page
-              //   res.status(err.status || 500);
-              //   res.render('error');
-              //   // res.status(404).send('Sorry, we cannot find that!');
-              //   // res.redirect(301, '/');
-              //   // console.log(req.path);
-              //   // res.redirect(307,'/');
-              //   // res.render('index');
-              //   next();
-              // });
+              user.app.use(middleware.nav.error);
             } catch (e) {
               console.log(e);
             }

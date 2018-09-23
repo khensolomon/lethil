@@ -7,8 +7,19 @@
 
 ```js
 
-// new menu('mainMenu').route();
-// app.menu('mainMenu').route();
+
+app.nav('navPage')
+  .route({url: '/',route: 'home', text: 'Home'})
+  .route({url: '/about',routes: 'about', text: 'Parent'})
+  .child()
+    .route({url: '/about/nothing',routes: 'home', text: 'Child'})
+    .child()
+      .route({url: '/about/nothing/final',routes: 'home', text: 'Final'});
+
+app.nav('navPage')
+  .route({url: '/myanmar-fonts',route: 'home', text: 'Fonts'})
+  .route({url: '/grammar',route: 'home', text: 'Grammar'});
+
 app.nav('fes').route();
 
 module.exports = function(app){
@@ -20,7 +31,7 @@ module.exports = function(app){
       .route({url: '/about/nothing',routes: 'home', text: 'Child'})
       .children()
         .route({url: '/about/nothing/final',routes: 'home', text: 'Final'});
-        
+
   // app.use('/definition', require(path.join(score.dir.routes, 'definition')));
   // app.use('/api', require(path.join(score.dir.routes, 'api')));
   // app.use('*',require(path.join(score.dir.routes, 'home')));

@@ -1,4 +1,4 @@
-import * as root from './essential';
+import * as root from '../essential';
 var rootRequest=root.request,
     rootUtility=root.utility,
     childName = 'child',
@@ -22,7 +22,7 @@ export class middleware {
     this.parents.push(a);
     return this;
   }
-  register(){
+  get register(){
     // TODO: improve routes?:any
     var routes = this.routes;
     return (req?:any, res?:any, next?:any)=>{
@@ -61,5 +61,19 @@ export class middleware {
       for(var id in routes) res.locals[id] = routeSort(routes[id]).map(routeActive);
       next();
     }
+  }
+  static error(err?:any, req?:any, res?:any, next?:any){
+    // NOTE: set locals, only providing error in development
+    res.locals.message = err.message;
+    res.locals.error = req.app.get('env') === 'development' ? err : {};
+    // NOTE: render the error page
+    res.status(err.status || 500);
+    res.render('error');
+    // res.status(404).send('Sorry, we cannot find that!');
+    // res.redirect(301, '/');
+    // console.log(req.path);
+    // res.redirect(307,'/');
+    // res.render('index');
+    next();
   }
 }

@@ -10,6 +10,7 @@ export namespace configuration {
     // app:'app',
     // share:'share',
     main:'index.js',
+    route:'route.js',
     env:'.env',
     json:'scriptive.json',
     Ok:'serving',
@@ -32,7 +33,7 @@ export namespace utility {
       return value && Array.isArray(value) || value instanceof Array;
     },
     isFunction:function(value:any){
-      return value && value instanceof Function;
+      return value && typeof value === 'function' || value instanceof Function;
     },
     isString:function(value:any){
       return value && typeof value === 'string' || value instanceof String;

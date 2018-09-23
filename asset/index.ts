@@ -27,7 +27,7 @@ import * as $ from './scriptive';
 export const scriptive=$.http;
 export const express=$.express;
 
-export const navMiddleWare=$.navMiddleWare;
+// export const navMiddleWare=$.navMiddleWare;
 // TODO: ?
 export const cookieParser = $.cookieParser;
 export const morgan = $.morgan;
@@ -37,7 +37,7 @@ export const sassMiddleWare = $.sassMiddleWare;
 export const httpErrors = $.httpErrors;
 
 // TODO: ??
-import * as db from './database';
+import * as db from './database/';
 export const database = db.connection;
 // export const mysql = db.connection.mysql;
 // export const mongodb = db.connection.mongodb;
