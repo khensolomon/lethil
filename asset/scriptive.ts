@@ -1,4 +1,6 @@
 import * as root from './essential';
+import * as nav from './nav';
+// export const navMiddleWare = nav.middleware;
 import * as database from './database';
 
 export const express = require('express');
@@ -11,10 +13,12 @@ export const cookieParser = require('cookie-parser');
 export const morgan = require('morgan');
 export const sassMiddleWare = require('node-sass-middleware');
 export const httpErrors = require('http-errors');
-const applications = express();
+
+// const compression = require('compression')
+
 // NOTE: environments.config({path: rootRequest.path.join(__dirname,'.env')});
-// TODO: expressVirtual,express,environments,debug
-// TODO: different port configuration
+// TODO: multi ports configuration
+const applications = express();
 
 const rootRequest=root.request;
 
@@ -57,15 +61,10 @@ export class http {
     rootSetting.main = main || rootSetting.main;
   }
   listen() {
-    // TODO: if http is on listening????
-    // environments.config();
-    let configEnv = rootRequest.path.join(rootSetting.root,rootSetting.env);
-    if (rootRequest.fs.existsSync(configEnv)) {
-      let env = environments.parse(rootRequest.fs.readFileSync(configEnv));
-      root.utility.objects.merge(rootSetting,env);
-    }
+    // HACK: environments.config();
+    let env = rootRequest.path.join(rootSetting.root,rootSetting.env);
+    rootObject.merge(rootSetting,virtualEnvironment(env));
     this.port();
-
     try {
       virtualHost();
     } catch (e) {
@@ -73,11 +72,13 @@ export class http {
     } finally {
       applications.set('port', rootSetting.port);
     }
+    // NOTE: javascript
     // this.server = http.createServer(applications);
     this.server = createServer(applications);
     this.server.listen(rootSetting.port/*,'0.0.0.0'*/);
 
     let address = this.server.address();
+    // rootSetting.address = address.address;
     rootSetting.bind = typeof address === 'string'?'pipe:' + address:'port:' + address.port;
     return this.server;
   }
@@ -96,9 +97,12 @@ export class http {
     // NOTE: Event listener for HTTP server "listening" event.
     this.server.on('listening', rootValidate.isFunction(callback)?callback:callbackListening);
   }
-}
+};
+// export const navMiddleWare = nav.middleware;
+export class navMiddleWare extends nav.middleware {
+};
 const callbackListening = () => {
-  console.log('listening on',rootSetting.bind,Object.keys(rootSetting.listening).length == 0?'but no app were found!':'...');
+  console.log('listening on',rootSetting.bind,Object.keys(rootSetting.listening).length == 0?'but no app were found!':'');
 },
 callbackError = (e:any) => {
   if (e.syscall !== 'listen')throw e;
@@ -117,14 +121,21 @@ callbackError = (e:any) => {
 callbackClose = () => {
   console.log(`...successfully closed!`);
 },
+callbackLog = (severity?:any, key?:string, val?:string, text?:string) => {
+  // console.log(`...successfully closed!`);
+  // og('debug', 'skip', path, 'nothing to do');
+  // severity?:any, key?:string, val?:string, text?:string
+  // \u001b[32;1m
+  // console.log('[www]  \x1B[90m%s:\x1B[0m \u001b[32;1m%s %s\x1B[0m', key, val, text);
+},
 virtualEnvironment = (e:string) => {
   if (rootRequest.fs.existsSync(e)) return environments.parse(rootRequest.fs.readFileSync(e));
   return new Object();
 },
 virtualHost = () => {
   let virtual = rootRequest.fs.readJsonSync(rootRequest.path.join(rootSetting.root,rootSetting.json));
-  if (virtual.hasOwnProperty('host') && rootValidate.isObject(virtual.host)){
-    let virtualHost = virtual.host;
+  if (virtual.hasOwnProperty('virtual') && rootValidate.isObject(virtual.virtual)){
+    let virtualHost = virtual.virtual;
 
     for (var dirName in virtualHost) {
       if (virtualHost.hasOwnProperty(dirName)) {
@@ -133,8 +144,8 @@ virtualHost = () => {
           let appMain = rootRequest.path.resolve(appDir,rootSetting.main);
           if (rootRequest.fs.existsSync(appMain)) {
             try {
-              const app = express();
               const user = require(appMain);
+              user.app  = express();
               // NOTE: environments
               const score = virtualEnvironment(rootRequest.path.join(appDir,rootSetting.env));
 
@@ -158,50 +169,81 @@ virtualHost = () => {
                 outputStyle: 'compressed',
                 sourceMap: false
               };
+              if (!user.hasOwnProperty('score')) user.score=new Object();
               rootObject.merge(user.score,rootObject.merge(score,user.score));
 
+              // NOTE: to be continuous using uglify-es
+              // nodeMinify.minify({
+              //   compressor: 'uglify-es',
+              //   // input: 'foo.js',
+              //   input: rootRequest.path.join(user.score.dir.assets,'script/*.js'),
+              //   // output: './static/bar.js',
+              //   output: rootRequest.path.join(user.score.dir.static,'node-minify.js'),
+              //   // output: rootRequest.path.resolve(user.score.dir.static,'node-minify.js'),
+              //   callback: (err:any, min:any)=> {
+              //     // if (err)console.log(err);
+              //     // console.log(min);
+              //   }
+              // });
+              // TODO: improve (position,installation,making var)
               // NOTE: database
-              app.use(function(req?:any, res?:any, next?:any) {
+              user.app.use((req?:any, res?:any, next?:any) => {
                 if (user.score.hasOwnProperty('mysqlConnection')) user.score.sql = new database.connection.mysql(user.score.mysqlConnection);
                 next();
               });
-              app.set('views', user.score.dir.views);
-              app.set('view engine', 'pug');
-              app.use(morgan('dev'));
-              app.use(express.json());
-              app.use(express.urlencoded({ extended: false }));
-              app.use(cookieParser());
+              user.app.set('views', user.score.dir.views);
+              user.app.set('view engine', 'pug');
+              user.app.use(morgan('dev'));
+              user.app.use(express.json());
+              user.app.use(express.urlencoded({ extended: false }));
+              user.app.use(cookieParser());
 
-              // TODO: improve
+              // user.app.use(compression());
+
+              // TODO: improve (conditionals, installation)
               if (user.score.dir.static) {
-                // NOTE: static should be defined in user Applications
-                app.use(express.static(user.score.dir.static));
                 // NOTE: css middleware
                 if (user.score.dir.assets){
                   if (rootValidate.isObject(user.score.sassMiddleWare)){
                     // TODO: reading custom scss and css
                     user.score.sassMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'scss');
                     user.score.sassMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'css');
-                    app.use(sassMiddleWare(user.score.sassMiddleWare));
+                    user.app.use(sassMiddleWare(user.score.sassMiddleWare));
                   }
+                  user.app.use((req?:any, res?:any, next?:any) => {
+                    // if (req.method !== 'GET' && req.method !== 'HEAD') {
+                    //   return next();
+                    // }
+                    //
+                    // var path = url.parse(req.url).pathname;
+                    //
+                    // if (!/\.js$/.test(path)) {
+                    //   log('debug', 'skip', path, 'nothing to do');
+                    //   return next();
+                    // }
+                    next();
+                  });
                 }
+                // NOTE: static should be defined in user Applications
+                user.app.use(express.static(user.score.dir.static));
               }
+              var nav = new navMiddleWare(user);
+              user.app.use(nav.register());
+              user.nav = (Id:string)=>nav.insert(Id);
               // NOTE: routing must be defined in user Applications
-              user(app);
-              // rootSetting.listening[dirName]=new Array();
-              // virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, app),rootSetting.listening[dirName].push(k)));
-
+              user(user);
               // NOTE: vhost
               if (rootValidate.isArray(virtualHost[dirName])) {
-                virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, app)));
+                virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, user.app)));
                 rootSetting.listening[dirName]=virtualHost[dirName];
               }
               console.log(rootSetting.Ok,user.score.name);
               // NOTE: catch 404 and forward to error handler
-              app.use((req?:any, res?:any, next?:any) => next(httpErrors(404)));
+              user.app.use((req?:any, res?:any, next?:any) => next(httpErrors(404)));
 
+              // TODO: decide whether to include in production
               // NOTE: error handler
-              // app.use(function(err?:any, req?:any, res?:any, next?:any) {
+              // user.app.use((err?:any, req?:any, res?:any, next?:any) => {
               //   // NOTE: set locals, only providing error in development
               //   res.locals.message = err.message;
               //   res.locals.error = req.app.get('env') === 'development' ? err : {};

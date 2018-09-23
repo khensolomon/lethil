@@ -3,7 +3,7 @@
 	"app": "app",
 	"share": "share",
 	"main": "index.js",
-	"host": {
+	"virtual": {
 		"../out_side":["domainname.*","subdomain.*.*"],
 		"./in_side":["127.0.0.1","*"]
 	}
