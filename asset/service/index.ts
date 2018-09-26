@@ -27,7 +27,7 @@ export namespace utility {
   };
   export const check:any={
     isObject:function(value:any){
-      return value && typeof value === 'object' || value.constructor === Object;
+      return value && (typeof value === 'object' || value.constructor === Object);
     },
     isArray:function(value:any){
       return value && Array.isArray(value) || value instanceof Array;

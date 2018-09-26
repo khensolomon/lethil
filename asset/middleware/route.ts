@@ -1,4 +1,4 @@
-import * as root from '../essential';
+import * as root from '../service/';
 var rootRequest=root.request,
     rootUtility=root.utility,
     childName = 'child',

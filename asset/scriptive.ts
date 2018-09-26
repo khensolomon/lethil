@@ -1,4 +1,4 @@
-import * as root from './essential';
+import * as root from './service/';
 import * as middleware from './middleware/';
 import * as database from './database/';
 
@@ -10,7 +10,7 @@ const {Server, createServer} = require('http');
 // import {Server, createServer} from 'http';
 export const cookieParser = require('cookie-parser');
 export const morgan = require('morgan');
-export const sassMiddleWare = require('node-sass-middleware');
+export const nodeSASSMiddleWare = require('node-sass-middleware');
 export const httpErrors = require('http-errors');
 
 // NOTE: environments.config({path: rootRequest.path.join(__dirname,'.env')});
@@ -97,9 +97,6 @@ export class http {
     this.server.on('listening', rootValidate.isFunction(callback)?callback:callbackListening);
   }
 };
-// export const navMiddleWare = nav.middleware;
-// export class navMiddleWare extends nav.middleware {
-// };
 const callbackListening = () => {
   if (Object.keys(rootSetting.listening).length == 0){
     rootUtility.log.msg('listening',rootSetting.bind,'but no app were found');
@@ -157,7 +154,7 @@ virtualHost = () => {
                 views: rootRequest.path.resolve(appDir,'views'),
                 routes: rootRequest.path.resolve(appDir,'routes')
               };
-              score.sassMiddleWare = {
+              score.styleMiddleWare = {
                 prefix: '/css',
                 indentedSyntax: false,
                 debug: true,
@@ -187,14 +184,19 @@ virtualHost = () => {
               if (user.score.dir.static) {
                 // NOTE: css middleware
                 if (user.score.dir.assets){
-                  if (rootValidate.isObject(user.score.sassMiddleWare)){
+                  if (rootValidate.isObject(user.score.styleMiddleWare)){
                     // TODO: reading custom path scss and css
-                    user.score.sassMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'scss');
-                    user.score.sassMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'css');
-                    user.app.use(sassMiddleWare(user.score.sassMiddleWare));
+                    user.score.styleMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'scss');
+                    user.score.styleMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'css');
+                    user.app.use(nodeSASSMiddleWare(user.score.styleMiddleWare));
+                    // TODO: user.app.use(middleware.style(user.score.styleMiddleWare));
                   }
-                  // NOTE: to be continuous using uglify-es
-                  user.app.use(middleware.js());
+                  if (rootValidate.isObject(user.score.scriptMiddleWare)){
+                    // NOTE: to be continuous using uglify-es
+                    user.score.scriptMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'script');
+                    user.score.scriptMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'jsmiddlewareoutput');
+                    user.app.use(middleware.script(user.score.scriptMiddleWare));
+                  }
                 }
                 // NOTE: static should be defined in user Applications
                 user.app.use(express.static(user.score.dir.static));

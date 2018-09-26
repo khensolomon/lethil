@@ -3,12 +3,12 @@
 //     rootUtility=root.utility;
 
 import * as route from './route';
-import * as script from './script';
-import * as style from './style';
+import * as js from './script';
+export const script = js.middleware;
+export class nav extends route.middleware{}
+// export const script = (option?:{}) => new js.middleware(option).register();
+// export const style = (option?:{}) => new css.middleware(option).register();
 
-export const js = (option?:{}) => new script.middleware(option).register;
-export class nav extends route.middleware{};
-export class css extends style.middleware{};
 
 
 // TODO: compression
