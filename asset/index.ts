@@ -21,7 +21,7 @@ import * as $ from './scriptive';
 
 export const scriptive=$.http;
 export const express=$.express;
-// export const navMiddleWare=$.navMiddleWare;
+export const application=$.application;
 
 // TODO: ?
 export const cookieParser = $.cookieParser;

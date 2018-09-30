@@ -15,19 +15,19 @@ export const httpErrors = require('http-errors');
 
 // NOTE: environments.config({path: rootRequest.path.join(__dirname,'.env')});
 // TODO: multi ports configuration
-const applications = express();
+export const application = express();
 
 const rootRequest=root.request;
 const rootUtility=root.utility;
 
-const rootSetting=root.configuration.setting;
+const rootConfiguration=root.configuration;
+const rootSetting=rootConfiguration.setting;
 const rootDirectory=root.configuration.directory;
 
 const rootObject=rootUtility.objects;
 const rootArray=rootUtility.arrays;
 const rootValidate=rootUtility.check;
 
-// export namespace serve {}
 export class http {
   private server?:any;
   private bind?:any;
@@ -69,11 +69,11 @@ export class http {
     } catch (e) {
       console.error(e);
     } finally {
-      applications.set('port', rootSetting.port);
+      application.set('port', rootSetting.port);
     }
     // NOTE: javascript
-    // this.server = http.createServer(applications);
-    this.server = createServer(applications);
+    // this.server = http.createServer(application);
+    this.server = createServer(application);
     this.server.listen(rootSetting.port/*,'0.0.0.0'*/);
 
     let address = this.server.address();
@@ -138,15 +138,16 @@ virtualHost = () => {
           let appMain = rootRequest.path.resolve(appDir,rootSetting.main);
           if (rootRequest.fs.existsSync(appMain)) {
             try {
+              // NOTE: environments
+              const env = virtualEnvironment(rootRequest.path.join(appDir,rootSetting.env));
+              if (!env.hasOwnProperty('name')) env.name=dirName;
+              if (!env.hasOwnProperty('version')) env.version=rootSetting.version;
+
               const user = require(appMain);
               user.app  = express();
-              // NOTE: environments
-              const score = virtualEnvironment(rootRequest.path.join(appDir,rootSetting.env));
 
-              if (!score.hasOwnProperty('name')) score.name=dirName;
-              if (!score.hasOwnProperty('version')) score.version=rootSetting.version;
               // NOTE: directory
-              score.dir={
+              env.dir={
                 root: appDir,
                 // public: rootRequest.path.resolve(appDir,'public'),
                 static: rootRequest.path.resolve(appDir,'static'),
@@ -154,22 +155,29 @@ virtualHost = () => {
                 views: rootRequest.path.resolve(appDir,'views'),
                 routes: rootRequest.path.resolve(appDir,'routes')
               };
-              score.styleMiddleWare = {
-                prefix: '/css',
-                indentedSyntax: false,
-                debug: true,
-                response:false,
-                // NOTE: nested, expanded, compact, compressed
-                outputStyle: 'compressed',
-                sourceMap: false
-              };
-              if (!user.hasOwnProperty('score')) user.score=new Object();
-              rootObject.merge(user.score,rootObject.merge(score,user.score));
+              // NOTE: get default style configuration
+              env.styleMiddleWare = rootConfiguration.style;
+
+              if (!user.hasOwnProperty('score')) {
+                let appScore = rootRequest.path.resolve(appDir,rootSetting.score);
+                // user.score = rootRequest.fs.existsSync(appScore)?require(appScore):new Object();
+                if (rootRequest.fs.existsSync(appScore)) {
+                  const {score} = require(appScore);
+                  user.score = score;
+                } else {
+                  user.score = new Object();
+                }
+              }
+              // if (!user.hasOwnProperty('score')) user.score=new Object();
+              rootObject.merge(user.score,rootObject.merge(env,user.score));
 
               // NOTE: database
               user.app.use((req?:any, res?:any, next?:any) => {
               // TODO: improve (position,installation,making var)
-                if (user.score.hasOwnProperty('mysqlConnection')) user.score.sql = new database.connection.mysql(user.score.mysqlConnection);
+                // if (user.score.hasOwnProperty('mysqlConnection')) user.score.sql = new database.connection.mysql(user.score.mysqlConnection);
+                if (user.score.hasOwnProperty('mysqlConnection')) {
+                  user.sql = new database.connection.mysql(user.score.mysqlConnection);
+                }
                 next();
               });
               user.app.set('views', user.score.dir.views);
@@ -184,14 +192,14 @@ virtualHost = () => {
               if (user.score.dir.static) {
                 // NOTE: css middleware
                 if (user.score.dir.assets){
-                  if (rootValidate.isObject(user.score.styleMiddleWare)){
+                  if (user.score.hasOwnProperty('styleMiddleWare') && rootValidate.isObject(user.score.styleMiddleWare)){
                     // TODO: reading custom path scss and css
                     user.score.styleMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'scss');
                     user.score.styleMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'css');
                     user.app.use(nodeSASSMiddleWare(user.score.styleMiddleWare));
                     // TODO: user.app.use(middleware.style(user.score.styleMiddleWare));
                   }
-                  if (rootValidate.isObject(user.score.scriptMiddleWare)){
+                  if (user.score.hasOwnProperty('scriptMiddleWare') && rootValidate.isObject(user.score.scriptMiddleWare)){
                     // NOTE: to be continuous using uglify-es
                     user.score.scriptMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'script');
                     user.score.scriptMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'jsmiddlewareoutput');
@@ -201,17 +209,24 @@ virtualHost = () => {
                 // NOTE: static should be defined in user Applications
                 user.app.use(express.static(user.score.dir.static));
               }
+              // if (user.hasOwnProperty('middleware') && rootValidate.isFunction(user.middleware)) user.middleware(user.app);
+              // user.middleware = (Id:string)=>user.app.use(Id);
+
+              // NOTE: express.Router();
+              user.router = express.Router;
+
+              // NOTE: nav, and its middleware
               var nav = new middleware.nav(user);
               user.app.use(nav.register);
               user.nav = (Id:string)=>nav.insert(Id);
               // NOTE: routing must be defined in user Applications
-              if (rootValidate.isFunction(user)) user(user);
-              let appRoute = rootRequest.path.resolve(appDir,rootSetting.route);
-              if (rootRequest.fs.existsSync(appRoute)) require(appRoute);
+              if (rootValidate.isFunction(user)) user(user.app);
+              let userRoute = rootRequest.path.resolve(appDir,rootSetting.route);
+              if (rootRequest.fs.existsSync(userRoute)) require(userRoute);
 
               // NOTE: vhost
               if (rootValidate.isArray(virtualHost[dirName])) {
-                virtualHost[dirName].forEach((k:string)=>applications.use(vhost(k, user.app)));
+                virtualHost[dirName].forEach((k:string)=>application.use(vhost(k, user.app)));
                 rootSetting.listening[dirName]=virtualHost[dirName];
               }
               rootUtility.log.msg(rootSetting.Ok,user.score.name);

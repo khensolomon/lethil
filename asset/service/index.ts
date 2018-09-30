@@ -7,10 +7,9 @@ export namespace configuration {
   export let setting:any={
     port:3000,
     name:'evh',
-    // app:'app',
-    // share:'share',
     main:'index.js',
     route:'route.js',
+    score:'score.js',
     env:'.env',
     json:'scriptive.json',
     Ok:'serving',
@@ -18,6 +17,19 @@ export namespace configuration {
     listening:{}
   };
   export let directory:any={};
+
+  // NOTE: styleMiddleWare
+  export let style:any={
+    // prefix: '/css',
+    indentedSyntax: false,
+    // debug: true,
+    response:false,
+    // NOTE: nested, expanded, compact, compressed
+    outputStyle: 'compressed',
+    sourceMap: false
+  };
+  // NOTE: scriptMiddleWare
+  export let script:any={};
 }
 export namespace utility {
   export const log:any={
