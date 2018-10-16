@@ -15,7 +15,7 @@ export const httpErrors = require('http-errors');
 
 // NOTE: environments.config({path: rootRequest.path.join(__dirname,'.env')});
 // TODO: multi ports configuration
-export const application = express();
+export const essence = express();
 
 const rootRequest=root.request;
 const rootUtility=root.utility;
@@ -36,7 +36,7 @@ export class http {
     if (appName)rootSetting.name = appName;
   }
   test(){
-    console.log('Ok evh');
+    console.log('evh');
   }
   root(dir?:string) {
     rootSetting.root = dir || process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
@@ -69,11 +69,11 @@ export class http {
     } catch (e) {
       console.error(e);
     } finally {
-      application.set('port', rootSetting.port);
+      essence.set('port', rootSetting.port);
     }
     // NOTE: javascript
-    // this.server = http.createServer(application);
-    this.server = createServer(application);
+    // this.server = http.createServer(essence);
+    this.server = createServer(essence);
     this.server.listen(rootSetting.port/*,'0.0.0.0'*/);
 
     let address = this.server.address();
@@ -99,7 +99,7 @@ export class http {
 };
 const callbackListening = () => {
   if (Object.keys(rootSetting.listening).length == 0){
-    rootUtility.log.msg('listening',rootSetting.bind,'but no app were found');
+    rootUtility.log.msg('listening',rootSetting.bind,'but no App were found');
   } else {
     let on = rootSetting.bind.split(':');
     rootUtility.log.msg('listening',on[0],on[1]);
@@ -144,7 +144,7 @@ virtualHost = () => {
               if (!env.hasOwnProperty('version')) env.version=rootSetting.version;
 
               const user = require(appMain);
-              user.app  = express();
+              user.core  = express();
 
               // NOTE: directory
               env.dir={
@@ -157,10 +157,10 @@ virtualHost = () => {
               };
               // NOTE: get default style configuration
               env.styleMiddleWare = rootConfiguration.style;
+              env.scriptMiddleWare = rootConfiguration.script;
 
               if (!user.hasOwnProperty('score')) {
                 let appScore = rootRequest.path.resolve(appDir,rootSetting.score);
-                // user.score = rootRequest.fs.existsSync(appScore)?require(appScore):new Object();
                 if (rootRequest.fs.existsSync(appScore)) {
                   const {score} = require(appScore);
                   user.score = score;
@@ -171,8 +171,12 @@ virtualHost = () => {
               // if (!user.hasOwnProperty('score')) user.score=new Object();
               rootObject.merge(user.score,rootObject.merge(env,user.score));
 
+              // // NOTE: middleware ?? working
+              // let userMiddleware = rootRequest.path.resolve(appDir,rootSetting.middleware);
+              // if (rootRequest.fs.existsSync(userMiddleware)) require(userMiddleware);
+
               // NOTE: database
-              user.app.use((req?:any, res?:any, next?:any) => {
+              user.core.use((req?:any, res?:any, next?:any) => {
               // TODO: improve (position,installation,making var)
                 // if (user.score.hasOwnProperty('mysqlConnection')) user.score.sql = new database.connection.mysql(user.score.mysqlConnection);
                 if (user.score.hasOwnProperty('mysqlConnection')) {
@@ -180,62 +184,68 @@ virtualHost = () => {
                 }
                 next();
               });
-              user.app.set('views', user.score.dir.views);
-              user.app.set('view engine', 'pug');
-              user.app.use(morgan('dev'));
-              user.app.use(express.json());
-              user.app.use(express.urlencoded({ extended: false }));
-              user.app.use(cookieParser());
-              // user.app.use(middleware.compression());
+              user.core.set('views', user.score.dir.views);
+              user.core.set('view engine', 'pug');
+              user.core.use(morgan('dev'));
+              user.core.use(express.json());
+              user.core.use(express.urlencoded({ extended: false }));
+              user.core.use(cookieParser());
+              // user.core.use(middleware.compression());
 
               // TODO: improve (conditionals, installation)
               if (user.score.dir.static) {
                 // NOTE: css middleware
                 if (user.score.dir.assets){
-                  if (user.score.hasOwnProperty('styleMiddleWare') && rootValidate.isObject(user.score.styleMiddleWare)){
+                // user.score.hasOwnProperty('styleMiddleWare') &&
+                  if (rootValidate.isObject(user.score.styleMiddleWare) && Object.keys(user.score.styleMiddleWare).length){
                     // TODO: reading custom path scss and css
                     user.score.styleMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'scss');
                     user.score.styleMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'css');
-                    user.app.use(nodeSASSMiddleWare(user.score.styleMiddleWare));
-                    // TODO: user.app.use(middleware.style(user.score.styleMiddleWare));
+                    user.core.use(nodeSASSMiddleWare(user.score.styleMiddleWare));
+                    // TODO: user.core.use(middleware.style(user.score.styleMiddleWare));
                   }
-                  if (user.score.hasOwnProperty('scriptMiddleWare') && rootValidate.isObject(user.score.scriptMiddleWare)){
+                  // user.score.hasOwnProperty('scriptMiddleWare') &&
+                  if (rootValidate.isObject(user.score.scriptMiddleWare) && Object.keys(user.score.scriptMiddleWare).length){
                     // NOTE: to be continuous using uglify-es
                     user.score.scriptMiddleWare.src=rootRequest.path.resolve(user.score.dir.assets, 'script');
                     user.score.scriptMiddleWare.dest=rootRequest.path.resolve(user.score.dir.static,'jsmiddlewareoutput');
-                    user.app.use(middleware.script(user.score.scriptMiddleWare));
+                    user.core.use(middleware.script(user.score.scriptMiddleWare));
                   }
                 }
                 // NOTE: static should be defined in user Applications
-                user.app.use(express.static(user.score.dir.static));
+                user.core.use(express.static(user.score.dir.static));
               }
-              // if (user.hasOwnProperty('middleware') && rootValidate.isFunction(user.middleware)) user.middleware(user.app);
-              // user.middleware = (Id:string)=>user.app.use(Id);
+              // if (user.hasOwnProperty('middleware') && rootValidate.isFunction(user.middleware)) user.middleware(user.core);
+              // user.middleware = (Id:string)=>user.core.use(Id);
 
               // NOTE: express.Router();
               user.router = express.Router;
 
               // NOTE: nav, and its middleware
               var nav = new middleware.nav(user);
-              user.app.use(nav.register);
+              user.core.use(nav.register);
               user.nav = (Id:string)=>nav.insert(Id);
+              // NOTE: middleware ?? working
+              let userMiddleware = rootRequest.path.resolve(appDir,rootSetting.middleware);
+              if (rootRequest.fs.existsSync(userMiddleware)) require(userMiddleware);
+
               // NOTE: routing must be defined in user Applications
-              if (rootValidate.isFunction(user)) user(user.app);
+              if (rootValidate.isFunction(user)) user(user.core);
               let userRoute = rootRequest.path.resolve(appDir,rootSetting.route);
               if (rootRequest.fs.existsSync(userRoute)) require(userRoute);
 
               // NOTE: vhost
               if (rootValidate.isArray(virtualHost[dirName])) {
-                virtualHost[dirName].forEach((k:string)=>application.use(vhost(k, user.app)));
+                virtualHost[dirName].forEach((k:string)=>essence.use(vhost(k, user.core)));
                 rootSetting.listening[dirName]=virtualHost[dirName];
               }
               rootUtility.log.msg(rootSetting.Ok,user.score.name);
 
               // NOTE: catch 404 and forward to error handler
-              user.app.use((req?:any, res?:any, next?:any) => next(httpErrors(404)));
+              user.core.use((req?:any, res?:any, next?:any) => next(httpErrors(404)));
 
               // NOTE: error handler
-              user.app.use(middleware.nav.error);
+              user.core.use(middleware.nav.error);
             } catch (e) {
               console.log(e);
             }

@@ -8,6 +8,7 @@ export namespace configuration {
     port:3000,
     name:'evh',
     main:'index.js',
+    middleware:'middleware.js',
     route:'route.js',
     score:'score.js',
     env:'.env',
@@ -21,12 +22,12 @@ export namespace configuration {
   // NOTE: styleMiddleWare
   export let style:any={
     // prefix: '/css',
-    indentedSyntax: false,
+    // indentedSyntax: false,
     // debug: true,
-    response:false,
+    // response:false,
     // NOTE: nested, expanded, compact, compressed
-    outputStyle: 'compressed',
-    sourceMap: false
+    // outputStyle: 'compressed',
+    // sourceMap: false
   };
   // NOTE: scriptMiddleWare
   export let script:any={};
@@ -93,6 +94,38 @@ export namespace utility {
               return x < y ? reversed * -1 : x > y ? reversed : 0;
           });
       return sortable; // array in format [ [ key1, val1 ], [ key2, val2 ], ... ]
+    },
+    getKeybyValue:function(o:any, value:string, cse?:string){
+      for(var k in o){
+        if (o.hasOwnProperty(k)) {
+          if (cse) {
+            if (o[k].match(new RegExp(value, cse))) return k;
+          } else if (o[k] == value) {
+            return k;
+          }
+        }
+      }
+      return false;
+      // return Object.keys(o).find(k => o[k] === needle);
+      // return Object.keys(o)[Object.values(o).indexOf(value)];
+      // return Object.entries(o).find(key => key[1] === value);
+    },
+    getValuebyKey:function(o:any, value:string, cse?:string){
+      for(var k in o){
+        if (o.hasOwnProperty(k)) {
+          if (cse) {
+            if (k.match(new RegExp(value, cse))) return o[k];
+          } else if (k == value) {
+            return o[k];
+          }
+        }
+      }
+      return false;
+      // return Object.values(o)[Object.keys(o).indexOf(needle)];
+      // return Object.values(o).find(key => o[key] === value);
+      // return Object.keys(o).find(key => o[key] === value );
+      // return Object.keys(o)[Object.values(o).indexOf(value)];
+      // return Object.entries(o).find((key:[]) => key[0] === value);
     }
   };
   export const arrays:any={

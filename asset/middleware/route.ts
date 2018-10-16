@@ -6,19 +6,19 @@ var rootRequest=root.request,
 
 export class middleware {
   private routes:any={};
-  constructor(private core?:any,private parents?:any) {
+  constructor(private user?:any,private parents?:any) {
   }
   insert(localName:string='_'){
     if (!this.routes.hasOwnProperty(localName)) this.routes[localName]=new Array();
-    return new middleware(this.core,this.routes[localName]);
+    return new middleware(this.user,this.routes[localName]);
   }
   child(){
     var lastIndex = this.parents.length - 1;
     if (!this.parents[lastIndex].hasOwnProperty(childName)) this.parents[lastIndex][childName]=new Array();
-    return new middleware(this.core,this.parents[lastIndex][childName]);
+    return new middleware(this.user,this.parents[lastIndex][childName]);
   }
   route(a?:any){
-    if(a.hasOwnProperty('route'))this.core.app.use(a.url,require(rootRequest.path.join(this.core.score.dir.routes, a.route)));
+    if(a.hasOwnProperty('route'))this.user.core.use(a.url,require(rootRequest.path.join(this.user.score.dir.routes, a.route)));
     this.parents.push(a);
     return this;
   }
