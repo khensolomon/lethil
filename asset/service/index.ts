@@ -50,6 +50,17 @@ export namespace utility {
     },
     isString:function(value:any){
       return value && typeof value === 'string' || value instanceof String;
+    },
+    isNumeric:function(value:any){
+      return /^-{0,1}\d+$/.test(value);
+    }
+  };
+  export const word:any={
+    explode:function(value:any){
+      return value.trim().split(/\s+/);
+    },
+    count:function(value:any){
+      return this.explode(value).length;
     }
   };
   export const objects:any={
@@ -74,25 +85,24 @@ export namespace utility {
       // sortedBy = sortedBy || 1; // by default first key
       // isNumericSort = isNumericSort || false; // by default text sort
       // reverse = reverse || false; // by default no reverse
-
       var reversed = (reverse) ? -1 : 1;
-
       var sortable = [];
       for (var key in o) {
-          if (o.hasOwnProperty(key)) {
-              sortable.push([key, o[key]]);
-          }
+        if (o.hasOwnProperty(key)) {
+          sortable.push([key, o[key]]);
+        }
       }
-      if (isNumericSort)
-          sortable.sort(function (a, b) {
-              return reversed * (a[1][sortedBy] - b[1][sortedBy]);
-          });
-      else
-          sortable.sort(function (a, b) {
-              var x = a[1][sortedBy].toLowerCase(),
-                  y = b[1][sortedBy].toLowerCase();
-              return x < y ? reversed * -1 : x > y ? reversed : 0;
-          });
+      if (isNumericSort) {
+        sortable.sort(function (a, b) {
+          return reversed * (a[1][sortedBy] - b[1][sortedBy]);
+        });
+      } else {
+        sortable.sort(function (a, b) {
+          var x = a[1][sortedBy].toLowerCase(),
+          y = b[1][sortedBy].toLowerCase();
+          return x < y ? reversed * -1 : x > y ? reversed : 0;
+        });
+      }
       return sortable; // array in format [ [ key1, val1 ], [ key2, val2 ], ... ]
     },
     getKeybyValue:function(o:any, value:string, cse?:string){
@@ -129,5 +139,17 @@ export namespace utility {
     }
   };
   export const arrays:any={
+    unique:function(a:[]){
+      // artist_newset:Array.from(new Set(row.listArtist.split(","))),
+      // artist_dum:row.listArtist,
+      // artist_filter:row.listArtist.split(",").filter(function (el) {
+      //     return (el.hero === "Batman");
+      // }),
+      // artist_map:row.listArtist.split(",").map(function(e){return e.trim();}),
+      // return Array.from(new Set(a.map((e:any)=>e.trim()).filter((item:any, pos:any, self:any) => {
+      //     return self.indexOf(item) == pos && item!='';
+      // })));
+      return Array.from(new Set(a.map((e:any)=>e.trim()).filter((item:any, pos:any, self:any) => self.indexOf(item) == pos && item!='')));
+    }
   };
 }

@@ -1,12 +1,13 @@
 const mysql = require('mysql');
 export default class database {
-  private connection:any;
+  public connection:any;
+  public result:any;
   constructor(args?:{}) {
     this.connection = mysql.createConnection(args);
   }
   query(sql?:string, args?:any) {
     return new Promise((resolve,reject) =>{
-      this.connection.query(sql, args, (e?:null, row?:any) => e?reject(e):resolve(row));
+      this.result = this.connection.query(sql, args, (e?:null, row?:any) => e?reject(e):resolve(row));
     });
   }
   connect(args?:{}){
@@ -14,6 +15,9 @@ export default class database {
   }
   format(sql?:string, args?:any){
     return this.connection.format(sql, args);
+  }
+  escape(args?:any){
+    return this.connection.escape(args);
   }
   close(){
     return new Promise((resolve, reject) => {
