@@ -4,13 +4,13 @@
 
 ## Installation
 
-> 1. Start with `npm init`, then
+> Start with `npm init`, then
 
 ```shell
 npm i @scriptive/evh
 ```
 
-> 2. index.js
+> create *index.js*
 
 ```js
 const scriptiveModule=()=>require('@scriptive/evh');
@@ -40,7 +40,7 @@ server.close();
 // server.stop();
 ```
 
-> 3. *scriptive.json* `virtual[directory]=[domainname]`. Use wildcard/* for multi listening.
+> *scriptive.json* `virtual[directory]=[domainname]`. Use wildcard/* for multi listening.
 
 ```json
 {
@@ -53,7 +53,7 @@ server.close();
 }
 ```
 
-> 4. *.env* Environments configuration file
+> *.env* Environments configuration file
 
 ```
 port=80
