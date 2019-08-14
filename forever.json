@@ -1,0 +1,10 @@
+{
+  "uid": "lethil",
+  "append": true,
+  "watch": true,
+  "script": "serve.js",
+  "sourceDir": "./",
+  "logFile": "forever.log",
+  "outFile": "out.log",
+  "errFile": "error.log"
+}

@@ -1,10 +1,6 @@
 *.v[0-9]*.*
-/middleware
-/database
-/service
-dist/
-/*.js
-/*.d.ts
+test/
+
 
 # Logs
 logs

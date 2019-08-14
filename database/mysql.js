@@ -1,30 +1,56 @@
 const mysql = require('mysql');
-export default class database {
-  public connection:any;
-  public result:any;
-  constructor(args?:{}) {
+module.exports = class database {
+  constructor(args) {
     this.connection = mysql.createConnection(args);
+    this.result = null;
   }
-  query(sql?:string, args?:any) {
+  query(sql, args) {
     return new Promise((resolve,reject) =>{
-      this.result = this.connection.query(sql, args, (e?:null, row?:any) => e?reject(e):resolve(row));
+      this.result = this.connection.query(sql, args, (e, row) => e?reject(e):resolve(row));
     });
   }
-  connect(args?:{}){
+  connect(args){
     return mysql.createConnection(args);
   }
-  format(sql?:string, args?:any){
+  format(sql, args){
     return this.connection.format(sql, args);
   }
-  escape(args?:any){
+  escape(args){
     return this.connection.escape(args);
   }
   close(){
     return new Promise((resolve, reject) => {
-      this.connection.end((e?:null) => e?reject(e):resolve());
+      this.connection.end((e) => e?reject(e):resolve());
     });
   }
 }
+
+// export default class database {
+//   public connection:any;
+//   public result:any;
+//   constructor(args?:{}) {
+//     this.connection = mysql.createConnection(args);
+//   }
+//   query(sql?:string, args?:any) {
+//     return new Promise((resolve,reject) =>{
+//       this.result = this.connection.query(sql, args, (e?:null, row?:any) => e?reject(e):resolve(row));
+//     });
+//   }
+//   connect(args?:{}){
+//     return mysql.createConnection(args);
+//   }
+//   format(sql?:string, args?:any){
+//     return this.connection.format(sql, args);
+//   }
+//   escape(args?:any){
+//     return this.connection.escape(args);
+//   }
+//   close(){
+//     return new Promise((resolve, reject) => {
+//       this.connection.end((e?:null) => e?reject(e):resolve());
+//     });
+//   }
+// }
 /*
 module.exports = class Database {
 
