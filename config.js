@@ -36,6 +36,10 @@ module.exports = {
       // prefix:'/jsmiddlewareoutput'
     }
   },
+  status:{
+    fail:[],
+    warn:[]
+  },
   configuration:{}
 };
 

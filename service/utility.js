@@ -1,10 +1,16 @@
 const config = require('../config');
 const log = {
   msg:function(task, id, msg){
-    console.log('[%s] \x1B[90m%s\x1B[0m\u001b[33;1m%s\u001b[32;1m%s\x1B[0m', config.name, task, id, msg);
+    console.log('[\x1b[34m%s\x1B[0m] \x1B[90m%s\x1B[0m\u001b[33;1m%s\u001b[32;1m%s\x1B[0m', config.name, task, id, msg);
   },
   listen:function(port, address){
-    console.log('[%s] \x1B[90m%s\x1B[0m \u001b[33;1m%s\x1B[0m:\u001b[32;1m%s\x1B[0m', config.name, 'listen', port, address);
+    console.log('[\x1b[34m%s\x1B[0m] \x1B[90m%s\x1B[0m \u001b[33;1m%s\x1B[0m: \x1b[31m%s\x1B[0m', config.name, 'listen', port, address);
+  },
+  hostname:function(name, hosts){
+    console.log('[\x1b[34m%s\x1B[0m] \x1B[90m%s\x1B[0m \u001b[33;1m%s\x1B[0m: \x1b[33m%s\x1B[0m', config.name, 'host', name, hosts.join('\x1b[0m, \x1b[33m'));
+  },
+  fail:function(id){
+    console.log('[\x1b[34m%s\x1B[0m] \x1b[31m%s\x1B[0m -> \x1b[2m%s\x1b[0m', config.name, id.reason, id.message);
   }
 };
 const check = {
@@ -30,6 +36,27 @@ const word = {
   },
   count:function(value){
     return this.explode(value).length;
+  }
+};
+const hack = {
+  regex:function(e){
+    var ASTERISK_REGEXP = /\*/g;
+    var ASTERISK_REPLACE = '([^.]+)';
+    var END_ANCHORED_REGEXP = /(?:^|[^\\])(?:\\\\)*\$$/;
+    var ESCAPE_REGEXP = /([.+?^=!:${}()|[\]/\\])/g;
+    var ESCAPE_REPLACE = '\\$1';
+
+    var src = String(e).replace(ESCAPE_REGEXP, ESCAPE_REPLACE).replace(ASTERISK_REGEXP, ASTERISK_REPLACE);
+    if (src[0] !== '^') {
+      src = '^' + src
+    }
+    if (!END_ANCHORED_REGEXP.test(src)) {
+      src += '$'
+    }
+    return new RegExp(src, 'i');
+  },
+  hostname:function(e){
+    return /(?:[\w-]+\.)+[\w-]+/.exec(e)[0];
   }
 };
 
@@ -124,4 +151,4 @@ const objects={
   }
 };
 
-module.exports = {log, check, word, arrays, objects};
+module.exports = {log, check, word, arrays, objects,hack};

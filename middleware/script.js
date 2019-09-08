@@ -30,7 +30,9 @@ module.exports = function(options){
     var src = options.src || (function() {
       throw new Error('requires "src" directory.');
     }());
-    var tarPath = path.join(options.dest, uri), srcPath = path.join(src, uri), srcDir = path.dirname(srcPath);
+    var srcPath = path.join(src, uri);
+    // var srcDir = path.dirname(srcPath);
+    // var tarPath = path.join(options.dest, uri);
 
     if (fs.existsSync(srcPath)){
       res.writeHead(200, {
@@ -38,6 +40,7 @@ module.exports = function(options){
         'Cache-Control': 'max-age=10'
       });
       res.end(fs.readFileSync(srcPath));
+      // res.end();
     } else {
       log.msg( 'skip', srcPath, 'not exist');
       next();

@@ -1,6 +1,6 @@
 const nav = require("./nav");
 const style = require("./style");
 const script = require("./script");
-const error = require("./error");
+const utility = require("./utility");
 
-module.exports = { nav, style,script,error };
+module.exports = { nav, style,script,utility };
