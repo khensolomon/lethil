@@ -1,19 +1,56 @@
 const mysql = require('mysql');
 module.exports = class database {
-  constructor(args) {
-    this.connection = mysql.createConnection(args);
+  constructor(e) {
+    this.url = e.hasOwnProperty('mysqlConnection')?e.mysqlConnection:null;
     this.result = null;
+    this.connection = null;
   }
+
   query(sql, args) {
     return new Promise((resolve,reject) =>{
-      this.result = this.connection.query(sql, args, (e, row) => e?reject(e):resolve(row));
+      this.connection.query(sql, args, (e, row) => e?reject(e):resolve(row));
     });
   }
-  connect(args){
-    return mysql.createConnection(args);
+
+  async join(sql, args) {
+    this.result = await this.query(sql, args);
+    return this;
   }
+  connect(url){
+    return new Promise((resolve,reject) =>{
+      if (!this.connection || url) {
+        this.url = url || this.url;
+        this.connection = mysql.createConnection(this.url)
+      }
+      this.connection.connect(e=>{
+        if (e){
+          var o = {};
+          o.code=e.code||e.errno;
+          o.message=e.sqlMessage||e.message||'error';
+          reject(o)
+        } else {
+          resolve()
+        }
+      });
+    });
+  }
+  // connect(args){
+  //   return mysql.createConnection(args);
+  // }
   format(sql, args){
+    // this.queryFormat();
     return this.connection.format(sql, args);
+  }
+  queryFormat(){
+    this.connection.config.queryFormat = function (query, values) {
+      if (!values) return query;
+      return query.replace(/\:(\w+)/g, function (txt, key) {
+        if (values.hasOwnProperty(key)) {
+          return this.escape(values[key]);
+        }
+        return txt;
+      }.bind(this));
+    };
   }
   escape(args){
     return this.connection.escape(args);

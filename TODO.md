@@ -5,6 +5,20 @@
 - [ ] uglify-es
 - [ ] route POST; GET; ??
 
+## Done
+
+- [x] support mongodb
+- [x] support command line interface
+- [x] support redirect (www or none-www)
+- [x] support restrict
+- [x] styleMiddleWare,scriptMiddleWare moved to middle
+
+
+
+node index
+nodemon index
+forever start forever.json
+
 
 - Bright Black: \u001b[30;1m
 - Bright Red: \u001b[31;1m

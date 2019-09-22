@@ -1,7 +1,8 @@
 const mysqlConnection = require("./mysql");
+const mongoConnection = require("./mongo");
 
 module.exports = {
-  mongodb:{},
+  mongo:mongoConnection,
   mysql:mysqlConnection,
   testing:'Ok'
 };

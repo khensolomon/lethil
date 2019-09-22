@@ -1,15 +1,13 @@
 module.exports = {
   env:'.env',
   name: "evh",
-  version: "1.0",
-  // middleware: 'middleware.js',
-  // route: 'route.js',
-  // config: 'config.js',
+  version: "1.0.2",
   starter:{
+    command: 'command.js',
     main: "index.js",
-    middleware: 'middleware.js',
-    route: 'route.js',
     config: 'config.js',
+    middleware: 'middleware.js',
+    route: 'route.js'
   },
   directory:{
     static: 'static',
@@ -19,9 +17,18 @@ module.exports = {
   },
   environment:{
     port:80,
+    portSecure:443,
     virtual:[],
-    name:'Unknown'
+    certificate:null
   },
+  common:{
+    forceHTTPS:true,
+    forceWWW:null,
+    development:null,
+    referer:[],
+    restrict:{}
+  },
+  // configuration:{},
   middleware:{
     style: {
       // prefix: '/css',
@@ -39,25 +46,5 @@ module.exports = {
   status:{
     fail:[],
     warn:[]
-  },
-  configuration:{}
+  }
 };
-
-/*
-{
-	"port": "80",
-	"app": "app",
-	"share": "share",
-	"starter": "index.js",
-	"virtual": {
-    "../zaideih":["0.0.0.0","*.*","*"]
-	},
-	"available": {
-		"../testEvh":["test.local"],
-		"../myordbok":["myordbok.*","myordbok.*.*"],
-		"../zaideih":["zaideih.*","zaideih.*.*"],
-		"./app/default":["127.0.0.1","*"],
-		"any":["0.0.0.0","*.*","*"]
-	}
-}
-*/

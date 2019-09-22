@@ -9,8 +9,19 @@ const log = {
   hostname:function(name, hosts){
     console.log('[\x1b[34m%s\x1B[0m] \x1B[90m%s\x1B[0m \u001b[33;1m%s\x1B[0m: \x1b[33m%s\x1B[0m', config.name, 'host', name, hosts.join('\x1b[0m, \x1b[33m'));
   },
-  fail:function(id){
-    console.log('[\x1b[34m%s\x1B[0m] \x1b[31m%s\x1B[0m -> \x1b[2m%s\x1b[0m', config.name, id.reason, id.message);
+  fail:function(e){
+    console.log('[\x1b[34m%s\x1B[0m] \x1b[31m%s\x1B[0m: \x1b[2m%s\x1b[0m', config.name, e.code, e.message);
+  },
+  error:function(e){
+    if (e.message && e.code){
+      this.fail({code:e.code,message:e.message.replace(e.code+':','').trim()});
+    } else if (e.message && e.name){
+      this.fail({code:e.name,message:e.message});
+    } else if (e.message){
+      this.fail({code:'?',message:e.message});
+    } else {
+      console.log(e);
+    }
   }
 };
 const check = {
@@ -57,6 +68,30 @@ const hack = {
   },
   hostname:function(e){
     return /(?:[\w-]+\.)+[\w-]+/.exec(e)[0];
+  },
+
+  env_format:function(e){
+    return e.split(';').map(
+      e => e.split(':')
+    ).filter(
+      e => e.length > 1
+    );
+  },
+  env:function(e){
+    return this.env_format(e).reduce(
+      (o, i) => Object.assign(o,({[i[0]]: i[1]})), {}
+    );
+    // return e.split(';').map(
+    //   e => e.split(':')
+    // ).filter(
+    //   e => e.length > 1
+    // ).reduce(
+    //   (o, i) => Object.assign(o,({[i[0]]: i[1]})), {}
+    //   // (o, i) => {
+    //   //   o[i[0]]= i[1];
+    //   //   return o;
+    //   // },{}
+    // );
   }
 };
 
