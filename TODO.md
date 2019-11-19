@@ -12,6 +12,7 @@
 - [x] support redirect (www or none-www)
 - [x] support restrict
 - [x] styleMiddleWare,scriptMiddleWare moved to middle
+- [x] Readme
 
 
 

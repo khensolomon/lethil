@@ -1,26 +1,63 @@
 const config = require('../config');
+// String
+// var colorDefault ='\x1B[0m%s\x1b[0m';
+var colorDim ='\x1B[90m%s\x1b[0m';
+// Number
+// var colorBlue ='\x1b[34m%s\x1B[0m';
+var colorRed ='\x1b[31m%s\x1B[0m';
+// Array
+var colorBrown ='\x1b[33m%s\x1B[0m';
 const log = {
-  msg:function(task, id, msg){
-    console.log('[\x1b[34m%s\x1B[0m] \x1B[90m%s\x1B[0m\u001b[33;1m%s\u001b[32;1m%s\x1B[0m', config.name, task, id, msg);
+  // listen:function(port, address){
+  //   console.log('[\x1b[34m%s \x1B[90m%s \u001b[33;1m%s\x1B[0m: \x1b[31m%s\x1B[0m', config.name, 'listen', port, address);
+  // },
+  // hostname:function(name, hosts){
+  //   console.log('[\x1b[34m%s\x1B[90m%s \u001b[33;1m%s\x1B[0m: \x1b[33m%s\x1B[0m', config.name, 'host', name, hosts.join('\x1b[0m, \x1b[33m'));
+  // },
+  // fail:function(e){
+  //   console.log('\x1B[90m>\x1B[0m \x1b[31m%s\x1B[0m: \x1b[2m%s\x1B[0m', e.code, e.message);
+  // },
+  msg:function(e){
+    // console.log(arguments.length)
+    var arrayKey = colorDim.replace('%s\x1b[0m','>\x1b[0m %s')
+    if (e){
+      if (typeof e == 'object'){
+        var msg = e.message;
+        var code = e.code;
+        if (code && msg){
+          arrayKey +=': '+colorDim;
+        }
+        if (msg){
+          if (msg.constructor === Number){
+            msg = colorRed.replace('%s',msg)
+          } else if (msg.constructor === Array){
+            msg = msg.map(i=>colorBrown.replace('%s',i)).join(', ')
+          }
+        }
+        console.log(arrayKey,code,msg)
+      } else if (e.constructor == Array){
+        console.log(arrayKey,e.join(', '))
+      } else {
+        console.log(arrayKey,e)
+      }
+    }
+    // '> no: starter'
+    // '> MyOrdbok: myordbok.*, www.myordbok.*'
+    // '> host: MyOrdbok > myordbok.*, www.myordbok.*'
+    // [evh] host MyOrdbok: myordbok.*, www.myordbok.*
+    // [evh] host Zaideih: zaideih.*, www.zaideih.*, *
+    // [evh] listen port: 80
   },
-  listen:function(port, address){
-    console.log('[\x1b[34m%s\x1B[0m] \x1B[90m%s\x1B[0m \u001b[33;1m%s\x1B[0m: \x1b[31m%s\x1B[0m', config.name, 'listen', port, address);
-  },
-  hostname:function(name, hosts){
-    console.log('[\x1b[34m%s\x1B[0m] \x1B[90m%s\x1B[0m \u001b[33;1m%s\x1B[0m: \x1b[33m%s\x1B[0m', config.name, 'host', name, hosts.join('\x1b[0m, \x1b[33m'));
-  },
-  fail:function(e){
-    console.log('[\x1b[34m%s\x1B[0m] \x1b[31m%s\x1B[0m: \x1b[2m%s\x1b[0m', config.name, e.code, e.message);
-  },
+
   error:function(e){
     if (e.message && e.code){
-      this.fail({code:e.code,message:e.message.replace(e.code+':','').trim()});
+      this.msg({code:e.code,message:e.message.replace(e.code+':','').trim()});
     } else if (e.message && e.name){
-      this.fail({code:e.name,message:e.message});
+      this.msg({code:e.name,message:e.message});
     } else if (e.message){
-      this.fail({code:'?',message:e.message});
+      this.msg({code:'?',message:e.message});
     } else {
-      console.log(e);
+      this.msg(e);
     }
   }
 };
@@ -186,4 +223,17 @@ const objects={
   }
 };
 
-module.exports = {log, check, word, arrays, objects,hack};
+
+function createUniqueId(structure){
+  // return new Date().valueOf();
+  // return Math.random().toString(36).substr(2, 9);
+  var dt=new Date();
+  var yy= dt.getFullYear().toString().substring(2);
+  var mm = ("0" + dt.getMonth()).slice(-2);
+  var uuid = dt.getTime();
+  return (structure||'xxxx-yy-xx-mm-yxxxxxxxxx').replace('-yy-',yy).replace('-mm-',mm).replace(/[xy]/g, function(c) {
+      var r = (uuid + Math.random()*16)%16 | 0;
+      return (c=='x' ? r :(r&0x3|0x8)).toString(16);
+  });
+}
+module.exports = {log, check, word, arrays, objects,hack, createUniqueId};

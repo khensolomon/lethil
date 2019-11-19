@@ -17,7 +17,7 @@ npm install --save https://github.com/scriptive/evh/tarball/master
 
 ## Setup
 
-Let us say, we...
+Let's say, we...
 
 - are in `/var/www/app` directory
 - have `example.com` domain name

@@ -16,27 +16,138 @@ module.exports = class database {
     this.result = await this.query(sql, args);
     return this;
   }
-  connect(url){
+  connect(){
     return new Promise((resolve,reject) =>{
-      if (!this.connection || url) {
-        this.url = url || this.url;
-        this.connection = mysql.createConnection(this.url)
+      if (!this.connection && this.url) {
+        this.connection = mysql.createConnection(this.url);
       }
       this.connection.connect(e=>{
         if (e){
-          var o = {};
-          o.code=e.code||e.errno;
-          o.message=e.sqlMessage||e.message||'error';
-          reject(o)
+          return reject({code:e.code,message:e.message.replace(e.code+':','').trim()});
         } else {
-          resolve()
+          return resolve()
+        }
+      });
+      this.connection.on('error', e => {
+        console.log('sql','lost connection');
+        if(e.code === 'PROTOCOL_CONNECTION_LOST') {
+          console.log('reconnecting');
+          return this.connect().then(()=>resolve('done')).catch((e)=>reject(e.message));
+        } else {
+          return reject(e);
         }
       });
     });
   }
-  // connect(args){
-  //   return mysql.createConnection(args);
-  // }
+  handleDisconnect(){
+    // http://sudoall.com/node-js-handling-mysql-disconnects/
+    this.connection = mysql.createConnection(this.url);
+    return new Promise((resolve,reject) =>{
+      this.connection.connect(e=>{
+        if(e) {
+          if(e.code != 'ER_BAD_DB_ERROR') {
+            setTimeout(()=>{
+              this.connection.destroy();
+              this.handleDisconnect().then(resolve).catch(reject);
+            }, 1000);
+          }
+          reject({code:e.code,message:e.message.replace(e.code+':','').trim()})
+        } else {
+          resolve();
+        }
+      });
+      this.connection.on('error', e =>{
+        if(e.code === 'PROTOCOL_CONNECTION_LOST') {
+          this.handleDisconnect().then(resolve).catch(reject);
+        }
+      });
+    });
+
+
+
+
+
+    // this.connection.connect( (e) =>{
+    //   if(e) {
+    //     // console.log('sql','error when connecting to db: reconnect in',2000);
+    //     // setTimeout(()=>{
+    //     //   this.handleDisconnect().then(resolve).catch(reject);
+    //     // }, 200);
+    //     // throw {code:e.code,message:e.message.replace(e.code+':','').trim()};
+    //     throw 'error??'
+    //     // console.log(e)
+    //     // return Promise.reject({code:e.code,message:e.message.replace(e.code+':','').trim()})
+    //   }
+    // });
+    // this.connection.on('error', (e) =>{
+    //   if(e.code === 'PROTOCOL_CONNECTION_LOST') {
+    //     console.log('sql','lost connection','reconnecting');
+    //     // this.connection.destroy();
+    //     // await this.handleDisconnect().then(resolve).catch(reject).finally(()=>console.log('check sql connection manually???'));
+    //     // this.handleDisconnect().then(resolve).catch(reject);
+    //     console.log('check sql connection manually???')
+    //   } else {
+    //     throw e;
+    //   }
+    // });
+  }
+  /*
+  handleDisconnect(){
+    // http://sudoall.com/node-js-handling-mysql-disconnects/
+    this.connection = mysql.createConnection(this.url);
+    return new Promise((resolve,reject) =>{
+      this.connection.connect( (e) =>{
+        if(e) {
+          // console.log('sql','error when connecting to db: reconnect in',2000);
+          // setTimeout(()=>{
+          //   this.handleDisconnect().then(resolve).catch(reject);
+          // }, 200);
+          reject({code:e.code,message:e.message.replace(e.code+':','').trim()});
+        } else {
+          resolve()
+        }
+      });
+      this.connection.on('error', (e) =>{
+        if(e.code === 'PROTOCOL_CONNECTION_LOST') {
+          console.log('sql','lost connection','reconnecting');
+          // this.connection.destroy();
+          // await this.handleDisconnect().then(resolve).catch(reject).finally(()=>console.log('check sql connection manually???'));
+          this.handleDisconnect().then(resolve).catch(reject);
+          console.log('check sql connection manually???')
+        } else {
+          throw e;
+        }
+      });
+    });
+  }
+  */
+  /*
+  handleDisconnect(){
+    // http://sudoall.com/node-js-handling-mysql-disconnects/
+    this.connection = mysql.createConnection(this.url);
+    return new Promise((resolve,reject) =>{
+      this.connection.connect( (e) =>{
+        if(e) {
+          // console.log('sql','error when connecting to db: reconnect in',2000);
+          // setTimeout(()=>{
+          //   this.handleDisconnect().then(resolve).catch(reject);
+          // }, 200);
+          reject({code:e.code,message:e.message.replace(e.code+':','').trim()});
+        } else {
+          resolve()
+        }
+      });
+      this.connection.on('error', (err) =>{
+        if(err.code === 'PROTOCOL_CONNECTION_LOST') {
+          console.log('sql','lost connection','reconnecting');
+          this.handleDisconnect().then(resolve).catch(reject).finally(()=>console.log('check sql connection manually???'));
+        } else {
+          throw err;
+        }
+      });
+    });
+  }
+  */
   format(sql, args){
     // this.queryFormat();
     return this.connection.format(sql, args);

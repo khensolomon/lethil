@@ -18,9 +18,10 @@ const database = require("./database");
 const service = require("./service");
 
 const essence = express();
-const rootCommon = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
+var rootCommon = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
+var userParam = process.argv.splice(2);
 
-var assist={
+const assist={
   environment: function(dir) {
     // return dotenv.config({path:path.resolve(dir, config.env)}).parsed;
     // var env = fs.readFileSync(path.resolve(dir, config.env));
@@ -46,6 +47,8 @@ var assist={
         var hostname = (vh && typeof vh === 'string')?service.utility.arrays.unique(vh.split(',')):["*"];
         var rootDir = path.resolve(rootCommon, id);
         var starterMain = path.resolve(rootDir, config.starter.main);
+        var starterCommand = path.resolve(rootDir, config.starter.command);
+        // var cli = path.resolve(o[0].Config.dir.root, config.starter.command);
         if (fs.existsSync(starterMain)){
           var environments = {};
           try {
@@ -58,6 +61,7 @@ var assist={
           }
           var user = {
             starterMain:starterMain,
+            starterCommand:fs.existsSync(starterCommand)?starterCommand:null,
             hostname:hostname
           };
 
@@ -121,24 +125,36 @@ var assist={
     }
   },
 
-  virtualPrepare: function()  {
-    for (const application of config.environment.virtual) this.virtualInitiate(application);
+  serverPrepare: function()  {
+    for (const app of config.environment.virtual) this.serverInitiate(app);
   },
 
-  virtualInitiate: function(user){
+  serverInitiate: async function(user){
     const app = require(user.starterMain);
     app.Core  = express();
+    // app.Framework  = express();
 
     // NOTE: configuration
     app.Config = user.Config;
 
     // NOTE MySQL connection -> app.sql.url = user.Config.mysqlConnection;
     app.sql = new database.mysql(app.Config);
-    if (app.sql.url) app.sql.connect().catch(e=>service.utility.log.error(e));
+    if (app.sql.url) app.sql.handleDisconnect().catch(e=>service.utility.log.msg(e));
+    // app.Core.use((req, res, next) =>  {
+    //   if (app.sql.url) app.sql.handleDisconnect().catch(e=>service.utility.log.error(e));
+    //   next();
+    // });
 
     // NOTE MongoDB connection -> app.mongo.url = user.Config.mongoConnection;
-    app.mongo = new database.mongo(app.Config);
-    if (app.mongo.url) app.mongo.connect().catch(e=>service.utility.log.error(e));
+    // app.mongo = new database.mongo(app.Config);
+    // if (app.mongo.url) app.mongo.connect().catch(e=>service.utility.log.error(e));
+    // app.Core.use((req, res, next) => {
+    //   app.mongo = new database.mongo(app.Config);
+    //   if (app.mongo.url) {
+    //     app.mongo.connect().catch(e=>service.utility.log.error(e));
+    //   }
+    //   next();
+    // });
 
     // NOTE: middleware
     // app.Core.disable('x-powered-by');
@@ -241,76 +257,84 @@ var assist={
         essence.use(vhost(name, app.Core));
       }
     });
-    service.utility.log.hostname(app.Config.name, user.hostname);
+    service.utility.log.msg({code:app.Config.name,message:user.hostname});
     // NOTE: catch 404 and forward to error handler
     app.Core.use(middleware.utility.notfound);
   },
 
-  commandInitiate: async function(args){
-    // return new Promise((resolve,reject)=>{});
-    var id = args.shift();
-    var NoStarter = '...no starter';
-    if (!id) throw 'Application name?';
-    var o = config.environment.virtual.filter(e=>e.Config.name.toLowerCase() == id.toLowerCase());
-    if (o.length){
-      var cli = path.resolve(o[0].Config.dir.root, config.starter.command);
-      if (fs.existsSync(cli)) {
-        try {
-          const app = require(cli);
-          Object.assign(app,o[0]);
-
-          app.sql = new database.mysql(app.Config);
-          if (app.sql.url) {
-            await app.sql.connect().catch(e=>{throw e});
-          }
-
-          // var cm = path.resolve(app.Config.dir.root, 'classMongo.js');
-          // if (fs.existsSync(cm)) const o = require(cm);
-          app.mongo = new database.mongo(app.Config);
-          if (app.mongo.url) {
-            await app.mongo.connect().catch(e=> {throw e});
-          }
-
-          var fn = args.shift() || 'main';
-          app.args = args;
-          if (app.hasOwnProperty(fn) && typeof app[fn] == 'function') {
-            await app[fn]()
-          } else {
-            throw NoStarter.replace('no',fn).replace('starter',typeof app[fn]);
-          }
-
-        } catch (error) {
-          throw error.message || error;
-        }
-      } else {
-        throw NoStarter.replace('starter',config.starter.command);
+  commandPrepare: function(id){
+    if (!id) throw {code:'app',message:'Name?'};
+    const task = config.environment.virtual.filter(e=>e.Config.name.toLowerCase() == id.toLowerCase() && e.starterCommand);
+    if (task.length){
+      for (const app of task) {
+        this.commandInitiate(app).catch(
+          e=>service.utility.log.msg(e)
+        ).finally(
+          ()=>process.exit()
+        );
       }
     } else {
-      throw NoStarter.replace('starter',id);
+      throw {code:'?',message:id};
+    }
+  },
+
+  commandInitiate: async function(user){
+    const app = require(user.starterMain);
+    app.Config = user.Config;
+    app.Param = userParam;
+    try {
+      app.sql = new database.mysql(app.Config);
+      if (app.sql.url) {
+        await app.sql.connect().catch(e=>{throw e});
+      }
+      app.mongo = new database.mongo(app.Config);
+      if (app.mongo.url) {
+        await app.mongo.connect().catch(e=> {throw e});
+      }
+      const job = require(user.starterCommand);
+      async function jobTask(e){
+        try {
+          await e();
+        } catch (error) {
+          console.log(error)
+        }
+      }
+      if (typeof job == 'function' ) {
+        await jobTask(job)
+      } else {
+        // const fn = userParam.shift() || 'main';
+        const fn = userParam[0] || 'main';
+        if (typeof job[fn] == 'function') {
+          await jobTask(job[fn])
+        } else {
+          throw {code:fn,message:typeof app[fn]};
+        }
+      }
+    } catch (error) {
+      throw error;
     }
   }
 };
-
+assist.virtualEnvironment();
 module.exports = {
   express: express,
   root:rootCommon,
   utility:service.utility,
+  Timer:service.Timer,
+  Burglish:service.Burglish,
   fs:fs,
   path:path,
-
-  run(uri) {
-    assist.virtualEnvironment();
-    assist.commandInitiate(uri).catch(
-      e=>console.log(e)
-    ).then(
-      ()=>process.exit()
-    );
+  command() {
+    try {
+      assist.commandPrepare(userParam.shift());
+    } catch (e) {
+      service.utility.log.msg(e)
+    }
   },
 
-  serve() {
-    assist.virtualEnvironment();
+  server() {
     try {
-      assist.virtualPrepare();
+      assist.serverPrepare();
     } catch (e) {
       config.status.fail.push({
         code:'.js',
@@ -319,25 +343,24 @@ module.exports = {
     } finally {
       essence.set('port', config.environment.port);
     }
-
     essence.use(middleware.utility.error);
 
     var serve = http.createServer(essence);
     if (config.status.fail.length) {
-      for (const msg of config.status.fail) service.utility.log.fail(msg);
+      for (const msg of config.status.fail) service.utility.log.msg(msg);
     } else {
       serve.listen(config.environment.port,function(){
         var address = serve.address();
         var bindAddress = typeof address === 'string'? address: address.port;
         var bindPort = typeof address === 'string'?'pipe':'port';
-        service.utility.log.listen(bindPort, bindAddress);
+        service.utility.log.msg({code:bindPort,message:bindAddress});
       });
       if (config.environment.certificate){
         try {
           https.createServer(service.utility.hack.env_format(config.environment.certificate).reduce(
             (o, i) => Object.assign(o,({[i[0]]: fs.readFileSync(path.resolve(i[1]), 'utf8')})), {}
           ), essence).listen(config.environment.portSecure,function(){
-            service.utility.log.listen('port', config.environment.portSecure);
+            service.utility.log.msg({code:config.environment.portSecure,message:'listen port'});
           });
         } catch (e) {
           config.environment.certificate=null;
