@@ -164,8 +164,8 @@ const assist={
       res.locals.appVersion = app.Config.version;
       res.locals.appDescription = app.Config.description;
       res.locals.isDevelopment = app.Config.development;
-      res.locals.forceHTTPS = config.environment.certificate && !req.secure && app.Config.forceHTTPS == true;
-      res.locals.forceWWW = app.Config.forceWWW;
+      res.locals.forceHTTPS = config.environment.certificate && !req.secure && app.Config.forceHTTPS > 0;
+      res.locals.forceWWW = app.Config.forceWWW > 0;
       if (req.get('Referrer')){
         var ref_hostname = new URL(req.get('Referrer')).hostname;
         res.locals.referer = req.hostname == ref_hostname || app.Config.referer.filter(e=>e.exec(ref_hostname)).length

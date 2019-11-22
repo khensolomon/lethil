@@ -1,7 +1,7 @@
 module.exports = {
   env:'.env',
   name: "evh",
-  version: "1.0.3",
+  version: "1.0.4",
   starter:{
     command: 'command.js',
     main: "index.js",
@@ -22,8 +22,8 @@ module.exports = {
     certificate:null
   },
   common:{
-    forceHTTPS:true,
-    forceWWW:null,
+    forceHTTPS:0,
+    forceWWW:0,
     development:null,
     referer:[],
     restrict:{}
