@@ -19,9 +19,14 @@ module.exports = {
         redirect=true;
       }
     }
+    // res.writeHead(301, { "Location": "https://google.com" });
+    // return res.end();
+
 
     if(res.locals.forceHTTPS){
-      return res.writeHead(301, { "Location": "https://" + host + req.url })
+      res.writeHead(301, { "Location": "https://" + host + req.url })
+      return res.end();
+      // res.redirect(301, { "Location": "https://" + host + req.url })
     } else if (redirect){
       return res.redirect(301, req.protocol + '://' + host + req.url)
     }
