@@ -139,6 +139,7 @@ const assist={
 
     // NOTE MySQL connection -> app.sql.url = user.Config.mysqlConnection;
     app.sql = new database.mysql(app.Config);
+    // if (app.sql.url) app.sql.connect().catch(e=>service.utility.log.msg(e));
     if (app.sql.url) app.sql.handleDisconnect().catch(e=>service.utility.log.msg(e));
     // app.Core.use((req, res, next) =>  {
     //   if (app.sql.url) app.sql.handleDisconnect().catch(e=>service.utility.log.error(e));
@@ -333,6 +334,7 @@ module.exports = {
   },
 
   server() {
+    service.utility.log.msg({code:'start',message:new Date()});
     try {
       assist.serverPrepare();
     } catch (e) {
