@@ -7,13 +7,17 @@ module.exports = {
     main: "index.js",
     config: 'config.js',
     middleware: 'middleware.js',
-    route: 'route.js'
+    route: 'route.js',
+    initiator: 'initiator.js'
   },
   directory:{
     static: 'static',
     assets: 'assets',
     views: 'views',
     routes: 'routes'
+  },
+  proxy:{
+    single:true
   },
   environment:{
     port:80,
