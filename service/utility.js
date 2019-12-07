@@ -1,3 +1,4 @@
+const path = require("path");
 const config = require('../config');
 // String
 // var colorDefault ='\x1B[0m%s\x1b[0m';
@@ -144,6 +145,16 @@ const arrays={
     //     return self.indexOf(item) == pos && item!='';
     // })));
     return Array.from(new Set(a.map((e)=>e.trim()).filter((item, pos, self) => self.indexOf(item) == pos && item!='')));
+  },
+  group:function(array, key){
+    return array.reduce((result, currentValue) => {
+      // If an array already present for key, push it to the array. Else create an array and push the object
+      (result[currentValue[key]] = result[currentValue[key]] || []).push(
+        currentValue
+      );
+      // Return the current iteration `result` value, this will be taken as next iteration `result` value and accumulate
+      return result;
+    }, {}); // empty object is the initial value for result object
   }
 };
 
@@ -236,4 +247,29 @@ function createUniqueId(structure){
       return (c=='x' ? r :(r&0x3|0x8)).toString(16);
   });
 }
-module.exports = {log, check, word, arrays, objects,hack, createUniqueId};
+function packageAvailable(name){
+  try {
+    return require.resolve(path.resolve(process.mainModule.paths[0],name));
+  } catch(e) {
+    return null
+  }
+}
+// moduleAvailable, moduleRequire
+function packageRequire(name){
+  var pkg = packageAvailable(name);
+  if (pkg) return require(pkg);
+}
+/*
+var start = timeCheck();
+var end = timeCheck(start)
+*/
+function timeCheck(ended){
+  var start = new Date();
+  if (ended) {
+    return start - ended;
+  } else {
+    return start;
+  }
+  // console.info('Execution time: %dms', end);
+}
+module.exports = {log, check, word, arrays, objects,hack, createUniqueId,packageAvailable,packageRequire,timeCheck};
