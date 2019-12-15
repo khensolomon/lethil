@@ -1,9 +1,11 @@
 module.exports = {
   error:function(req, res){
-    res.status(404).send('Not Found');
+    // res.status(404).send('Not Found');
+    res.status(404).end();
   },
   notfound:function(req, res){
-    res.status(404).send('Not Found');
+    // res.status(404).send('Not Found');
+    res.status(404).end();
   },
   // NOTE: forceWWW, forceHTTPS
   redirect:function(req, res, next){
@@ -25,12 +27,14 @@ module.exports = {
 
     if(res.locals.forceHTTPS){
       res.writeHead(301, { "Location": "https://" + host + req.url })
-      return res.end();
+      res.end();
       // res.redirect(301, { "Location": "https://" + host + req.url })
     } else if (redirect){
-      return res.redirect(301, req.protocol + '://' + host + req.url)
+      res.redirect(301, req.protocol + '://' + host + req.url)
+      res.end();
+    } else {
+      next();
     }
-    next();
   },
   restrict:function(req, res, next){
     next();

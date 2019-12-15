@@ -1,22 +1,24 @@
-const MongoClient = require('mongodb').MongoClient;
+// const MongoClient = require('mongodb').MongoClient;
 
 module.exports = class database {
   constructor(e) {
     this.url = e.hasOwnProperty('mongoConnection')?e.mongoConnection:null;
     this.connection = null;
+    this.factor = null;
   }
 
   async connect(url){
     if (!this.connection || url) {
       this.url = url || this.url;
-      this.connection = await MongoClient.connect(this.url,{ useNewUrlParser: true,useUnifiedTopology: true });
+      // this.connection = await MongoClient.connect(this.url,{ useNewUrlParser: true,useUnifiedTopology: true });
+      this.connection = await this.factor.MongoClient.connect(this.url,{ useNewUrlParser: true,useUnifiedTopology: true });
     }
     return this.connection;
   }
 
   async db(name){
-    await this.connect();
-    return this.connection.db(name)
+    // await this.connect();
+    // return this.connection.db(name)
   }
 
   // get client(){

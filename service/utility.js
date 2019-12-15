@@ -1,5 +1,5 @@
 const path = require("path");
-const config = require('../config');
+// const config = require('../config');
 // String
 // var colorDefault ='\x1B[0m%s\x1b[0m';
 var colorDim ='\x1B[90m%s\x1b[0m';
@@ -149,9 +149,7 @@ const arrays={
   group:function(array, key){
     return array.reduce((result, currentValue) => {
       // If an array already present for key, push it to the array. Else create an array and push the object
-      (result[currentValue[key]] = result[currentValue[key]] || []).push(
-        currentValue
-      );
+      (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
       // Return the current iteration `result` value, this will be taken as next iteration `result` value and accumulate
       return result;
     }, {}); // empty object is the initial value for result object
@@ -233,7 +231,6 @@ const objects={
     // return Object.entries(o).find((key:[]) => key[0] === value);
   }
 };
-
 
 function createUniqueId(structure){
   // return new Date().valueOf();

@@ -2,6 +2,7 @@ module.exports = {
   env:'.env',
   name: "evh",
   version: "1.0.4",
+  root:null,
   starter:{
     command: 'command.js',
     main: "index.js",
@@ -21,31 +22,32 @@ module.exports = {
   },
   environment:{
     port:80,
-    portSecure:443,
-    virtual:[],
-    certificate:null
+    // portSecure:443,
+    virtual:{},
+    listen:'localhost'
+    // certificate:null
   },
   common:{
-    forceHTTPS:0,
-    forceWWW:0,
+    // forceHTTPS:0,
+    // forceWWW:0,
     development:null,
     referer:[],
     restrict:{}
   },
   // configuration:{},
   middleware:{
-    style: {
-      // prefix: '/css',
-      // indentedSyntax: false,
-      // debug: true,
-      // response:false,
-      // NOTE: nested, expanded, compact, compressed
-      // outputStyle: 'compressed',
-      // sourceMap: false
-    },
-    script: {
-      // prefix:'/jsmiddlewareoutput'
-    }
+    // style: {
+    //   // prefix: '/css',
+    //   // indentedSyntax: false,
+    //   // debug: true,
+    //   // response:false,
+    //   // NOTE: nested, expanded, compact, compressed
+    //   // outputStyle: 'compressed',
+    //   // sourceMap: false
+    // },
+    // script: {
+    //   // prefix:'/jsmiddlewareoutput'
+    // }
   },
   status:{
     fail:[],
