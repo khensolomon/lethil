@@ -97,12 +97,6 @@ async function virtualData (){
     throw 'No Starter';
   }
 }
-// function exitHandler(options, exitCode) {
-//   // if (options.cleanup) console.log('clean');
-//   // if (exitCode || exitCode === 0) console.log(exitCode);
-//   console.log('exitHandler',process.pid)
-//   if (options.exit) process.exit();
-// }
 
 // exports.root=rootCommon;
 exports.utility=utility;
@@ -137,8 +131,34 @@ exports.server = async function(){
   } catch (e) {
     throw e
   } finally {
-    // ['exit', 'SIGINT', 'SIGUSR1', 'SIGUSR2', 'uncaughtException', 'SIGTERM'].forEach(e => {
-    //   process.on(e, exitHandler.bind(null, {exit:true}));
-    // })
+    for (const e of ['exit', 'SIGINT', 'SIGUSR1', 'SIGUSR2', 'SIGTERM', 'uncaughtException']) process.on(e, exitHandler.bind(null, {exit:true}));
   }
 }
+
+function exitHandler() {
+  hitCounter();
+  process.exit();
+}
+function hitCounter() {
+  var id = new Date().getTime();
+  const visits = config.environment.virtual.Config.visits;
+  if (!visits.hasOwnProperty('counts') || visits.counts <= 0) return;
+  try {
+    if (visits.log) fs.appendFileSync(visits.log, `${id}:${visits.counts}\r\n`);
+    visits.counts = 0;
+  } catch (error) {
+    throw error;
+  }
+}
+    // var counter = JSON.parse(fs.readFileSync(file));
+    // if (!counter.hasOwnProperty('req')){
+    //   counter.req=[];
+    // }
+    // counter.req.push({i:id,v:counts});
+    // fs.writeFileSync(file, JSON.stringify(counter));
+    // appendFileSync
+    // fs.appendFile(file, `${id}:${counts}`, function (err) {
+    //   if (err) throw err;
+    //   // console.log('Saved!');
+    //   config.environment.virtual.Config.visitsCounter = 0;
+    // });

@@ -18,7 +18,6 @@ const Framework = express();
 function requestStarter(src){
   if (fs.existsSync(src)) return require(src);
 }
-
 async function serverInitiate(user){
   const app = require(user.starterMain);
   // app.Core  = express();
@@ -51,6 +50,8 @@ async function serverInitiate(user){
     res.locals.appVersion = app.Config.version;
     res.locals.appDescription = app.Config.description;
     res.locals.isDevelopment = app.Config.development;
+    // if (app.Config.hasOwnProperty('visitsCounter'))app.Config.visitsCounter++;
+    app.Config.visits.counts++;
     if (req.get('Referrer')){
       var ref_hostname = new URL(req.get('Referrer')).hostname;
       res.locals.referer = req.hostname == ref_hostname || app.Config.referer.filter(e=>e.exec(ref_hostname)).length
