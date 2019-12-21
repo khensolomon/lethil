@@ -39,6 +39,11 @@ async function serverInitiate(user){
   app.mongo.factor = service.utility.packageRequire('mongodb');
   if (app.mongo.url) app.mongo.connect().catch(e=>service.utility.log.error(e));
 
+  // NOTE: is development environment
+  // app.Config.development = !process.env.NODE_ENV || process.env.NODE_ENV != 'production';
+  // app.Config.development = process.env.NODE_ENV == 'production';
+
+
   // NOTE: middleware
   app.Core.use(compression());
   app.Core.use(express.json());
@@ -49,9 +54,10 @@ async function serverInitiate(user){
     res.locals.appName = app.Config.name;
     res.locals.appVersion = app.Config.version;
     res.locals.appDescription = app.Config.description;
-    res.locals.isDevelopment = app.Config.development;
-    // if (app.Config.hasOwnProperty('visitsCounter'))app.Config.visitsCounter++;
-    app.Config.visits.counts++;
+    if (app.Config.hasOwnProperty('visits')) {
+      if (app.Config.visits.hasOwnProperty('counts'))app.Config.visits.counts++;
+    }
+
     if (req.get('Referrer')){
       var ref_hostname = new URL(req.get('Referrer')).hostname;
       res.locals.referer = req.hostname == ref_hostname || app.Config.referer.filter(e=>e.exec(ref_hostname)).length
@@ -123,8 +129,19 @@ async function serverInitiate(user){
 
   // NOTE: catch 404 and forward to error handler
   app.Core.use(middleware.utility.notfound);
-  app.Core.set('port', parseInt(config.environment.port));
-  app.Core.listen(app.Core.get('port'),config.environment.listen);
+
+  // NOTE: set port
+  if (process.env.PORT) {
+    config.environment.PORT = process.env.PORT.trim()
+  }
+  app.Core.set('port', parseInt(config.environment.PORT));
+
+  // NOTE: listen port
+  if (typeof process.env.LISTEN != 'undefined') {
+    // if user requested, then use it, on empty open to all incomming network
+    config.environment.LISTEN = process.env.LISTEN.trim() || null;
+  }
+  app.Core.listen(app.Core.get('port'),config.environment.LISTEN);
 }
 
 module.exports = async () => await serverInitiate(config.environment.virtual);
