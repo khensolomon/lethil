@@ -21,16 +21,11 @@ module.exports = {
     single:true
   },
   environment:{
-    port:80,
-    // portSecure:443,
-    virtual:{},
-    listen:'localhost'
-    // certificate:null
+    PORT:80,
+    LISTEN:'localhost',
+    virtual:{}
   },
   common:{
-    // forceHTTPS:0,
-    // forceWWW:0,
-    development:null,
     referer:[],
     restrict:{}
   },
