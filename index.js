@@ -50,6 +50,11 @@ async function virtualData (){
     var environments = {};
     environments.description = package.description;
     environments.version = package.version;
+    // environments.version = package.version;
+    // environments.development = process.env.NODE_ENV && process.env.NODE_ENV == 'production';
+    environments.development = !process.env.NODE_ENV || process.env.NODE_ENV.trim() != 'production';
+
+    // console.log(process.env)
 
     var user = {
       starterMain:starterMain,
@@ -124,10 +129,7 @@ exports.server = async function(){
   try {
     await environmentInitiate();
     await require('./gui')();
-    return {
-      name: config.environment.virtual.Config.name,
-      port: config.environment.port
-    };
+    return `${config.environment.virtual.Config.name} ${config.environment.LISTEN || '*'}:${config.environment.PORT}`;
   } catch (e) {
     throw e
   } finally {
@@ -141,24 +143,25 @@ function exitHandler() {
 }
 function hitCounter() {
   var id = new Date().getTime();
-  const visits = config.environment.virtual.Config.visits;
-  if (!visits.hasOwnProperty('counts') || visits.counts <= 0) return;
+  const {Config} = config.environment.virtual;
+  if (!Config.hasOwnProperty('visits')) return;
+  if (!Config.visits.hasOwnProperty('counts') || Config.visits.counts <= 0) return;
   try {
-    if (visits.log) fs.appendFileSync(visits.log, `${id}:${visits.counts}\r\n`);
-    visits.counts = 0;
+    if (Config.visits.log) fs.appendFileSync(Config.visits.log, `${id}:${Config.visits.counts}\r\n`);
+    Config.visits.counts = 0;
   } catch (error) {
     throw error;
   }
 }
-    // var counter = JSON.parse(fs.readFileSync(file));
-    // if (!counter.hasOwnProperty('req')){
-    //   counter.req=[];
-    // }
-    // counter.req.push({i:id,v:counts});
-    // fs.writeFileSync(file, JSON.stringify(counter));
-    // appendFileSync
-    // fs.appendFile(file, `${id}:${counts}`, function (err) {
-    //   if (err) throw err;
-    //   // console.log('Saved!');
-    //   config.environment.virtual.Config.visitsCounter = 0;
-    // });
+// var counter = JSON.parse(fs.readFileSync(file));
+// if (!counter.hasOwnProperty('req')){
+//   counter.req=[];
+// }
+// counter.req.push({i:id,v:counts});
+// fs.writeFileSync(file, JSON.stringify(counter));
+// appendFileSync
+// fs.appendFile(file, `${id}:${counts}`, function (err) {
+//   if (err) throw err;
+//   // console.log('Saved!');
+//   config.environment.virtual.Config.visitsCounter = 0;
+// });
