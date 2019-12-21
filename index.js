@@ -41,7 +41,7 @@ async function requestEnvironment(dir) {
   return await readFilePromise(path.resolve(dir, config.env)).then(i=>dotenv.parse(Buffer.from(i))).catch(()=>new Object());
 }
 
-async function virtualData (){
+async function virtualData() {
   var rootDir = path.resolve(rootCommon);
   var starterMain = path.resolve(rootDir, config.starter.main);
   var starterCommand = path.resolve(rootDir, config.starter.command);
