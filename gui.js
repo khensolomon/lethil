@@ -39,11 +39,6 @@ async function serverInitiate(user){
   app.mongo.factor = service.utility.packageRequire('mongodb');
   if (app.mongo.url) app.mongo.connect().catch(e=>service.utility.log.error(e));
 
-  // NOTE: is development environment
-  // app.Config.development = !process.env.NODE_ENV || process.env.NODE_ENV != 'production';
-  // app.Config.development = process.env.NODE_ENV == 'production';
-
-
   // NOTE: middleware
   app.Core.use(compression());
   app.Core.use(express.json());
@@ -54,9 +49,9 @@ async function serverInitiate(user){
     res.locals.appName = app.Config.name;
     res.locals.appVersion = app.Config.version;
     res.locals.appDescription = app.Config.description;
-    if (app.Config.hasOwnProperty('visits')) {
-      if (app.Config.visits.hasOwnProperty('counts'))app.Config.visits.counts++;
-    }
+    // if (app.Config.hasOwnProperty('visits')) {
+    //   if (app.Config.visits.hasOwnProperty('counts'))app.Config.visits.counts++;
+    // }
 
     if (req.get('Referrer')){
       var ref_hostname = new URL(req.get('Referrer')).hostname;
