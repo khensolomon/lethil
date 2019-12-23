@@ -133,10 +133,10 @@ exports.server = async function(){
   } catch (e) {
     throw e
   } finally {
-    for (const e of ['exit', 'SIGINT', 'SIGUSR1', 'SIGUSR2', 'SIGTERM', 'uncaughtException']) process.on(e, exitHandler.bind(null, {exit:true}));
+    // for (const e of ['exit', 'SIGINT', 'SIGUSR1', 'SIGUSR2', 'SIGTERM', 'uncaughtException']) process.on(e, exitHandler.bind(null, {exit:true}));
   }
 }
-
+/*
 function exitHandler() {
   hitCounter();
   process.exit();
@@ -153,15 +153,4 @@ function hitCounter() {
     throw error;
   }
 }
-// var counter = JSON.parse(fs.readFileSync(file));
-// if (!counter.hasOwnProperty('req')){
-//   counter.req=[];
-// }
-// counter.req.push({i:id,v:counts});
-// fs.writeFileSync(file, JSON.stringify(counter));
-// appendFileSync
-// fs.appendFile(file, `${id}:${counts}`, function (err) {
-//   if (err) throw err;
-//   // console.log('Saved!');
-//   config.environment.virtual.Config.visitsCounter = 0;
-// });
+*/
