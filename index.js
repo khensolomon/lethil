@@ -1,4 +1,5 @@
 const path = require("path");
+const request = require('request');
 // const url = require('url');
 // const http = require('http');
 // const https = require('https');
@@ -42,19 +43,17 @@ async function requestEnvironment(dir) {
 }
 
 async function virtualData() {
-  var rootDir = path.resolve(rootCommon);
-  var starterMain = path.resolve(rootDir, config.starter.main);
-  var starterCommand = path.resolve(rootDir, config.starter.command);
+  var rootDir = path.join(rootCommon);
+  var starterMain = path.join(rootDir, config.starter.main);
+  var starterCommand = path.join(rootDir, config.starter.command);
   if (fs.existsSync(starterMain)){
-    var package = require(path.resolve(rootDir,'package.json'));
+    var package = require(path.join(rootDir,'package.json'));
     var environments = {};
+    environments.name = package.name;
     environments.description = package.description;
     environments.version = package.version;
-    // environments.version = package.version;
-    // environments.development = process.env.NODE_ENV && process.env.NODE_ENV == 'production';
-    environments.development = !process.env.NODE_ENV || process.env.NODE_ENV.trim() != 'production';
 
-    // console.log(process.env)
+    environments.development = !process.env.NODE_ENV || process.env.NODE_ENV.trim() != 'production';
 
     var user = {
       starterMain:starterMain,
@@ -62,13 +61,13 @@ async function virtualData() {
     };
 
     user.Config = Object.assign({
-      name:null,
+      name:'?',
       dir:{
         root:rootDir,
-        static: path.resolve(rootDir,config.directory.static),
-        assets: path.resolve(rootDir,config.directory.assets),
-        views: path.resolve(rootDir,config.directory.views),
-        routes: path.resolve(rootDir,config.directory.routes)
+        static: path.join(rootDir,config.directory.static),
+        assets: path.join(rootDir,config.directory.assets),
+        views: path.join(rootDir,config.directory.views),
+        routes: path.join(rootDir,config.directory.routes)
       }
     }, config.common);
 
@@ -81,7 +80,6 @@ async function virtualData() {
         throw error;
       }
     }
-
 
     if (environments.referer){
       environments.referer = utility.arrays.unique(environments.referer.split(',')).map(utility.hack.regex);
@@ -104,17 +102,14 @@ async function virtualData() {
 }
 
 // exports.root=rootCommon;
-exports.utility=utility;
-exports.readFilePromise=readFilePromise;
-exports.writeFilePromise=writeFilePromise;
-exports.Timer=Timer;
-exports.Burglish=Burglish;
+exports.utility = utility;
+exports.readFilePromise = readFilePromise;
+exports.writeFilePromise = writeFilePromise;
+exports.Timer = Timer;
+exports.Burglish = Burglish;
+exports.request = request;
 
 exports.environment = () => config.environment;
-
-// NOTE: to remove
-// exports.fs=fs;
-// exports.path=path;
 
 exports.command = async function(){
   try {
