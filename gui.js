@@ -49,9 +49,6 @@ async function serverInitiate(user){
     res.locals.appName = app.Config.name;
     res.locals.appVersion = app.Config.version;
     res.locals.appDescription = app.Config.description;
-    // if (app.Config.hasOwnProperty('visits')) {
-    //   if (app.Config.visits.hasOwnProperty('counts'))app.Config.visits.counts++;
-    // }
 
     if (req.get('Referrer')){
       var ref_hostname = new URL(req.get('Referrer')).hostname;
