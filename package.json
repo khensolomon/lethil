@@ -1,6 +1,6 @@
 {
   "name": "@scriptive/evh",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "...a framework based Node.js server using Express with mysql or mongodb!",
   "main": "index.js",
   "scripts": {},
