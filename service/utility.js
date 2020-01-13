@@ -149,7 +149,14 @@ const arrays={
   group:function(array, key){
     return array.reduce((result, currentValue) => {
       // If an array already present for key, push it to the array. Else create an array and push the object
-      (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
+      var test = Object.assign({},currentValue);
+      delete test[key];
+
+      // var test = Object.keys(currentValue).filter(e=>e != key).reduce((o, item) => {
+      //   return {...o, [item]: currentValue[item]}
+      // }, {});
+
+      (result[currentValue[key]] = result[currentValue[key]] || []).push(test);
       // Return the current iteration `result` value, this will be taken as next iteration `result` value and accumulate
       return result;
     }, {}); // empty object is the initial value for result object
@@ -259,6 +266,7 @@ function packageRequire(name){
 /*
 var start = timeCheck();
 var end = timeCheck(start)
+console.info('Execution time: %dms', end);
 */
 function timeCheck(ended){
   var start = new Date();
@@ -267,6 +275,5 @@ function timeCheck(ended){
   } else {
     return start;
   }
-  // console.info('Execution time: %dms', end);
 }
 module.exports = {log, check, word, arrays, objects,hack, createUniqueId,packageAvailable,packageRequire,timeCheck};
