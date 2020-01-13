@@ -12,6 +12,8 @@ You probably wanted to skip *Getting started* as we focus on the basic initiatio
 ... if not, install it!
 
 ```shell
+npm i @scriptive/evh
+# or
 npm install --save https://github.com/scriptive/evh/tarball/master
 ```
 
@@ -25,9 +27,11 @@ Let's say, we...
 
 > create a file `.env` for Environment
 
-```shell
-# default port is: 80
-port=80
+```env
+# default PORT: 80
+PORT=80
+# default LISTEN: localhost
+LISTEN=localhost
 
 virtual=/var/www/main:example.com,www.example.com;../other:*.example.com,*
 ```
@@ -42,7 +46,15 @@ virtual=/var/www/main:example.com,www.example.com;../other:*.example.com,*
 const scriptive = require("@scriptive/evh");
 
 module.exports = scriptive;
-scriptive.server();
+scriptive.server().then(
+  e=> {
+    if (e) console.log(e);
+  }
+).catch(
+  e=> {
+    if (e) console.error(e)
+  }
+);
 ```
 
 ## static
