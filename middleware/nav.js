@@ -21,10 +21,10 @@ module.exports = class nav {
     return new nav(this.app,this.parents[lastIndex][childName]);
   }
   route(a){
-    try {
-      if(a.hasOwnProperty('route'))this.app.Core.use(a.url,require(path.join(this.app.Config.dir.routes, a.route)));
-    } catch (error) {
-    }
+    // try {
+    // } catch (error) {
+    // }
+    if(a.hasOwnProperty('route'))this.app.Core.use(a.url,require(path.join(this.app.Config.dir.routes, a.route)));
     this.parents.push(a);
     return this;
   }
