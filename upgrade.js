@@ -3,7 +3,7 @@ const path = require('path');
 const tar = require('tar');
 const request = require('request');
 const scriptive = require('./package.json');
-const {writeFilePromise} = require("./service");
+const {readFilePromise,writeFilePromise} = require("./service");
 const scriptiveName = scriptive.name;
 const root = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
 const old = require(path.join(root,'package.json'));
@@ -23,7 +23,8 @@ function download(){
 async function makeup(){
   const file = path.join(directory,'package.json');
   if (fs.existsSync(file)){
-    const json = require(file);
+    const json = await readFilePromise(file).then(e=>JSON.parse(e)).catch(()=>new Object());
+    // const json = require(file);
     if (json.dependencies[scriptiveName].includes("file:")){
       if (old.dependencies[scriptiveName].includes("file:")) {
         json.dependencies[scriptiveName]='^'+scriptive.version;
