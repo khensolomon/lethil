@@ -146,23 +146,52 @@ const arrays={
     // })));
     return Array.from(new Set(a.map((e)=>e.trim()).filter((item, pos, self) => self.indexOf(item) == pos && item!='')));
   },
-  group:function(array, key){
+  group:function(array, key,_is_remove){
     return array.reduce((result, currentValue) => {
       // If an array already present for key, push it to the array. Else create an array and push the object
       var test = Object.assign({},currentValue);
-      delete test[key];
-
-      // var test = Object.keys(currentValue).filter(e=>e != key).reduce((o, item) => {
-      //   return {...o, [item]: currentValue[item]}
-      // }, {});
+      if (_is_remove) {
+        delete test[key];
+        // var test = Object.keys(currentValue).filter(e=>e != key).reduce((o, item) => {
+        //   return {...o, [item]: currentValue[item]}
+        // }, {});
+      }
 
       (result[currentValue[key]] = result[currentValue[key]] || []).push(test);
       // Return the current iteration `result` value, this will be taken as next iteration `result` value and accumulate
       return result;
     }, {}); // empty object is the initial value for result object
+  },
+  /*
+  .category([{term:1},{term:2}], o => o.term)
+  */
+ category:function(array, keyGetter){
+    const map = new Map();
+    array.forEach(item => {
+      var key = keyGetter(item), collection = map.get(key);
+      if (!collection) {
+        map.set(key, [item]);
+      } else {
+        collection.push(item);
+      }
+    });
+    return map;
   }
 };
-
+/*
+const __groupBy = (list, keyGetter) => {
+  const map = new Map();
+  list.forEach((item) => {
+    var key = keyGetter(item), collection = map.get(key);
+    if (!collection) {
+      map.set(key, [item]);
+    } else {
+      collection.push(item);
+    }
+  });
+  return map;
+}
+*/
 const objects={
   merge:function(s, n){
     for (var p in n) {
