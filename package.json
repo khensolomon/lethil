@@ -1,6 +1,6 @@
 {
   "name": "@scriptive/evh",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "...a framework based Node.js server using Express with mysql or mongodb!",
   "main": "index.js",
   "scripts": {},
@@ -19,11 +19,11 @@
   "homepage": "https://github.com/scriptive/evh#readme",
   "dependencies": {
     "compression": "^1.7.4",
-    "cookie-parser": "^1.4.4",
+    "cookie-parser": "^1.4.5",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "pug": "^2.0.4",
-    "request": "^2.88.0",
-    "tar": "^5.0.5"
+    "request": "^2.88.2",
+    "tar": "^6.0.2"
   }
 }
