@@ -5,7 +5,8 @@ const request = require('request');
 const scriptive = require('./package.json');
 const {readFilePromise,writeFilePromise} = require("./service");
 const scriptiveName = scriptive.name;
-const root = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
+const root = process.paths[0].split('node_modules')[0].slice(0, -1);
+// const root = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
 const old = require(path.join(root,'package.json'));
 
 var url = old.repository.url.replace('git+','').replace('.git','/archive/master.tar.gz');
