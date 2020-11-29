@@ -1,5 +1,5 @@
 const path = require("path");
-const request = require('request');
+// const request = require('request');
 // const url = require('url');
 // const http = require('http');
 // const https = require('https');
@@ -10,7 +10,9 @@ const dotenv = require("dotenv");
 const config = require("./config");
 const {utility,Timer,Burglish,readFilePromise,writeFilePromise} = require("./service");
 
-const rootCommon = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
+// const rootCommon = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
+const rootCommon = path.dirname(require.main.filename);
+// console.log('dir',rootCommon,rootCommonTesting);
 
 async function environmentInitiate() {
   try {
@@ -107,7 +109,7 @@ exports.readFilePromise = readFilePromise;
 exports.writeFilePromise = writeFilePromise;
 exports.Timer = Timer;
 exports.Burglish = Burglish;
-exports.request = request;
+// exports.request = request;
 
 exports.environment = () => config.environment;
 
