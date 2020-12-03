@@ -280,9 +280,10 @@ function createUniqueId(structure){
       return (c=='x' ? r :(r&0x3|0x8)).toString(16);
   });
 }
+
 function packageAvailable(name){
   try {
-    return require.resolve(path.resolve(process.mainModule.paths[0],name));
+    return require.resolve(path.resolve(require.main.paths[0],name));
   } catch(e) {
     return null
   }

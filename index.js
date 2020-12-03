@@ -10,9 +10,10 @@ const dotenv = require("dotenv");
 const config = require("./config");
 const {utility,Timer,Burglish,readFilePromise,writeFilePromise} = require("./service");
 
-// const rootCommon = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
+// const root_tmp_module = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
+// const root_tmp_path = require.main.paths[0].split('node_modules')[0].slice(0, -1);
 const rootCommon = path.dirname(require.main.filename);
-// console.log('dir',rootCommon,rootCommonTesting);
+// console.log('dir',rootCommon,require.main);
 
 async function environmentInitiate() {
   try {
