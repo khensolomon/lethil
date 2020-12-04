@@ -1,19 +1,12 @@
 const path = require("path");
-// const request = require('request');
-// const url = require('url');
-// const http = require('http');
-// const https = require('https');
+const fs = require("fs");
 
-const fs = require('fs');
 const dotenv = require("dotenv");
-
 const config = require("./config");
-const {utility,Timer,Burglish,readFilePromise,writeFilePromise} = require("./service");
+const {utility,Timer,Burglish,request} = require("./service");
 
-// const root_tmp_module = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
 // const root_tmp_path = require.main.paths[0].split('node_modules')[0].slice(0, -1);
 const rootCommon = path.dirname(require.main.filename);
-// console.log('dir',rootCommon,require.main);
 
 async function environmentInitiate() {
   try {
@@ -42,7 +35,7 @@ async function environmentInitiate() {
 }
 
 async function requestEnvironment(dir) {
-  return await readFilePromise(path.resolve(dir, config.env)).then(i=>dotenv.parse(Buffer.from(i))).catch(()=>new Object());
+  return await fs.promises.readFile(path.resolve(dir, config.env)).then(i=>dotenv.parse(Buffer.from(i))).catch(()=>new Object());
 }
 
 async function virtualData() {
@@ -106,11 +99,9 @@ async function virtualData() {
 
 // exports.root=rootCommon;
 exports.utility = utility;
-exports.readFilePromise = readFilePromise;
-exports.writeFilePromise = writeFilePromise;
 exports.Timer = Timer;
 exports.Burglish = Burglish;
-// exports.request = request;
+exports.request = request;
 
 exports.environment = () => config.environment;
 

@@ -1,7 +1,3 @@
-// const fs = require('fs');
-// const path = require('path');
-// const tar = require('tar');
-// const http = require('http');
 const https = require('https');
 
 // const urlOptions = {
@@ -30,4 +26,4 @@ const request = function(urlOptions) {
   });
 };
 
-module.exports = request
+module.exports = request;
