@@ -1,7 +1,7 @@
 module.exports = {
   env:'.env',
   name: "evh",
-  version: "1.1.1",
+  version: "1.1.4",
   root:null,
   starter:{
     command: 'command.js',
