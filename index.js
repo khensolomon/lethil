@@ -99,9 +99,9 @@ async function virtualData() {
 
 // exports.root=rootCommon;
 exports.utility = utility;
+exports.request = request;
 exports.Timer = Timer;
 exports.Burglish = Burglish;
-exports.request = request;
 
 exports.environment = () => config.environment;
 
