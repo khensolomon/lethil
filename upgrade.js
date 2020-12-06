@@ -11,9 +11,9 @@ var url = old.repository.url.replace('git+','').replace('.git','/archive/master.
 var directory = path.join(root);
 
 const extractData = async function(urlOptions) {
-  return await request(urlOptions).then(res=>{
-    return res.pipe(tar.x({strip:1, C:directory}))
-  });
+  return await request(urlOptions).then(
+    res => res.pipe(tar.x({strip:1, C:directory}))
+  );
 };
 
 // const saveData = async function(urlOptions) {
@@ -40,7 +40,7 @@ async function makeup(){
     }
     delete json.devDependencies;
     await fs.promises.writeFile(file,JSON.stringify(json,null,2));
-    fs.unlinkSync(path.join(directory,'package-lock.json'));
+    // fs.unlinkSync(path.join(directory,'package-lock.json'));
     return old.version +' -> '+json.version;
   } else {
     return 'Extracted, but no package.json, probably it is initial!';
@@ -54,9 +54,9 @@ module.exports = function(dir=''){
       rej('Master repository can not replace!');
     } else {
       extractData(url).then(
-        (e) => e.on('finish', ()=>{
-          makeup().then(res).catch(rej)
-        })
+        (e) => e.on('finish',
+          () => makeup().then(res).catch(rej)
+        )
       );
     }
   });
