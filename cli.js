@@ -30,16 +30,15 @@ async function commandInitiate(user){
   //   await app.mongo.connect().catch(e=> {throw e});
   // }
 
-  // NOTE: MySQL connection -> app.sql.url = user.Config.mysqlConnection;
+  // NOTE: MySQL connection -> app.sql.config = user.Config.mysqlConnection;
   app.sql = new database.mysql(app.Config);
   app.sql.factor = service.utility.packageRequire('mysql');
-  if (app.sql.url) await app.sql.handlePool().catch(e=>service.utility.log.msg(e));
+  if (app.sql.config) await app.sql.handlePool().catch(e=>service.utility.log.msg(e));
 
-  // NOTE: MongoDB connection -> app.mongo.url = user.Config.mongoConnection;
+  // NOTE: MongoDB connection -> app.mongo.config = user.Config.mongoConnection;
   app.mongo = new database.mongo(app.Config);
-  // requestModule
   app.mongo.factor = service.utility.packageRequire('mongodb');
-  if (app.mongo.url) await app.mongo.connect().catch(e=>service.utility.log.error(e));
+  if (app.mongo.config) await app.mongo.connect().catch(e=>service.utility.log.error(e));
 
   const job = require(user.starterCommand);
   async function jobTask(e){
