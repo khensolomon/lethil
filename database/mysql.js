@@ -3,137 +3,80 @@
 const util = require('util');
 module.exports = class database {
   constructor(e) {
-    this.url = e.hasOwnProperty('mysqlConnection')?e.mysqlConnection:null;
-    this.result = null;
-    this.connection = null;
-    this.query = this.noConnection;
+    this.config = e.hasOwnProperty('mysqlConnection')?e.mysqlConnection:null;
     this.factor = null;
-  }
+    this.pool = null;
+    this.result = null;
+    // this.connection = null;
+    // this.query = this.noConnection;
 
-  async noConnection() {
-    throw new Error('No Connection available')
-  }
-  async join(sql, arg) {
-    this.result = await this.query(sql, arg);
-    return this;
+    // const config = {
+    //   connectionLimit: 100,
+    //   host: process.env.SQL_HOST,
+    //   user: process.env.SQL_USER,
+    //   password: process.env.SQL_PASSWORD,
+    //   database: process.env.SQL_DATABASE,
+    //   debug:false,
+    //   waitForConnections: true,
+    //   multipleStatements: true
+    // };
   }
 
   async handlePool(){
-    if (!this.factor) {
-      throw {code:'mysql',message:'No module found'};
-    }
-    // const pool = mysql.createPool(this.url);
-    const pool = this.factor.createPool(this.url);
-    const connector = util.promisify(pool.getConnection).bind(pool);
-    await connector().then(
-      db => {
-        this.connection = db;
-        this.query = util.promisify(db.query).bind(db);
-        // this.queryTesting = function(q,a){
-        //   return new Promise(function(res,rej){
-        //     db.query(q,a,function(err, result, fields){
-        //       err?rej(err):res(result, fields);
-        //     })
-        //   });
-        // }
-
-
-        // const promiseConnection = util.promisify(db.connect).bind(db);
-        // promiseConnection().catch(
-        //   e=> {
-        //     if(e.code != 'ER_BAD_DB_ERROR') {
-        //       setTimeout(()=>{
-        //         db.destroy();
-        //         this.handlePool().then(
-        //           ()=>console.log('Reconnected')
-        //         ).catch(
-        //           e=>{}
-        //         );
-        //       }, 1000);
-        //     }
-        //     throw {code:e.code,message:e.message.replace(e.code+':','').trim()};
-        //   }
-        // );
-
-        db.on('error', e =>{
-          if(e.code === 'PROTOCOL_CONNECTION_LOST') {
-            this.handlePool().catch(
-              e=>console.info(e.code,e.message)
-            );
+    return new Promise((resolve, reject) => {
+      if (!this.factor) {
+        return reject('No MySQL module found');
+      }
+      if (!this.config) {
+        return reject('No MySQL configuration');
+      }
+      if (!this.pool) {
+        this.pool = this.factor.createPool(this.config);
+      }
+      const connector = util.promisify(this.pool.getConnection).bind(this.pool);
+      connector().then(
+        connection => resolve(connection)
+      ).catch(
+        error => {
+          if(['ECONNRESET', 'ECONNREFUSED','PROTOCOL_CONNECTION_LOST'].indexOf(error.code) < 0) {
+            // console.log('?','just reject it',error.code);
+            return reject(error);
           }
-        });
-      }
-    ).catch(
-      e=> {
-        if(e.code != 'ER_BAD_DB_ERROR') {
-          setTimeout(()=>{
-            // db.destroy();
-            this.connection.release();
-            this.handlePool().catch(
-              e=>{}
-            );
-          }, 1000);
-        }
-        throw {code:e.code,message:e.message.replace(e.code+':','').trim()};
-      }
-    )
-  }
-
-  async handleDisconnect(){
-    if (!this.factor) {
-      throw {code:'mysql',message:'No module found'};
-    }
-    // this.connection = mysql.createConnection(this.url);
-    this.connection = this.factor.createConnection(this.url);
-    this.query = util.promisify(this.connection.query).bind(this.connection);
-    const promiseConnection = util.promisify(this.connection.connect).bind(this.connection);
-    await promiseConnection().catch(
-      e=> {
-        if(e.code != 'ER_BAD_DB_ERROR') {
-          setTimeout(()=>{
-            this.connection.destroy();
-            this.handleDisconnect().then(
-              ()=>console.log('Reconnected')
+          setTimeout(() => {
+            // console.log('2','reconnecting error',error.code);
+            this.handlePool().then(
+              e => {
+                // console.log('3','done');
+                resolve(e);
+              }
             ).catch(
-              e=>{}
+              e => {
+                // console.log('3',e)
+                reject(e);
+              }
             );
-          }, 1000);
+          }, 2000);
         }
-        throw {code:e.code,message:e.message.replace(e.code+':','').trim()};
-      }
-    );
-    this.connection.on('error', e =>{
-      if(e.code === 'PROTOCOL_CONNECTION_LOST') {
-        this.handleDisconnect().catch(
-          e=>console.log(e.code,e.message)
-        );
-      }
+      );
     });
   }
 
-  format(sql, args){
-    // this.queryFormat();
-    return this.connection.format(sql, args);
-  }
-
-  queryFormat(){
-    this.connection.config.queryFormat = function (query, values) {
-      if (!values) return query;
-      return query.replace(/\:(\w+)/g, function (v, key) {
-        if (values.hasOwnProperty(key)) {
-          return this.escape(values[key]);
+  query(sql, arg){
+    return new Promise((resolve, reject) => {
+      this.handlePool().then(
+        connection => {
+          var db = util.promisify(connection.query).bind(connection);
+          db(sql, arg).then(
+            raw => resolve(raw)
+          ).catch(
+            error => reject(error)
+          ).finally(
+            () => connection.release()
+          );
         }
-        return v;
-      }.bind(this));
-    };
-  }
-
-  escape(args){
-    return this.connection.escape(args);
-  }
-
-  close(){
-    this.connection.release()
-    // this.connection.end()
+      ).catch(
+        error => reject(error)
+      );
+    });
   }
 }
