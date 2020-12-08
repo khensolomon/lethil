@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const tar = require('tar');
 const scriptive = require('./package.json');
-const {request} = require("./service");
+const {ask} = require("./service");
 
 const scriptiveName = scriptive.name;
 const root = require.main.paths[0].split('node_modules')[0].slice(0, -1);
@@ -11,13 +11,13 @@ var url = old.repository.url.replace('git+','').replace('.git','/archive/master.
 var directory = path.join(root);
 
 const extractData = async function(urlOptions) {
-  return await request(urlOptions).then(
+  return await ask.request(urlOptions).then(
     res => res.pipe(tar.x({strip:1, C:directory}))
   );
 };
 
 // const saveData = async function(urlOptions) {
-//   return request(urlOptions).then(res=>{
+//   return ask.request(urlOptions).then(res=>{
 //     var file = fs.createWriteStream(path.join(directory,'master.tar.gz'));
 //     res.pipe(file);
 //     file.on('finish', function() {

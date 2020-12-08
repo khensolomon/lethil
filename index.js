@@ -3,7 +3,7 @@ const fs = require("fs");
 
 const dotenv = require("dotenv");
 const config = require("./config");
-const {utility,Timer,Burglish,request} = require("./service");
+const {utility,Timer,Burglish,ask} = require("./service");
 
 // const root_tmp_path = require.main.paths[0].split('node_modules')[0].slice(0, -1);
 const rootCommon = path.dirname(require.main.filename);
@@ -99,7 +99,7 @@ async function virtualData() {
 
 // exports.root=rootCommon;
 exports.utility = utility;
-exports.request = request;
+exports.ask = ask;
 exports.Timer = Timer;
 exports.Burglish = Burglish;
 
