@@ -74,19 +74,22 @@ async function serverInitiate(user){
   app.Navigation = (Id)=>anv.insert(Id);
 
   // NOTE: app->middleware
-  const amw = requestStarter(path.resolve(app.Config.dir.root,config.starter.middleware));
-  Object.keys(app.Config.restrict).forEach(uri=>{
-    var fn = app.Config.restrict[uri];
-    if (amw[fn] instanceof Function) {
-      app.Core.use(uri, function(req, res, next) {
-        if (amw[fn](req, res)) {
-          next();
-        } else {
-          res.status(404).end();
-        }
-      });
-    }
-  });
+  requestStarter(path.resolve(app.Config.dir.root,config.starter.middleware));
+  // const amw = requestStarter(path.resolve(app.Config.dir.root,config.starter.middleware));
+  // console.log('amw',amw)
+  // Object.keys(app.Config.restrict).forEach(uri=>{
+  //   console.log(uri);
+  //   var fn = app.Config.restrict[uri];
+  //   if (amw[fn] instanceof Function) {
+  //     app.Core.use(uri, function(req, res, next) {
+  //       if (amw[fn](req, res)) {
+  //         next();
+  //       } else {
+  //         res.status(404).end();
+  //       }
+  //     });
+  //   }
+  // });
 
   // NOTE: execute, after user middleware
   // if (config.proxy.single == false && fs.existsSync(app.Config.dir.static)) {
