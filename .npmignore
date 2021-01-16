@@ -1,9 +1,6 @@
 /test
-/test.app
-/src
-/dist
+/lib
 
-webpack.config.js
 *.md
 *-lock.json
 forever.json
