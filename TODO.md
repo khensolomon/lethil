@@ -14,7 +14,13 @@
 - [x] styleMiddleWare,scriptMiddleWare moved to middle
 - [x] Readme
 
+npm deprecate my-thing@"< 0.2.3" "critical bug fixed in v0.2.3"
 
+npm deprecate @scriptive/evh@1.1.6 "WARNING: This module has been renamed to lethil. Please install it instead. See <https://github.com/khensolomon/lethil> for more information."
+
+    "find ./dist/js/ -name "*.js" -exec bash -c 'mv "$1" "${1%.js}".mjs' - '{}' \;"
+    find ./dist/js/ -name "*.mjs" -exec bash -c 'mv "$1" "${1%.js}".cjs' - '{}' \;
+    find ./dist/js/ -name "*.js" -exec bash -c 'mv "$1" "${1%.js}".cjs' - '{}' \;
 
 node index
 nodemon index

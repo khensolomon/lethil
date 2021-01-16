@@ -1,31 +1,36 @@
 {
   "name": "lethil",
-  "version": "1.1.7",
+  "version": "1.1.7-beta.2",
   "description": "...a minimal and configurable Node.js framework!",
-  "main": "./dist/js/index.js",
-  "module": "./dist/es/index.js",
   "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    "node": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "default": "./dist/index.js"
+  },
   "scripts": {
-    "lint": "eslint . --ext .js",
     "tst": "mocha -r test/*.js",
     "test": "mocha",
-    "-lint": "eslint . --ext .ts",
-    "-prepublish": "npm run build",
+    "prepublish": "npm run build",
+    "build": "npm run tsc",
+    "tsc": "tsc -p tsconfig.json",
+    "lint": "eslint . --ext .js",
     "-test": "mocha -r ts-node/register test/*.ts",
     "-test-single": "mocha -r ts-node/register",
-    "build": "npm run tsc",
-    "tsc": "tsc -p tsconfig.json && tsc -p tsconfig-cs.json",
-    "tsc-esm": "tsc -p tsconfig.json",
-    "tsc-cjs": "tsc -p tsconfig-cs.json",
     "-watch": "tsc --watch --noEmit --project ./tsconfig.json"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khensolomon/lethil.git"
   },
-  "files": [],
+  "files": [
+    "dist"
+  ],
   "keywords": [
-    "framework"
+    "framework", "command line interface", "minimal", "configurable"
   ],
   "author": "Khen Solomon Lethil",
   "license": "MIT",

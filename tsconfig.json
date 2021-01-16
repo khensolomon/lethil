@@ -1,11 +1,11 @@
 {
 	"compilerOptions": {
     "rootDir": "./lib",
-    "target": "es6",
+    "target": "esnext",
     "moduleResolution": "node",
 
-    "module": "ES2020",
-    "outDir": "./dist/es",
+    "module": "ESNext",
+    "outDir": "./dist",
 
     "sourceMap": false,
     "declaration": true,
@@ -32,8 +32,6 @@
 	"exclude": [
 	  "node_modules",
 	  "test",
-	  "tmp",
-
     "dist",
     "**/*.spec.js"
 	]
