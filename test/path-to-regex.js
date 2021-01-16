@@ -1,11 +1,14 @@
 import 'mocha';
 import * as assert from 'assert';
-import {parse} from '../lib/aid/index.js';
+import aid from '../lib/aid/index.js';
+// import 'mocha';
+// import * as assert from 'assert';
+// import {parse} from '../lib/aid/index.js';
 
 describe('Path to regx', () => {
 
 	it('match /post == /post, /post/ != /posts, /post/none ', () => {
-    let job = parse.uri('/post');
+    let job = aid.parse.uri('/post');
     assert.strictEqual(true,job.test('/post'));
     assert.strictEqual(true,job.test('/post/'));
     assert.strictEqual(false,job.test('/posts'));
@@ -13,7 +16,7 @@ describe('Path to regx', () => {
   });
 
 	it('match /post/:id = /post/1, /post/string , /post/string/ != /post/string/none ', () => {
-    let job = parse.uri('/post/:id');
+    let job = aid.parse.uri('/post/:id');
     assert.strictEqual(true,job.test('/post/1'));
     assert.strictEqual(true,job.test('/post/str-ing'));
     assert.strictEqual(true,job.test('/post/str-ing/'));
@@ -24,7 +27,7 @@ describe('Path to regx', () => {
   });
 
   it('match /post/:id? = /post, /post/, /post/1, /post/string , /post/string/ != /post/string/none ', () => {
-    let job = parse.uri('/post/:id?');
+    let job = aid.parse.uri('/post/:id?');
     assert.strictEqual(true,job.test('/post'));
     assert.strictEqual(true,job.test('/post/'));
     assert.strictEqual(true,job.test('/post/1'));
@@ -34,7 +37,7 @@ describe('Path to regx', () => {
   });
 
   it('match /post/:id?/:name = ?', () => {
-    let job = parse.uri('/post/:id?/:name');
+    let job = aid.parse.uri('/post/:id?/:name');
     assert.strictEqual(true,job.test('/post'));
     assert.strictEqual(true,job.test('/post/'));
     assert.strictEqual(true,job.test('/post/1'));
@@ -44,7 +47,7 @@ describe('Path to regx', () => {
   });
 
   it('match /post/:id/:name? = ?', () => {
-    let job = parse.uri('/post/:id/:name?');
+    let job = aid.parse.uri('/post/:id/:name?');
     assert.strictEqual(false,job.test('/post'));
     assert.strictEqual(false,job.test('/post/'));
     assert.strictEqual(true,job.test('/post/1'));
@@ -54,7 +57,7 @@ describe('Path to regx', () => {
   });
 
   it('match /post/:id/:name/:val? = ?', () => {
-    let job = parse.uri('/post/:id/:name/:val?');
+    let job = aid.parse.uri('/post/:id/:name/:val?');
     assert.strictEqual(false,job.test('/post'));
     assert.strictEqual(false,job.test('/post/'));
     assert.strictEqual(false,job.test('/post/1'));
@@ -65,7 +68,7 @@ describe('Path to regx', () => {
   });
 
   it('param /foo/:id/:name -> /foo/slash/more/last', () => {
-    let job = '/foo/slash/more/last'.match(parse.uri('/foo/:id/:name/:val?'));
+    let job = '/foo/slash/more/last'.match(aid.parse.uri('/foo/:id/:name/:val?'));
     const params = job.groups;
     assert.strictEqual('slash',params.id);
     assert.strictEqual('more',params.name);
@@ -73,7 +76,7 @@ describe('Path to regx', () => {
   });
 
   it('param /foo/:id/:name? -> /foo/slash/', () => {
-    let job = '/foo/slash/'.match(parse.uri('/foo/:id/:name?'));
+    let job = '/foo/slash/'.match(aid.parse.uri('/foo/:id/:name?'));
     const params = job.groups;
     assert.strictEqual('slash',params.id);
     assert.strictEqual(undefined,params.name);
@@ -86,7 +89,7 @@ describe('Path to regx', () => {
     // console.log(parse.uri('/foo/:id/:name/:val?'),'/foo/slash/more/a'.match(parse.uri('/foo/:id/:name/:val?')));
     // let job = parse.uri('/post/:id/:name');
 
-    let job = '/foo/a/b'.match(parse.uri('/foo/:id/:name/:val?'));
+    let job = '/foo/a/b'.match(aid.parse.uri('/foo/:id/:name/:val?'));
     const params = job.groups;
     assert.strictEqual('a',params.id);
     assert.strictEqual('b',params.name);
@@ -97,18 +100,18 @@ describe('Path to regx', () => {
 
 });
 
-var a = '/foos';
+// var a = '/foos';
 // var a = '/foo';
 // var a = '/foo/child';
 // var a = '/foo/child/grand';
 // var regx = /^[\/]?foo\/child\/grand[\/]?$/;
 
-var regx = /^[\/]?foo($|\/child[^$/]+)?($|\/grand[^$/]+)?/;
+// var regx = /^[\/]?foo($|\/child[^$/]+)?($|\/grand[^$/]+)?/;
 
 // var regx = /^[\/]?foo($|\/[^$/]+)?($|\/[^$/]+)\.*/;
 // var regx = /^[\/]?$|\/[^$/]+\.*/;
 
-console.log(regx.test(a));
+// console.log(regx.test(a));
 // var requestURL = '/foo/apple/sf/';
 // var pathURLBase = '/foo';
 // var pathURLDyanmic = '/foo/:id';

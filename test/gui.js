@@ -3,35 +3,20 @@ import * as assert from 'assert';
 import http from 'http';
 import core from '../lib/index.js';
 
+const app = core.server();
 const config = core.config();
-var app;
+
 var requestUrl = 'http://localhost:80';
 describe('GUI',  () => {
 
   before(() => {
-    core.root('../evh-test-app');
-    // core.port(8086);
+    // core.server();
+    // core.set('root','../evh-test-app');
+    // core.set('port',8086);
   });
 
-
-
-  it('server', (done) => {
-    core.server().then(
-      (e)=> {
-        app = e;
-        requestUrl = requestUrl.replace('localhost',config.HOST).replace('80',config.PORT);
-        done()
-        // e.listen(config.PORT, config.HOST, () => {
-        //   done();
-        // });
-      }
-    ).catch(
-      (error)=> {
-        assert.strict.ifError(error);
-        done();
-      }
-    );
-  });
+    // requestUrl = requestUrl.replace('localhost',config.HOST).replace('80',config.PORT);
+    // core.server();
 
   it('listen ', (done) => {
     app.listen(config.PORT, config.HOST, (error) => {
@@ -52,24 +37,24 @@ describe('GUI',  () => {
   //   });
   // });
 
-  it('request', (done) => {
-    http.get({
-      host : config.HOST,
-      port : config.PORT,
-      path : '/',
-      method : 'GET'
-    }, function (res) {
-      var data = '';
-      res.on('data', function (chunk) {
-        data += chunk;
-      });
-      res.on('end', function () {
-        console.log('test.request',res.statusCode,data)
-        assert.strict.equal(200, res.statusCode);
-        done();
-      });
-    });
-  });
+  // it('request', (done) => {
+  //   http.get({
+  //     host : config.HOST,
+  //     port : config.PORT,
+  //     path : '/',
+  //     method : 'GET'
+  //   }, function (res) {
+  //     var data = '';
+  //     res.on('data', function (chunk) {
+  //       data += chunk;
+  //     });
+  //     res.on('end', function () {
+  //       console.log('test.request',res.statusCode,data)
+  //       assert.strict.equal(200, res.statusCode);
+  //       done();
+  //     });
+  //   });
+  // });
 
   // it('get->API first', function (done) {
   //   http.get({

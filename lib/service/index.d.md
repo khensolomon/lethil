@@ -9,7 +9,11 @@ export namespace utility {
   function timeCheck(ended:any): any;
 }
 
-export class timer {}
+// export class timer {}
+interface timer {
+  time:any;
+}
+export function timer(time:string):timer;
 
 interface burglish {
   text:String;

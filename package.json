@@ -1,6 +1,6 @@
 {
   "name": "lethil",
-  "version": "1.1.7-beta.2",
+  "version": "1.1.7-beta.3",
   "description": "...a minimal and configurable Node.js framework!",
   "type": "module",
   "main": "./dist/index.js",
