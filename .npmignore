@@ -1,4 +1,10 @@
 /test
+/test.app
+/src
+/dist
+
+webpack.config.js
 *.md
+*-lock.json
 forever.json
 nodemon.json

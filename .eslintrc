@@ -1,0 +1,10 @@
+{
+  "root": true,
+  "parser": "@eslint/parser",
+  "plugins": [
+    "@eslint"
+  ],
+  "extends": [
+    "eslint:recommended"
+  ]
+}

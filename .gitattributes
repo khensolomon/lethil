@@ -1,7 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
-/test export-ignore
+/test/ export-ignore
+/test.app/ export-ignore
 /forever.json export-ignore
 /nodemon.json export-ignore
 /serve.js export-ignore

@@ -1,29 +1,51 @@
 {
-  "name": "@scriptive/evh",
-  "version": "1.1.6",
-  "description": "...a framework based Node.js server using Express with mysql or mongodb!",
-  "main": "index.js",
-  "scripts": {},
+  "name": "lethil",
+  "version": "1.1.7",
+  "description": "...a minimal and configurable Node.js framework!",
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "typings": "./lib/index.js",
+
+  "-main": "./dist/js/index.js",
+  "-module": "./dist/es/index.js",
+  "-typings": "./lib/index.js",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint . --ext .js",
+    "tst": "mocha -r test/*.js",
+    "test": "mocha",
+    "-lint": "eslint . --ext .ts",
+    "-prepublish": "npm run build",
+    "-test": "mocha -r ts-node/register test/*.ts",
+    "-test-single": "mocha -r ts-node/register",
+    "-build": "npm run tsc",
+    "tsc": "tsc -p jsconfig.json && tsc -p jsconfig-es.json",
+    "-watch": "tsc --watch --noEmit --project ./tsconfig.json"
+  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/scriptive/evh.git"
+    "url": "git+https://github.com/khensolomon/lethil.git"
   },
+  "files": [],
   "keywords": [
     "framework"
   ],
   "author": "Khen Solomon Lethil",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/scriptive/evh/issues"
+    "url": "https://github.com/khensolomon/lethil/issues"
   },
-  "homepage": "https://github.com/scriptive/evh#readme",
-  "dependencies": {
-    "compression": "^1.7.4",
-    "cookie-parser": "^1.4.5",
-    "dotenv": "^8.2.0",
-    "express": "^4.17.1",
-    "pug": "^3.0.0",
-    "tar": "^6.0.5"
+  "homepage": "https://github.com/khensolomon/lethil/#readme",
+  "engines": {
+    "node": ">=14.15.3"
   },
-  "devDependencies": {}
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^14.14.20",
+    "mocha": "^8.2.1"
+  },
+  "tmp-dev": [
+    "npm i --save-dev mocha",
+    "npm i --save-dev pug"
+  ]
 }
