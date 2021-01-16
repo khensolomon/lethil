@@ -1,55 +1,104 @@
-# lethil
+# Lethil
 
 [![Build Status][travis]][travis-url]
 [![npm][npm-download]][npm-dl-url]
-[![Webpack][webpack-check]][webpack-url]
+![npm][npm-version]
 ![Mocha][test-mocha]
 
-...`lethil` is a minimal and configurable Node.js web framework, it has no dependencies but customizable that allow developer to deploy multiply applications simultaneously, and which has a very minimum requirement and aim to provided as light as possible.
+...`lethil` is a minimal and configurable Node.js web framework, it has no dependencies but customizable and allow developer to deploy multiply applications simultaneously, and which has a very minimum requirement and aim to provided as light as possible.
 
 ```properties
 npm install --save lethil
-# or
-npm install --save https://github.com/khensolomon/lethil/tarball/master
 ```
 
 > ... don't worry, it will not installed anything that doesn't use by "*evh"* to run your applications.
 
 ## How does it work
 
-- [Getting Started](Getting-Started.md#getting-started)
-
-## upgrade.js
-
-read *package.json* file then...
-
-```json
-...
-"repository": {
-  "type": "git",
-  "url": "git+https://github.com/scriptive/zaideih.git"
-},
-...
-```
+### server
 
 ```js
-const upgrade = require("@scriptive/evh/upgrade");
+// server.js
+import core from 'lethil';
 
-upgrade('test/upgrade').then(
-  e=>console.log('>',e)
-).catch(
-  e=>console.error('>',e)
-)
+const app = core.server();
+const config = app.config;
+
+app.get('/', function(req, res) {
+  res.send('Home')
+});
+
+app.get('/about', function(req, res) {
+  res.send('About')
+});
+
+page.get('/none', function(req, res) {
+  res.status(404).send('Not found');
+});
+
+app.get('/test/:id', function(req, res) {
+  res.json(Object.assign({test:true},req.params,req.query));
+});
+
+app.listen(config.listen, () => {
+  console.log(config.name,app.address.address,app.address.port);
+  // NOTE: app.close() helps mysql pool connection gracefully end.
+  // app.close();
+});
+
 ```
 
-[![License: MIT][license]][license-url]
+> `node server`
+
+### command
+
+```js
+// run.js
+import core from 'lethil';
+
+const app = core.command();
+
+app.get('/', function(req) {
+  return 'Main';
+});
+app.get('/about', function(req) {
+  return 'About';
+});
+
+app.get('/test/:id', function(req) {
+  return req.params.id
+});
+
+app.execute();
+
+app.on('success',function(e) {
+  console.log('...',e)
+});
+
+// NOTE: on error
+app.on('error',function(e) {
+  console.log('...',e)
+});
+
+app.close();
+
+```
+
+```properties
+node run
+node run about
+node run test/123
+```
+
+- [Getting Started](Getting-Started.md#getting-started)
+
+## License
+
+[MIT](LICENSE)
 
 [test-mocha]: https://img.shields.io/badge/test-mocha-green.svg?longCache=true
-[webpack-check]: https://img.shields.io/badge/webpack-yes-green.svg?longCache=true
-[webpack-url]: https://unpkg.com/myanmar-notation@latest/min.js
-[travis]: https://travis-ci.com/khensolomon/myanmar-notation.svg
-[travis-url]: https://travis-ci.org/khensolomon/myanmar-notation
-[npm-download]: https://img.shields.io/npm/dt/myanmar-notation.svg
-[npm-dl-url]: https://www.npmjs.com/package/myanmar-notation
-[license]: https://img.shields.io/badge/License-MIT-brightgreen.svg?longCache=true&style=popout-square
-[license-url]: https://opensource.org/licenses/MIT
+[travis]: https://travis-ci.com/khensolomon/lethil.svg
+[travis-url]: https://travis-ci.com/khensolomon/lethil.svg?branch=master
+[npm-download]: https://img.shields.io/npm/dt/lethil.svg
+[npm-dl-url]: https://www.npmjs.com/package/lethil
+[npm-version]: https://img.shields.io/npm/v/lethil.svg
