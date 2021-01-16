@@ -1,0 +1,40 @@
+{
+	"compilerOptions": {
+    "rootDir": "./lib",
+    "target": "es6",
+    "moduleResolution": "node",
+
+    "module": "ES2020",
+    "outDir": "./dist/es",
+
+    "sourceMap": false,
+    "declaration": true,
+    "alwaysStrict": true,
+    "noImplicitThis": true,
+    "removeComments": true,
+    "noImplicitReturns": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "emitDecoratorMetadata": false,
+    "experimentalDecorators": false,
+    "strict": true,
+    "esModuleInterop": false,
+    "forceConsistentCasingInFileNames": true,
+    "checkJs": true,
+    "allowJs": true,
+    "watch": false
+  },
+  "compileOnSave": false,
+  "include": ["./lib/**/*"],
+	"exclude": [
+	  "node_modules",
+	  "test",
+	  "tmp",
+
+    "dist",
+    "**/*.spec.js"
+	]
+}
