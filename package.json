@@ -2,13 +2,8 @@
   "name": "lethil",
   "version": "1.1.7",
   "description": "...a minimal and configurable Node.js framework!",
-  "main": "./lib/index.js",
-  "module": "./lib/index.js",
-  "typings": "./lib/index.js",
-
-  "-main": "./dist/js/index.js",
-  "-module": "./dist/es/index.js",
-  "-typings": "./lib/index.js",
+  "main": "./dist/js/index.js",
+  "module": "./dist/es/index.js",
   "type": "module",
   "scripts": {
     "lint": "eslint . --ext .js",
@@ -18,8 +13,10 @@
     "-prepublish": "npm run build",
     "-test": "mocha -r ts-node/register test/*.ts",
     "-test-single": "mocha -r ts-node/register",
-    "-build": "npm run tsc",
-    "tsc": "tsc -p jsconfig.json && tsc -p jsconfig-es.json",
+    "build": "npm run tsc",
+    "tsc": "tsc -p tsconfig.json && tsc -p tsconfig-cs.json",
+    "tsc-esm": "tsc -p tsconfig.json",
+    "tsc-cjs": "tsc -p tsconfig-cs.json",
     "-watch": "tsc --watch --noEmit --project ./tsconfig.json"
   },
   "repository": {
