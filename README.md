@@ -11,7 +11,7 @@
 npm install --save lethil
 ```
 
-> ... don't worry, it will not installed anything that doesn't use by "*lethil"* to run your applications.
+> ... `lethil` is currently ECMAScript modules and expected to be import (esm) but not require.
 
 ## How does it work
 
