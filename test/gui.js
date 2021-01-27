@@ -4,7 +4,7 @@ import http from 'http';
 import core from '../lib/index.js';
 
 const app = core.server();
-const config = core.config();
+const config = core.config;
 
 var requestUrl = 'http://localhost:80';
 describe('GUI',  () => {
