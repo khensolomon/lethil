@@ -7,11 +7,11 @@
 
 ...`lethil` is a minimal and configurable Node.js web framework, it has no dependencies but customizable and allow developer to deploy multiply applications simultaneously, and which has a very minimum requirement and aim to provided as light as possible.
 
-```properties
+```bash
 npm install --save lethil
 ```
 
-> ... don't worry, it will not installed anything that doesn't use by "*evh"* to run your applications.
+> ... don't worry, it will not installed anything that doesn't use by "*lethil"* to run your applications.
 
 ## How does it work
 
@@ -40,6 +40,15 @@ app.get('/test/:id', function(req, res) {
   res.json(Object.assign({test:true},req.params,req.query));
 });
 
+page.get('/middleware', function(req, res,next) {
+  setTimeout(next, 2000);
+  // setTimeout(() => {
+  //   next();
+  // }, 1000);
+},function(req, res) {
+  res.send('Middleware...')
+});
+
 app.listen(config.listen, () => {
   console.log(config.name,app.address.address,app.address.port);
   // NOTE: app.close() helps mysql pool connection gracefully end.
@@ -48,7 +57,9 @@ app.listen(config.listen, () => {
 
 ```
 
-> `node server`
+```bash
+node server
+```
 
 ### command
 
@@ -84,7 +95,7 @@ app.close();
 
 ```
 
-```properties
+```bash
 node run
 node run about
 node run test/123
@@ -98,7 +109,7 @@ node run test/123
 
 [test-mocha]: https://img.shields.io/badge/test-mocha-green.svg?longCache=true
 [travis]: https://travis-ci.com/khensolomon/lethil.svg
-[travis-url]: https://travis-ci.com/khensolomon/lethil.svg?branch=master
+[travis-url]: https://www.travis-ci.com/github/khensolomon/lethil
 [npm-download]: https://img.shields.io/npm/dt/lethil.svg
 [npm-dl-url]: https://www.npmjs.com/package/lethil
 [npm-version]: https://img.shields.io/npm/v/lethil.svg
