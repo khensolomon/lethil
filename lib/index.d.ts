@@ -5,8 +5,8 @@ declare namespace lethil {
    */
   function set(name?:string,rest?:any): any;
 
-  function db(): any;
-  function config(): any;
+  const db: any;
+  const config: any;
 
   /**
    * set tasks or routes
@@ -37,4 +37,6 @@ declare namespace lethil {
   }
 }
 
+export const config: any;
+export function route(name?:string,rest?:any): any;
 export default lethil;
