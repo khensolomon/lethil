@@ -50,6 +50,25 @@ describe('Parse.hostName', () => {
     let job = aid.parse.hostNameExec('http://www.*.example.com');
     assert.strictEqual('example.com',job);
   });
+
+});
+
+describe('Parse.url', () => {
+
+	it('url(http://example.com) -> example.com;', () => {
+    let job = aid.parse.url('http://example.com');
+    assert.strictEqual('example.com',job.host);
+  });
+
+	it('url(http://localhost:90/about) -> localhost:90', () => {
+    let job = aid.parse.url('http://localhost:90/about');
+    assert.strictEqual('localhost:90',job.host);
+  });
+
+	it('url(https://localhost:443/test) -> localhost', () => {
+    let job = aid.parse.url('https://localhost:443/test');
+    assert.strictEqual('localhost',job.host);
+  });
 });
 
 describe('Parse.context', () => {
