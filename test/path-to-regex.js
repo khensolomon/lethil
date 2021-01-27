@@ -82,6 +82,13 @@ describe('Path to regx', () => {
     assert.strictEqual(undefined,params.name);
   });
 
+  // it('param /pos-:id', () => {
+  //   let job = '/pos-noun'.match(aid.parse.uri('/pos-:id'));
+  //   // const params = job.groups;
+  //   // assert.strictEqual('noun',params.id);
+  //   console.log(job);
+  // });
+
   it('param /foo/:id/:name/:val? -> /foo/a/b', () => {
     // console.log(parse.uri('/foo/:id/:name'),'/foo/slash/more'.match(parse.uri('/foo/:id/:name')));
     // console.log(parse.uri('/foo/:id?/:name'),'/foo/slash/more'.match(parse.uri('/foo/:id?/:name')));
