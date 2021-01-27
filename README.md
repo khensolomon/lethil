@@ -1,8 +1,8 @@
 # Lethil
 
 [![Build Status][travis]][travis-url]
-[![npm][npm-download]][npm-dl-url]
-![npm][npm-version]
+[![npm-download-count]][npm-url]
+[![npm][npm-version]][npm-url]
 ![Mocha][test-mocha]
 
 ...`lethil` is a minimal and configurable Node.js web framework, it has no dependencies but customizable and allow developer to deploy multiply applications simultaneously, and which has a very minimum requirement and aim to provided as light as possible.
@@ -110,6 +110,6 @@ node run test/123
 [test-mocha]: https://img.shields.io/badge/test-mocha-green.svg?longCache=true
 [travis]: https://travis-ci.com/khensolomon/lethil.svg
 [travis-url]: https://www.travis-ci.com/github/khensolomon/lethil
-[npm-download]: https://img.shields.io/npm/dt/lethil.svg
-[npm-dl-url]: https://www.npmjs.com/package/lethil
+[npm-download-count]: https://img.shields.io/npm/dt/lethil.svg
+[npm-url]: https://www.npmjs.com/package/lethil
 [npm-version]: https://img.shields.io/npm/v/lethil.svg
