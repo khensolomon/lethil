@@ -5,7 +5,7 @@ import aid from '../lib/aid/index.js';
 // import * as assert from 'assert';
 // import {parse} from '../lib/aid/index.js';
 
-describe('Path to regx', () => {
+describe('aid: path-to-regex', () => {
 
 	it('match /post == /post, /post/ != /posts, /post/none ', () => {
     let job = aid.parse.uri('/post');
@@ -82,12 +82,25 @@ describe('Path to regx', () => {
     assert.strictEqual(undefined,params.name);
   });
 
-  // it('param /pos-:id', () => {
-  //   let job = '/pos-noun'.match(aid.parse.uri('/pos-:id'));
-  //   // const params = job.groups;
-  //   // assert.strictEqual('noun',params.id);
-  //   console.log(job);
-  // });
+  it('param /foo?id=value', () => {
+    let job = '/foo'.match(aid.parse.uri('/foo?id=value'));
+    assert.strictEqual(undefined,job.groups);
+    // console.log(aid.parse.uri('/foo/:id/:name?'));
+  });
+
+  it('param /foo-:id -> /pos-noun', () => {
+    let job = '/foo-noun'.match(aid.parse.uri('/foo-:id'));
+    const params = job.groups;
+    assert.strictEqual('noun',params.id);
+  });
+
+  it('param /foo-:first-:second -> /foo-first-second', () => {
+    let job = '/foo-first-second'.match(aid.parse.uri('/foo-:first-:second'));
+    const params = job.groups;
+    assert.strictEqual('first',params.first);
+    assert.strictEqual('second',params.second);
+  });
+
 
   it('param /foo/:id/:name/:val? -> /foo/a/b', () => {
     // console.log(parse.uri('/foo/:id/:name'),'/foo/slash/more'.match(parse.uri('/foo/:id/:name')));

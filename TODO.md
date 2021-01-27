@@ -1,31 +1,43 @@
 # Todo
 
-- [ ] Navigator
+- [x] Navigator
 - [ ] Compression
-- [ ] uglify-es
-- [ ] route POST; GET; ??
-
-## Done
-
-- [x] support mongodb
+- [ ] Cookie
+- route
+  - [x] `POST; GET; PUT; DELETE`
+- request
+  - [x] params
+  - [x] query
+  - [x] cookies -> get
+- response
+  - [x] locals
+  - [x] cookie -> set
+  - [x] set
+  - [x] status
+  - [x] send
+  - [x] json
+  - [x] render
+- Middleware
+  - [x] load common
+  - [ ] individual
+- DB
+  - [x] support MongDB
+  - [x] support MySQL
+- Path to regex
+  - [x] `/foo-:id`
+  - [x] `foo?name=value` -> `foo/?name=value`
+  - [x] `/foo/:id`
+  - [x] `/foo/:id/:name?`
 - [x] support command line interface
-- [x] support redirect (www or none-www)
-- [x] support restrict
-- [x] styleMiddleWare,scriptMiddleWare moved to middle
-- [x] Readme
+- [ ] support restrict
 
-npm deprecate my-thing@"< 0.2.3" "critical bug fixed in v0.2.3"
-
-npm deprecate @scriptive/evh@1.1.6 "WARNING: This module has been renamed to lethil. Please install it instead. See <https://github.com/khensolomon/lethil> for more information."
-
-    "find ./dist/js/ -name "*.js" -exec bash -c 'mv "$1" "${1%.js}".mjs' - '{}' \;"
-    find ./dist/js/ -name "*.mjs" -exec bash -c 'mv "$1" "${1%.js}".cjs' - '{}' \;
-    find ./dist/js/ -name "*.js" -exec bash -c 'mv "$1" "${1%.js}".cjs' - '{}' \;
-
+```bash
 node index
 nodemon index
 forever start forever.json
+```
 
+## Color
 
 - Bright Black: \u001b[30;1m
 - Bright Red: \u001b[31;1m
