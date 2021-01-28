@@ -2,7 +2,6 @@
 
 - [x] Navigator
 - [ ] Compression
-- [ ] Cookie
 - route
   - [x] `POST; GET; PUT; DELETE`
 - request
@@ -19,7 +18,7 @@
   - [x] render
 - Middleware
   - [x] load common
-  - [ ] individual
+  - [x] individual
 - DB
   - [x] support MongDB
   - [x] support MySQL
@@ -29,7 +28,7 @@
   - [x] `/foo/:id`
   - [x] `/foo/:id/:name?`
 - [x] support command line interface
-- [ ] support restrict
+- [x] support restrict
 
 ```bash
 node index

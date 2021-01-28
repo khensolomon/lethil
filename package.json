@@ -1,6 +1,6 @@
 {
   "name": "lethil",
-  "version": "1.1.9",
+  "version": "1.2.0",
   "description": "...a minimal and configurable Node.js framework!",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,7 +33,8 @@
     "framework",
     "command line interface",
     "minimal",
-    "configurable"
+    "configurable",
+    "pug","mysql","reverse proxy"
   ],
   "author": "Khen Solomon Lethil",
   "license": "MIT",
@@ -42,7 +43,7 @@
   },
   "homepage": "https://github.com/khensolomon/lethil/#readme",
   "engines": {
-    "node": ">=14.15.3"
+    "node": ">=14.x"
   },
   "dependencies": {
   },
