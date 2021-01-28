@@ -1,6 +1,7 @@
 # Lethil
 
 [![Build Status][travis]][travis-url]
+![Github][workflows]
 [![npm-download-count]][npm-url]
 [![npm][npm-version]][npm-url]
 ![Mocha][test-mocha]
@@ -113,3 +114,4 @@ node run test/123
 [npm-download-count]: https://img.shields.io/npm/dt/lethil.svg
 [npm-url]: https://www.npmjs.com/package/lethil
 [npm-version]: https://img.shields.io/npm/v/lethil.svg
+[workflows]: https://github.com/khensolomon/lethil/workflows/Node/badge.svg
