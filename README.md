@@ -80,7 +80,9 @@ app.get('/test/:id', function(req) {
   return req.params.id
 });
 
-app.execute();
+app.execute(() => {
+  app.close();
+});
 
 app.on('success',function(e) {
   console.log('...',e)
@@ -90,8 +92,6 @@ app.on('success',function(e) {
 app.on('error',function(e) {
   console.log('...',e)
 });
-
-app.close();
 
 ```
 
