@@ -1,4 +1,6 @@
-// import 'mocha';
+```js
+
+import 'mocha';
 import * as assert from 'assert';
 import http from 'http';
 import core from '../lib/index.js';

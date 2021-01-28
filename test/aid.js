@@ -6,7 +6,7 @@ describe('Parse', () => {
 
 	it('parse.uri(/post/:id) -> /post/345 is {id: 345}', () => {
     let requestURL = '/post/345';
-    let job = aid.parse.uri('/post/:id');
+    let job = aid.route.reg('/post/:id');
     const reg = requestURL.match(job);
     const params = reg.groups;
 
@@ -16,7 +16,7 @@ describe('Parse', () => {
 
 	it('parse.uri(/post/title)', () => {
     let requestURL = '/post/title';
-    let job = aid.parse.uri(requestURL).test('/post/title');
+    let job = aid.route.reg(requestURL).test('/post/title');
     assert.ok(job);
   });
 
@@ -27,7 +27,7 @@ describe('Parse', () => {
   // });
 
   it('parse.uri(/post/:id?) -> /post', () => {
-    let job = aid.parse.uri('/post/:id?');
+    let job = aid.route.reg('/post/:id?');
     assert.ok(job.test('/post'));
     assert.ok(job.test('/post/14'));
   });
