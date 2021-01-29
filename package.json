@@ -1,9 +1,10 @@
 {
   "name": "lethil",
-  "version": "1.2.0",
+  "version": "1.2.0-alpha.1",
   "description": "...a minimal and configurable Node.js framework!",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "dist/index",
+  "types": "dist/index",
   "exports": {
     "node": {
       "import": "./dist/index.js",
