@@ -33,7 +33,7 @@ app.get('/about', function(req, res) {
   res.send('About')
 });
 
-page.get('/none', function(req, res) {
+app.get('/none', function(req, res) {
   res.status(404).send('Not found');
 });
 
@@ -41,11 +41,9 @@ app.get('/test/:id', function(req, res) {
   res.json(Object.assign({test:true},req.params,req.query));
 });
 
-page.get('/middleware', function(req, res,next) {
+app.get('/middleware', function(req, res,next) {
   setTimeout(next, 2000);
-  // setTimeout(() => {
-  //   next();
-  // }, 1000);
+  // setTimeout(() => { next(); }, 1000);
 },function(req, res) {
   res.send('Middleware...')
 });
