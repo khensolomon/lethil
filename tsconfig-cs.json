@@ -1,7 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "target": "es2019",
     "module": "CommonJS",
-    "outDir": "dist/js"
+    "outDir": "dist"
+  },
+  "esm":{
+    "target": "esnext",
+    "module": "ESNext",
   }
 }

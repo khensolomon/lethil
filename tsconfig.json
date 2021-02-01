@@ -1,10 +1,10 @@
 {
-	"compilerOptions": {
+  "compilerOptions": {
     "rootDir": "./lib",
     "target": "esnext",
+    "module": "ESNext",
     "moduleResolution": "node",
 
-    "module": "ESNext",
     "outDir": "./dist",
 
     "sourceMap": false,
