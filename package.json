@@ -1,6 +1,6 @@
 {
   "name": "lethil",
-  "version": "1.2.0-alpha.1",
+  "version": "1.2.0-alpha.2",
   "description": "...a minimal and configurable Node.js framework!",
   "type": "module",
   "main": "dist/index",
@@ -8,7 +8,7 @@
   "exports-": {
     "node": {
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.js"
     },
     "default": "./dist/index.js"
   },
@@ -17,7 +17,9 @@
     "test": "mocha",
     "prepublish": "npm run build",
     "build": "npm run tsc",
-    "tsc": "tsc -p tsconfig.json",
+    "tsc": "npm run tsc:cjs",
+    "tsc:esm": "tsc -p tsconfig.json",
+    "tsc:cjs": "tsc -p tsconfig-cs.json",
     "lint": "eslint . --ext .js",
     "-test": "mocha -r ts-node/register test/*.ts",
     "-test-single": "mocha -r ts-node/register",
