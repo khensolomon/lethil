@@ -10,6 +10,7 @@
 *.md export-ignore
 .env export-ignore
 
+lethil.code-workspace export-ignore
 .travis.yml export-ignore
 .npmignore export-ignore
 .editorconfig export-ignore
