@@ -13,8 +13,8 @@
     "default": "./dist/index.js"
   },
   "scripts": {
-    "tst": "mocha -r test/*.js",
-    "test": "mocha",
+    "tst": "mocha",
+    "test": "mocha test/mocha-*.js",
     "prepublish": "npm run build",
     "build": "npm run tsc",
     "tsc": "npm run tsc:cjs",
