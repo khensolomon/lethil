@@ -1,7 +1,7 @@
 {
   "name": "lethil",
-  "version": "1.2.0-alpha.2",
-  "description": "...a minimal and configurable Node.js framework!",
+  "version": "1.2.0-alpha.3",
+  "description": "...a minimal and configurable Node.js web framework!",
   "type": "module",
   "main": "dist/index",
   "types": "dist/index",
@@ -33,13 +33,14 @@
     "dist"
   ],
   "keywords": [
-    "framework",
+    "web","framework",
     "command line interface",
     "minimal",
     "configurable",
     "pug",
     "mysql",
-    "reverse proxy"
+    "classic",
+    "reverse proxy","server"
   ],
   "author": "Khen Solomon Lethil",
   "license": "MIT",
