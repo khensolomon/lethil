@@ -19,7 +19,7 @@ npm install --save lethil
 ### server
 
 ```js
-// server.js
+// serve.js
 import core from 'lethil';
 
 const app = core.server();
@@ -57,7 +57,7 @@ app.listen(config.listen, () => {
 ```
 
 ```bash
-node server
+node serve
 ```
 
 ### command
