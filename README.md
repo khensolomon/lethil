@@ -107,7 +107,7 @@ node run test/123
 [MIT](LICENSE)
 
 [test-mocha]: https://img.shields.io/badge/test-mocha-green.svg?longCache=true
-[travis]: https://travis-ci.com/khensolomon/lethil.svg
+[travis]: https://app.travis-ci.com/khensolomon/lethil.svg?branch=master
 [travis-url]: https://www.travis-ci.com/github/khensolomon/lethil
 [npm-download-count]: https://img.shields.io/npm/dt/lethil.svg
 [npm-url]: https://www.npmjs.com/package/lethil
