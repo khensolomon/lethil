@@ -1,3 +1,3 @@
 # root
 
-... Please refer to [Readme](/README.md) or [Getting started](/docs/Readme.md)
+... Please refer to [Readme](repo/lethil/master/README.md) or [Getting started](repo/lethil/master/docs/Readme.md)
