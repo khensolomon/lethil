@@ -8,6 +8,8 @@
 
 ...`lethil` is a minimal and configurable Node.js web framework, it has no dependencies but customizable and allow developer to deploy multiply applications simultaneously, and which has a very minimum requirement and aim to provided as light as possible.
 
+Please refer to [Getting started][getting-started] for directories strucuture, dependencies guide and basic command-line for setup/task.
+
 ```bash
 npm install --save lethil
 ```
@@ -113,3 +115,5 @@ node run test/123
 [npm-url]: https://www.npmjs.com/package/lethil
 [npm-version]: https://img.shields.io/npm/v/lethil.svg
 [workflows]: https://github.com/khensolomon/lethil/workflows/Node/badge.svg
+[workflows]: https://github.com/khensolomon/lethil/workflows/Node/badge.svg
+[getting-started]: docs/Readme.md

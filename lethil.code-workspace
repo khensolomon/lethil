@@ -1,22 +1,28 @@
 {
 	"folders": [
     {
+      "name": "lethil",
       "path": "."
     },
     {
-      "path": "..\\www"
+      "name": "html",
+      "path": "..\\html"
     },
     {
-      "path": "..\\myordbok"
-    },
-    {
+      "name": "zaideih",
       "path": "..\\zaideih"
     },
     {
+      "name": "lethil-mjs",
+      "path": "..\\lethil-mjs"
+    },
+    {
+      "name": "lethil-cjs",
       "path": "..\\lethil-cjs"
     },
     {
-      "path": "..\\lethil-mjs"
+      "name": "myordbok",
+      "path": "..\\myordbok"
     }
   ],
 	"settings": {
