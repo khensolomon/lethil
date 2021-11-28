@@ -11,6 +11,8 @@ sudo apt-get install rsync
 
 ## Cli
 
+more info on mounting `/var/www/storage` please see [Cloud Storage FUSE](gcsfuse.md).
+
 ```sh
 # copy
 $ rsync -avP storage/media/ media
@@ -21,10 +23,19 @@ $ rsync -avP media storage/media/
 # copy all media
 rsync -avP /var/www/storage/media/ /var/www/media
 # backup media (fonts hits count, log change)
-rsync -avP /var/www/media/ /var/www/storage/media
+# rsync -avP /var/www/media/ /var/www/storage/media
 
 # copy just music map
-rsync -avP /var/www/storage/media/store/ /var/www/media/store
+# rsync -avP /var/www/storage/media/store/ /var/www/media/store
+
+# backup log (log change)
+rsync -avP /var/www/media/log/ /var/www/storage/media/log
+
+# backup log (fonts & hits count )
+rsync -avP /var/www/media/fonts/ /var/www/storage/media/fonts
+
+# backup log (just hits count )
+rsync -avP /var/www/media/fonts/*.json /var/www/storage/media/fonts
 ```
 
 ## Structure
