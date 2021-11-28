@@ -1,0 +1,8 @@
+body {
+  background-color: beige;
+
+}
+body::before{
+  content: "sss-------updated----";
+  color: blue;
+}

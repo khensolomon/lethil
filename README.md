@@ -1,115 +1,123 @@
-# Lethil
+# www
 
-[![Build Status][travis]][travis-url]
-![Github][workflows]
-[![npm-download-count]][npm-url]
-[![npm][npm-version]][npm-url]
-![Mocha][test-mocha]
+`scriptive/evh` virtual server!
 
-...`lethil` is a minimal and configurable Node.js web framework, it has no dependencies but customizable and allow developer to deploy multiply applications simultaneously, and which has a very minimum requirement and aim to provided as light as possible.
+...see
 
-```bash
-npm install --save lethil
+- [Port](host.md#local) and [localhost](host.md#port)
+- [SSL](ssl.md#enviroment) using **letsencrypt**
+- Enviroment [.env](env.md#enviroment) configuration for [port](env.md#port), [virtual](env.md#virtual) and [SSL Certificate](env.md#ssl-certificate).
+- Most used [command line](ssh.md#ssh)
+- MySQL [Installation](mysql.md#installation)
+- Storage: [gcsfuse](gcsfuse.md#gcsfuse)
+
+## development
+
+```shell
+npm install nodemon -g
+npm install forever -g
 ```
 
-> ... `lethil` is currently ECMAScript modules and expected to be import (esm) but not require.
+## production
 
-## How does it work
+...dependencies
 
-### server
+```shell
+npm install pm2 -g
 
-```js
-// serve.js
-import core from 'lethil';
-
-const app = core.server();
-const config = app.config;
-
-app.get('/', function(req, res) {
-  res.send('Home')
-});
-
-app.get('/about', function(req, res) {
-  res.send('About')
-});
-
-app.get('/none', function(req, res) {
-  res.status(404).send('Not found');
-});
-
-app.get('/test/:id', function(req, res) {
-  res.json(Object.assign({test:true},req.params,req.query));
-});
-
-app.get('/middleware', function(req, res,next) {
-  setTimeout(next, 2000);
-  // setTimeout(() => { next(); }, 1000);
-},function(req, res) {
-  res.send('Middleware...')
-});
-
-app.listen(config.listen, () => {
-  console.log(config.name,app.address.address,app.address.port);
-  // NOTE: app.close() helps mysql pool connection gracefully end.
-  // app.close();
-});
-
+# install all production dependencies
+npm install --production
+npm install --save https://github.com/scriptive/evh/tarball/master
 ```
 
-```bash
-node serve
+> pm2
+
+```shell
+# enable PM2 to start at system boot
+pm2 startup
+pm2 save
+pm2 update
+
+# disable PM2 to start at system boot
+pm2 unstartup systemd
 ```
 
-### command
+...structure for directories, storage([bucket](gcsfuse.md#gcsfuse))
 
-```js
-// run.js
-import core from 'lethil';
+```sh
+$ cd www
 
-const app = core.command();
+# copy
+$ rsync -avP storage/media/ media
+# backup (font-view,download)
+$ rsync -avP media storage/media/
 
-app.get('/', function(req) {
-  return 'Main';
-});
-app.get('/about', function(req) {
-  return 'About';
-});
-
-app.get('/test/:id', function(req) {
-  return req.params.id
-});
-
-app.execute(() => {
-  app.close();
-});
-
-app.on('success',function(e) {
-  console.log('...',e)
-});
-
-// NOTE: on error
-app.on('error',function(e) {
-  console.log('...',e)
-});
-
+|~/www
+└── scriptive
+    ├── .evn
+    ├── serve.js
+    ├── static
+    ├── README.md
+    └── app(?)
+        └── default
+        └── *
+└── storage (storage-bucket)
+    └── music
+        └── m
+        └── z
+        └── e
+        └── f
+        └── h
+        └── ?
+    └── media
+        └── fonts
+            └── restrict.json
+            └── primary.json
+            └── secondary.json
+            └── external.json
+        └── grammar
+            └── partsofspeech.json
+        └── store
+        └── etc
+    └── ?
+└── media (copy of storage/media/)
+    └── fonts
+    └── grammar
+    └── store
+        └── track.json
+    └── etc
+└── tmp
+    └── ?
+└── backup
+    └── ?
+└── one
+    └── *
+└── two
+    └── *
 ```
 
-```bash
-node run
-node run about
-node run test/123
-```
+[rsync]: docs/rsync.md
+[curl]: docs/curl.md
+[wget]: docs/wget.md
 
-- [Getting Started](Getting-Started.md#getting-started)
+[Permission]: docs/Permission.md
 
-## License
+[nginx]: docs/nginx.md
+[nginx-configuration]: docs/nginx-configuration.md
 
-[MIT](LICENSE)
+[python]: docs/python.md
 
-[test-mocha]: https://img.shields.io/badge/test-mocha-green.svg?longCache=true
-[travis]: https://app.travis-ci.com/khensolomon/lethil.svg?branch=master
-[travis-url]: https://www.travis-ci.com/github/khensolomon/lethil
-[npm-download-count]: https://img.shields.io/npm/dt/lethil.svg
-[npm-url]: https://www.npmjs.com/package/lethil
-[npm-version]: https://img.shields.io/npm/v/lethil.svg
-[workflows]: https://github.com/khensolomon/lethil/workflows/Node/badge.svg
+[Node.js]: docs/Nodejs.md
+[pm2]: docs/pm2.md
+[npm]: docs/npm.md
+[tmp]: docs/Readme.md#directories
+
+[certbot]: docs/certbot.md
+
+[mysql]: docs/mysql.md
+
+[gcloud]: docs/gcloud.md
+[gcsfuse]: docs/gcsfuse.md
+[ssh]: docs/ssh.md
+
+[Task]: docs/Task.md

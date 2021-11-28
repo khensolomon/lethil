@@ -1,8 +1,0 @@
-/test
-/lib
-/asset
-
-*.md
-*-lock.json
-forever.json
-nodemon.json
