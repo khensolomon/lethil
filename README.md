@@ -58,7 +58,7 @@ app.listen(config.listen, () => {
 
 ```
 
-```bash
+```sh
 node serve
 ```
 
@@ -96,13 +96,11 @@ app.on('error',function(e) {
 
 ```
 
-```bash
+```sh
 node run
 node run about
 node run test/123
 ```
-
-- [Getting Started](Getting-Started.md#getting-started)
 
 ## License
 
