@@ -1,7 +1,7 @@
 # NPM
 
 - [Getting started](Readme.md)
-  
+
 to check outdated packages
 
 ```properties
@@ -22,7 +22,7 @@ npm install
 npm install --save-dev webpack webpack-cli
 ```
 
-```bat
+```sh
 # check outdated package
 cd \
 npm outdated
@@ -42,7 +42,7 @@ foo
 
 shell
 
-```shell
+```sh
 wc -l en_US.twitter.txt
 cd test
 echo Hello

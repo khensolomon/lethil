@@ -2,7 +2,7 @@
 
 - [Getting started](Readme.md)
 
-## Installation
+## Install
 
 ```sh
 sudo apt update
@@ -51,9 +51,9 @@ rsync {options} [User_Name]@[Remote-Host][Source-Files-Dir] {Destination}
 rsync {options} [Source-Files-Dir] [User_Name]@[Remote-Host]:{Destination}
 ```
 
-## Options
+## Params
 
-command | name | desc
+param | name | description
 ---|---|---
 -v | –verbose | Verbose output
 -q | –quiet | suppress message output
@@ -68,7 +68,7 @@ command | name | desc
 -h | –human-readable | display the output numbers in a human-readable format
 –progress | ? | show the sync progress during transfer
 
-## test
+## Other
 
 ```sh
 rsync -avP /var/path-src?/ /var/path-tar?

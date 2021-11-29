@@ -2,8 +2,10 @@
 
 - [Getting started](Readme.md)
 - [Configuration](nginx-configuration.md)
+- [shell](nginx.sh.md)
+- [log](nginx-log.md)
 
-## Installation
+## Install
 
 ```sh
 sudo apt update

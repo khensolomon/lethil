@@ -1,7 +1,7 @@
 # Getting started
 
-Setting up web server on Linux, Nginx, Node.js & MySQL
-using `lethil`.
+Setting up web server on Linux, [Nginx][nginx], [Node.js][nodejs] & [MySQL][mysql]
+using `lethil` framework.
 
 Back to [Readme](/README.md).
 
@@ -10,36 +10,19 @@ Back to [Readme](/README.md).
     - [x] [rsync][rsync]
     - [x] [curl][curl]
     - [ ] [wget][wget]
+    - [ ] [ssh][ssh]
+    - [ ] [log][log]
+    - [ ] [Task][Task]
   - [x] [Nginx][nginx] Web Server
     - [Configuration][nginx-configuration]
-  - [x] Managing logs with [Python][python]
+  - [x] Manage [logs][log] with [Python][python]
   - [x] SSL Certificate from [Certbot][certbot] using **letsencrypt**
   - [x] Database using [MySQL][mysql]
-  - [x] [Node.js][Node.js] scripting
+  - [x] [Node.js][nodejs] scripting
     - [x] [npm][npm]
     - [x] [pm2][pm2]
   - [ ] Storage: [gcsfuse][gcsfuse]
   - [ ] [gcloud][gcloud]
-
-## Enviroment
-
-### Development
-
-```sh
-npm install nodemon -g
-# npm install forever -g
-```
-
-### Production
-
-```sh
-npm install pm2 -g
-
-# install all production dependencies
-npm install --production
-```
-
-...
 
 ## Directories
 
@@ -70,14 +53,7 @@ ls -l
 > Structure for directories, storage
 
 ```sh
-$ cd www
-
-# copy
-$ rsync -avP storage/media/ media
-# backup (font-view,download)
-$ rsync -avP media storage/media/
-
-|~/www
+|var/www
 └── html
     ├── log.py
     ├── index.html
@@ -128,9 +104,29 @@ $ rsync -avP media storage/media/
     └── *
 ```
 
+## Enviroment
+
+### Development
+
+```sh
+npm install nodemon -g
+# npm install forever -g
+```
+
+### Production
+
+```sh
+npm install pm2 -g
+
+# install all production dependencies
+npm install --production
+```
+
 [rsync]: rsync.md
 [curl]: curl.md
 [wget]: wget.md
+[ssh]: ssh.md
+[log]: log.md
 
 [Permission]: Permission.md
 
@@ -139,7 +135,7 @@ $ rsync -avP media storage/media/
 
 [python]: python.md
 
-[Node.js]: Nodejs.md
+[nodejs]: nodejs.md
 [pm2]: pm2.md
 [npm]: npm.md
 [tmp]: #directories

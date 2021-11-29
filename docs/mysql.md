@@ -1,18 +1,21 @@
-# MySQL
+# Database
 
 - [Getting started](Readme.md)
-  
-## Installation
+
+## Install
+
+### MySQL
+
+```sh
+
+```
+
+### MariaDB
 
 ```sh
 sudo apt install mysql-server
-
 sudo apt install mariadb-server mariadb-client
-
 sudo mysql_secure_installation
-```
-
-```sh
 systemctl restart mariadb
 ```
 

@@ -2,7 +2,7 @@
 
 - [Getting started](Readme.md)
 
-## Installation
+## Install
 
 ```sh
 sudo apt-get install nodejs

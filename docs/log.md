@@ -1,7 +1,7 @@
 # Log
 
 - [Getting started](Readme.md)
-  
+
 ## Visit
 
 > app.visit.csv
@@ -30,9 +30,10 @@ format: `word count`
 
 format: `datetime wordCount`
 
-## cli
+## Cli
 
 ```sh
+cd /var/www/html
 # python log.py myordbok
 python log.py myordbok visit scan
 python log.py myordbok word scan
@@ -41,6 +42,9 @@ python log.py zaideih visit scan
 python log.py myordbok word sortedToJSON
 ```
 
+## Other
+
+```sh
 1577105824 1 10
 3 368564
 

@@ -24,7 +24,7 @@ wget https://github.com/rep/name/archive/master.tar.gz
 tar xf master.tar.gz --strip-components=1
 ```
 
-## installation
+## Install
 
 ```sh
 # curl

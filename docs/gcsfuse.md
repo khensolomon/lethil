@@ -8,7 +8,7 @@ Mount with read/write permission using *service account keys*.
 
 > gsaks: **google service account keys**
 
-## Installation
+## Install
 
 ```sh
 export GCSFUSE_REPO=gcsfuse-`lsb_release -c -s`

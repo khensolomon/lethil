@@ -2,14 +2,28 @@
 
 - [Getting started](Readme.md)
 
-## Installation
+## Install
 
 ```sh
 sudo apt update
 sudo apt-get install curl
 ```
 
-additional | description
+## Cli
+
+```sh
+curl -L https://github.com/owner/zaideih/archive/master.tar.gz | tar zx --strip-components=1
+curl -L https://github.com/owner/myordbok/archive/master.tar.gz | tar zx --strip-components=1
+
+tar cvzf download.gz access.myordbok.log.*.gz
+
+curl -L https://github.com/owner/lethil/archive/refs/heads/html.tar.gz | tar zx --strip-components=1
+
+```
+
+## Params
+
+param | description
 --- | ---
 -z | Compress archive using gzip program in Linux or Unix
 -c | Create archive on Linux
@@ -17,10 +31,6 @@ additional | description
 -f | Archive File name
 -x | Extract files to the given archive
 
+## Other
+
 ```sh
-curl -L https://github.com/scriptive/zaideih/archive/master.tar.gz | tar zx --strip-components=1
-curl -L https://github.com/scriptive/myordbok/archive/master.tar.gz | tar zx --strip-components=1
-
-tar cvzf download.gz access.myordbok.log.*.gz
-
-curl -L https://github.com/scriptive/www/archive/master.tar.gz | tar zx --strip-components=1
