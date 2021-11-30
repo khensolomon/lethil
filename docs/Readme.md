@@ -27,7 +27,7 @@ Back to [Readme](/README.md).
 
 ## Directories
 
-- Make the root directory, skip if Nginx already installed.
+- Make the root directory, skip if Nginx already installed and go ahead to [Configuration][nginx-configuration].
 
 ```sh
 # start with
@@ -112,6 +112,8 @@ ls -l
 ```sh
 npm install nodemon -g
 # npm install forever -g
+npm i mocha --save-dev
+npm i pug --save-dev
 ```
 
 ### Production
