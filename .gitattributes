@@ -2,6 +2,7 @@
 * text=auto
 
 /test/ export-ignore
+/docs/ export-ignore
 /test.app/ export-ignore
 /forever.json export-ignore
 /nodemon.json export-ignore

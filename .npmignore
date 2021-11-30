@@ -1,6 +1,7 @@
 /test
 /lib
 /asset
+/docs
 
 *.md
 *-lock.json
