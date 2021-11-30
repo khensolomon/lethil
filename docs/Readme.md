@@ -13,6 +13,7 @@ Back to [Readme](/README.md).
     - [ ] [ssh][ssh]
     - [ ] [log][log]
     - [ ] [Task][Task]
+    - [ ] [Permission][Permission]
   - [x] [Nginx][nginx] Web Server
     - [Configuration][nginx-configuration]
   - [x] Manage [logs][log] with [Python][python]
@@ -26,7 +27,7 @@ Back to [Readme](/README.md).
 
 ## Directories
 
-- Make the rood directory, skip if Nginx already installed. Probably the [Task][Task].
+- Make the root directory, skip if Nginx already installed.
 
 ```sh
 # start with
