@@ -11,14 +11,12 @@ sudo apt-get install curl
 
 ## Cli
 
+Check directories [permission](Permission.md).
+
 ```sh
-curl -L https://github.com/owner/zaideih/archive/master.tar.gz | tar zx --strip-components=1
-curl -L https://github.com/owner/myordbok/archive/master.tar.gz | tar zx --strip-components=1
-
-tar cvzf download.gz access.myordbok.log.*.gz
-
-curl -L https://github.com/owner/lethil/archive/refs/heads/html.tar.gz | tar zx --strip-components=1
-
+chown -R $USER:$USER /var/www
+cd /var/www/html
+curl -L https://github.com/khensolomon/lethil/archive/refs/heads/html.tar.gz | tar zx --strip-components=1
 ```
 
 ## Params
@@ -34,3 +32,7 @@ param | description
 ## Other
 
 ```sh
+curl -L https://github.com/owner/zaideih/archive/master.tar.gz | tar zx --strip-components=1
+curl -L https://github.com/owner/myordbok/archive/master.tar.gz | tar zx --strip-components=1
+
+tar cvzf download.gz access.myordbok.log.*.gz
