@@ -22,6 +22,8 @@ $ rsync -avP media storage/media/
 # media
 # copy all media
 rsync -avP /var/www/storage/media/ /var/www/media
+# copy just dictionary-definition data 
+rsync -avP /var/www/storage/media/glossary/ /var/www/media/glossary
 # backup media (fonts hits count, log change)
 # rsync -avP /var/www/media/ /var/www/storage/media
 

@@ -6,30 +6,37 @@
     },
     {
       "name": "html",
-      "path": "..\\html"
+      "path": "../html"
     },
     {
       "name": "zaideih",
-      "path": "..\\zaideih"
+      "path": "../zaideih"
     },
     {
       "name": "lethil-mjs",
-      "path": "..\\lethil-mjs"
+      "path": "../lethil-mjs"
     },
     {
       "name": "lethil-cjs",
-      "path": "..\\lethil-cjs"
+      "path": "../lethil-cjs"
     },
     {
       "name": "myordbok",
-      "path": "..\\myordbok"
+      "path": "../myordbok"
+    },
+    {
+      "name": "notation",
+      "path": "../myanmar-notation"
     }
   ],
 	"settings": {
-	"files.trimFinalNewlines": true,
+    "[javascript]": {
+      "editor.formatOnSave": true
+    },
+	  "files.trimFinalNewlines": true,
     "files.trimTrailingWhitespace": true,
     "editor.renderLineHighlight": "none",
-    "editor.detectIndentation": false,
+    "editor.detectIndentation": true,
     "editor.fontSize": 13,
     "files.exclude": {
     },
@@ -42,6 +49,8 @@
       "statusBar.background" : "#b6b7b8"
     },
     "workbench.colorTheme": "Default Light+",
-    "js/ts.implicitProjectConfig.checkJs": true
+    "js/ts.implicitProjectConfig.checkJs": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true
 	}
 }
