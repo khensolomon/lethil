@@ -3,10 +3,10 @@
   "version": "1.2.3",
   "description": "...a minimal and configurable Node.js web framework!",
 
-  "main": "/dist/index.js",
-  "module": "index.mjs",
+  "main": "./dist/index.js",
+  "module": "./index.mjs",
   "types": "./dist/index.d.ts",
-  "type": "module",
+  "-type": "module",
 
   "docs": {
     "type": {
@@ -21,8 +21,8 @@
   "exports": {
     ".": {
       "import": {
-        "node": "./dist/index.mjs",
-        "default": "./index.js"
+        "node": "./index.mjs",
+        "default": "./dist/index.js"
       },
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
