@@ -30,6 +30,7 @@
   },
   "files": [
     "lib",
+    "test",
     "dist",
     "type",
     "index.mjs"
