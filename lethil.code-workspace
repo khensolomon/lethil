@@ -27,6 +27,10 @@
     {
       "name": "notation",
       "path": "../myanmar-notation"
+    },
+    {
+      "name": "ttfmeta",
+      "path": "../ttfmeta"
     }
   ],
 	"settings": {
