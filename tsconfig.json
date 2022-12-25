@@ -1,18 +1,16 @@
 {
   "compilerOptions": {
-    "rootDir": "./lib",
     "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "Node",
-
-    // "outDir": "dist",
-    "declarationDir": "type",
-
-    // "sourceMap": false,
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    // "declarationDir": "./dist",
+    "sourceMap": false,
+    "strict": true,
+    "checkJs": true,
+    "allowJs": true,
+    "watch": false,
     "declaration": true,
-    "emitDeclarationOnly": true,
-    "esModuleInterop": true,
-
     "alwaysStrict": true,
     "noImplicitThis": true,
     "removeComments": true,
@@ -24,20 +22,33 @@
     "noUnusedLocals": true,
     "emitDecoratorMetadata": false,
     "experimentalDecorators": false,
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-
-    "strict": true,
-    "checkJs": true,
-    "allowJs": true,
-    "watch": false
+    "allowSyntheticDefaultImports": true,
+    "inlineSourceMap": false,
+    "listEmittedFiles": false,
+    "listFiles": false,
+    "noFallthroughCasesInSwitch": true,
+    "pretty": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "traceResolution": false,
+    "stripInternal": false,
+    "baseUrl": "lib",
+    "lib": [
+      "es6"
+    ],
+    "types": [
+      "node"
+    ]
   },
   "compileOnSave": false,
-  "include": ["./lib/**/*"],
+  "include": [
+    "./lib/**/*"
+  ],
   "exclude": [
     "node_modules",
     "test",
-    "dist",
-    "type",
-    "**/*.spec.js"
+    "dist"
   ]
 }
