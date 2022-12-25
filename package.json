@@ -2,39 +2,59 @@
   "name": "lethil",
   "version": "1.2.3",
   "description": "...a minimal and configurable Node.js web framework!",
-  "type": "module",
-  "main": "lib/index.js",
-  "types": "type/index.d.ts",
 
-  "main-tmp": "dist/index.js",
-  "types-tmp": "dist/index.d.ts",
-  "exports": {
-    "node": {
-      "import": "./lib/index.js",
-      "require": "./lib/index.cjs"
-    },
-    "default": "./lib/index.js"
+  "main": "/dist/index.js",
+  "module": "index.mjs",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+
+  "docs": {
+    "type": {
+      "help": [
+        "[type] need to disabled when publishing, nor never need if nothing to import from module",
+        "but required in development",
+        "NOTE: publish to npm before git commit"
+      ]
+    }
   },
+
+  "exports": {
+    ".": {
+      "import": {
+        "node": "./dist/index.mjs",
+        "default": "./index.js"
+      },
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "lib",
+    "type",
+    "index.mjs"
+  ],
+
   "scripts": {
-    "tst": "mocha",
-    "test": "mocha test/mocha-*.js",
     "prepublish": "npm run build",
-    "build": "npm run tsc",
-    "tsc": "npm run tsc:esm",
-    "tsc:esm": "tsc -p tsconfig.json",
-    "tsc:cjs": "tsc -p tsconfig-cs.json",
+
+    "build": "npm run build:cjs",
+    "build:cjs": "tsc -p tsconfig-cjs.json",
+    "build:esm": "tsc -p tsconfig-esm.json",
+
     "lint": "eslint . --ext .js",
     "-test": "mocha -r ts-node/register test/*.ts",
     "-test-single": "mocha -r ts-node/register",
-    "watch": "tsc --watch --project ./tsconfig.json"
+
+    "watch": "tsc --watch --project ./tsconfig.json",
+    "tst": "mocha",
+    "test": "mocha test/mocha-*.js"
   },
+
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khensolomon/lethil.git"
   },
-  "files": [
-    "lib","type"
-  ],
+
   "keywords": [
     "web","framework",
     "command line interface",
