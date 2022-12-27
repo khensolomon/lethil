@@ -1,6 +1,6 @@
 {
   "name": "lethil",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "...a minimal and configurable Node.js web framework!",
 
   "main": "./dist/index.js",
@@ -9,6 +9,18 @@
   "type": "module",
 
   "docs": {
+    "live":{
+      "main": "./dist/index.js",
+      "module": "./index.mjs",
+      "types": "./dist/index.d.ts",
+      "-type": "module"
+    },
+    "local":{
+      "main": "./lib/index.js",
+      "module": "./lib/index.js",
+      "types": "./lib/index.js",
+      "type": "module"
+    },
     "type": {
       "help": [
         "[type] need to disabled when publishing, nor never need if nothing to import from module",
@@ -80,7 +92,7 @@
   },
   "devDependencies": {
     "typescript": "^4.9.4",
-    "@types/node": "^18.11.17",
+    "@types/node": "^18.11.18",
     "mocha": "^10.2.0"
   }
 }
