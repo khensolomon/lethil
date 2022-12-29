@@ -50,6 +50,18 @@ app.get('/middleware', function(req, res,next) {
   res.send('Middleware...')
 });
 
+app.get('/get-file/:fileName', function(req, res) {
+  res.setHeader({
+    "Content-Type": "application/json; charset=utf-8"
+  });
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+  const file = path.resolve(
+    "my-storage/" + req.params.fileName
+  );
+  core.seek.readStream(file).pipe(res);
+});
+
 app.listen(config.listen, () => {
   console.log(config.name,app.address.address,app.address.port);
   // NOTE: app.close() helps mysql pool connection gracefully end.
@@ -112,6 +124,5 @@ node run test/123
 [npm-download-count]: https://img.shields.io/npm/dt/lethil.svg
 [npm-url]: https://www.npmjs.com/package/lethil
 [npm-version]: https://img.shields.io/npm/v/lethil.svg
-[workflows]: https://github.com/khensolomon/lethil/workflows/Node/badge.svg
 [workflows]: https://github.com/khensolomon/lethil/workflows/Node/badge.svg
 [getting-started]: docs/Readme.md
