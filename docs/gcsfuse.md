@@ -26,6 +26,9 @@ nano /etc/profile
 # nano ~/.profile
 export GOOGLE_APPLICATION_CREDENTIALS="/var/www/media/gsaks.json"
 echo $GOOGLE_APPLICATION_CREDENTIALS
+
+# cmd
+echo %GOOGLE_APPLICATION_CREDENTIALS%
 ```
 
 ## Cli
