@@ -51,10 +51,10 @@ app.get('/middleware', function(req, res,next) {
 });
 
 app.get('/get-file/:fileName', function(req, res) {
-  res.setHeader({
+  res.setHeaders({
     "Content-Type": "application/json; charset=utf-8"
   });
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeaders("Content-Type", "application/json; charset=utf-8");
 
   const file = path.resolve(
     "my-storage/" + req.params.fileName
