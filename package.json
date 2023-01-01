@@ -3,8 +3,10 @@
   "version": "1.2.8",
   "description": "...a minimal and configurable Node.js web framework!",
 
-      "main": "./lib/index.js",
-      "module": "./lib/index.js",
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "types": "./lib/index.js",
+  "type": "module",
 
   "docs": {
     "live":{
