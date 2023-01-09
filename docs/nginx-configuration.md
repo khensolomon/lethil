@@ -49,11 +49,14 @@ server {
         # check index, then fall back to displaying a 404.
         try_files $uri $uri/index.html =404;
     }
+    location /hooks/ {
+        proxy_pass http://127.0.0.1:9000/hooks/;
+    }
     error_page 403 404 /notfound.html;
-    location = /notfound.html {
+        location = /notfound.html {
     }
     error_page   500 501 502 503 504  /maintain.html;
-    location = /maintain.html {
+        location = /maintain.html {
     }
     
     # deny access to .htaccess files, if Apache's document root
@@ -132,19 +135,22 @@ server {
     location = /notfound.html {
       root $common_static;
     }
-    error_page   500 501 502 503 504  /underconstruction.html;
-    location = /underconstruction.html {
+    error_page   500 501 502 503 504  /under-construction.html;
+    location = /under-construction.html {
       root $common_static;
     }
 }
 ```
 
-```nginx
+`/etc/nginx/sites-available/myordbok`
+
+```sh
 upstream myordbok {
     server localhost:8082;
 }
 
 server {
+    # listen 80;
     server_name www.myordbok.com;
     # server_name myordbok.zotune.* myordbok.* www.myordbok.*;
     root /var/www/myordbok/static;
@@ -176,15 +182,15 @@ server {
     }
     error_page 503 /maintain.html;
     location = /maintain.html {
-    root $common_static;
+        root $common_static;
     }
     error_page 403 404 /notfound.html;
     location = /notfound.html {
-    root $common_static;
+        root $common_static;
     }
-    error_page   500 501 502 503 504  /underconstruction.html;
-    location = /underconstruction.html {
-    root $common_static;
+    error_page   500 501 502 503 504  /under-construction.html;
+    location = /under-construction.html {
+        root $common_static;
     }
     listen 443 ssl; # managed by Certbot
     ssl_certificate /etc/letsencrypt/live/myordbok/fullchain.pem; # managed by Certbot
@@ -206,7 +212,7 @@ server {
 }
 ```
 
-```nginx
+```sh
 upstream zaideih {
     server localhost:8081;
 }
@@ -248,8 +254,8 @@ server {
     location = /notfound.html {
         root $common_static;
     }
-    error_page   500 501 502 503 504  /underconstruction.html;
-    location = /underconstruction.html {
+    error_page   500 501 502 503 504  /under-construction.html;
+    location = /under-construction.html {
         root $common_static;
     }
     listen 443 ssl; # managed by Certbot

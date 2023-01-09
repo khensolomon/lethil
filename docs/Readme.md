@@ -25,6 +25,18 @@ Back to [Readme](/README.md).
   - [ ] Storage: [gcsfuse][gcsfuse]
   - [ ] [gcloud][gcloud]
 
+## Dependencies & environment preparation
+
+- [ ] [git](git.md)
+- [ ] [python](python.md)python
+- [ ] [nginx](nginx.md) nginx
+- [ ] [nodejs](nodejs.md) nodejs
+  - [ ] [pm2](pm2.md) pm2
+- [ ] [gcsfuse](gcsfuse.md)
+- [ ] [webhook](webhook.md) manually (latest version)
+- [ ] [MySQL](mysql.md)
+- [ ] [certbot](certbot.md) certbot
+
 ## Directories
 
 - Make the root directory, skip if Nginx already installed and go ahead to [Configuration][nginx-configuration].
@@ -141,7 +153,6 @@ npm install --production
 [nodejs]: nodejs.md
 [pm2]: pm2.md
 [npm]: npm.md
-[tmp]: #directories
 
 [certbot]: certbot.md
 
@@ -149,6 +160,5 @@ npm install --production
 
 [gcloud]: gcloud.md
 [gcsfuse]: gcsfuse.md
-[ssh]: ssh.md
 
 [Task]: Task.md

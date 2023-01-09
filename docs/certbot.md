@@ -4,6 +4,14 @@
 - [Nginx](nginx.md)
   - [configuration](nginx-configuration.md)
 
+Installation
+
+```sh
+sudo apt install certbot python3-certbot-nginx
+```
+
+Option
+
 ```sh
 # sudo certbot --nginx --cert-name lethil -d lethil.com -d *.lethil.me
 sudo certbot --nginx --cert-name myordbok -d myordbok.com -d www.myordbok.com

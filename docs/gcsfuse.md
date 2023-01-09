@@ -7,6 +7,8 @@ Mount with read/write permission using *service account keys*.
 ...get it from  **IAM & Admin** -> **Service accounts**.
 
 > gsaks: **google service account keys**
+>
+> help: <https://github.com/GoogleCloudPlatform/gcsfuse/blob/master/docs/installing.md>
 
 ## Install
 
@@ -43,6 +45,14 @@ gcsfuse bucket storage/
 fusermount -u /path/to
 
 gcsfuse -o rw,allow_other --key-file=/home/<username>/gsaks.json storage.lethil.me /var/www/storage
-gcsfuse -o rw --key-file=/home/<username>/gsaks.json storage.lethil.me /var/www/storage
 
+# Umount
 fusermount -u /var/www/storage
+
+cd /var/www
+mkdir storage
+mkdir media
+# mount
+gcsfuse -o rw --key-file=~/gsaks.json storage.lethil.me /var/www/storage
+# copy assets
+cp -r storage/media/. media/

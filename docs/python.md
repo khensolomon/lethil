@@ -5,5 +5,6 @@
 ## Install
 
 ```sh
-sudo apt-get install python
+sudo apt install python3 python3-pip
+# sudo apt-get install python
 python -V

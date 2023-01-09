@@ -17,3 +17,9 @@ ssh-keygen
 
 ```sh
 sudo nano ~/.ssh/authorized_keys
+```
+
+Now you can start login
+
+```sh
+# ssh user@host

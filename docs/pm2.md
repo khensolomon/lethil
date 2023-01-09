@@ -2,10 +2,21 @@
 
 - [Getting started](Readme.md)
   
+Install globally
+
+```sh
+sudo npm install -g pm2
+```
+
 ... list
 
-```properties
+```sh
 pm2 list
+
+# if ecosystem.config.js is commonjs
+pm2 start
+# if pm2.json exist 
+pm2 start pm2.json
 ```
 
 ... reload
