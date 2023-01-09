@@ -110,8 +110,11 @@ app.on('error',function(e) {
 
 ```sh
 node run
+> Main
 node run about
+> About
 node run test/123
+> 123
 ```
 
 ## License
