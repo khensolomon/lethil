@@ -1,12 +1,11 @@
 {
   "name": "lethil",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "description": "...a minimal and configurable Node.js web framework!",
 
-  "main": "./lib/index.js",
-  "module": "./lib/index.js",
-  "types": "./lib/index.js",
-  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./index.mjs",
+  "types": "./dist/index.d.ts",
 
   "docs": {
     "live":{
@@ -53,7 +52,7 @@
   ],
 
   "scripts": {
-    "prepublish": "npm run build",
+    "prepublishOnly": "npm run task:prepublish",
 
     "build": "npm run build:cjs",
     "build:cjs": "tsc -p tsconfig-cjs.json",
@@ -64,6 +63,9 @@
     "-test-single": "mocha -r ts-node/register",
 
     "watch": "tsc --watch --project ./tsconfig.json",
+
+    "task:prepublish": "node ./task.prepublish.mjs",
+
     "tst": "mocha",
     "test": "mocha test/mocha-*.js",
     "test:route": "mocha test/mocha-route.js"
