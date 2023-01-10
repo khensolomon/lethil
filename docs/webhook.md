@@ -66,7 +66,7 @@ server {
 [
   {
     "id": "update-html",
-    "execute-command": "/home/khensolomon/webhook/update-html.sh",
+    "execute-command": "/var/www/html/webhook.sh",
     "command-working-directory": "/var/www/html",
     "response-message":"Updated html...",
     "trigger-rule": {
@@ -96,7 +96,7 @@ server {
   },
   {
     "id": "update-myordbok",
-    "execute-command": "/home/khensolomon/webhook/update-myordbok.sh",
+    "execute-command": "/var/www/myordbok/webhook.sh",
     "command-working-directory": "/var/www/myordbok",
     "response-message":"Updated myordbok...",
     "trigger-rule": {
@@ -126,7 +126,7 @@ server {
   },
   {
     "id": "update-zaideih",
-    "execute-command": "/home/khensolomon/webhook/update-zaideih.sh",
+    "execute-command": "/var/www/zaideih/webhook.sh",
     "command-working-directory": "/var/www/zaideih",
     "response-message":"Updated zaideih...",
     "trigger-rule": {
