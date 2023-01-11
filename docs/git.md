@@ -5,6 +5,25 @@
 sudo apt install git
 ```
 
+Check status
+
+```sh
+# restore all files in the current directory
+git restore .
+# list of changed files
+git show --name-only
+```
+
+Make it executable
+
+```sh
+chmod u+x <filename>
+git update-index --chmod=+x <filename>
+git add --chmod=+x <filename>
+git commit -am "<filename> is executable."
+git push
+```
+
 Deploy keys
 
 ```sh
