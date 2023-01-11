@@ -62,6 +62,11 @@ server {
 
 `hooks.json` or `/etc/webhook.conf` holds all the configurations
 
+execute-command
+
+- [x] /var/www/[app]/webhook.sh
+- [ ] /var/www/webhook/update-[app].sh
+
 ```json
 [
   {
