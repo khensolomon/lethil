@@ -16,6 +16,9 @@ chown -R $(whoami) /var/path-?
 ```sh
 sudo chown $(whoami) /etc/letsencrypt/live/ -R
 sudo chown $(whoami) /etc/letsencrypt/archive/ -R
+
+# change to executable
+chmod +x update-html.sh
 ```
 
 ## Object read, wirte and execute
