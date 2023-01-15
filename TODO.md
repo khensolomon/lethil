@@ -30,6 +30,43 @@
 - [x] support command line interface
 - [x] support restrict
 
+## Improve code and jsDoc
+
+- aid
+  - [ ] array
+  - [ ] check
+  - [ ] load
+  - [ ] object
+  - [ ] parse
+  - [ ] route
+  - [ ] seek
+  - [ ] index
+- database
+  - [ ] mysql
+  - [ ] mongo
+- development
+  - [ ] pm2 (ecosystem)
+  - [ ] index
+- framework
+  - [ ] config
+  - [ ] handler
+  - [ ] http
+  - [ ] initial
+  - [ ] router
+  - [ ] index
+- service
+  - [ ] ask
+  - [ ] burglish
+  - [ ] timer
+  - [ ] utility
+  - [ ] index
+- [ ] cli.js
+- [ ] gui.js
+- [ ] run.js
+- [ ] serve.js
+- [ ] upgrade.js
+- [ ] index.js
+
 ```bash
 node index
 nodemon index
