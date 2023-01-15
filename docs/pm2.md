@@ -15,8 +15,8 @@ pm2 list
 
 # if ecosystem.config.js is commonjs
 pm2 start
-# if pm2.json exist 
-pm2 start pm2.json
+# if ecosystem.json exist 
+pm2 start ecosystem.json
 ```
 
 ... reload
@@ -33,4 +33,10 @@ pm2 update
 
 # disable PM2 to start at system boot
 pm2 unstartup systemd
+
+
+# Setup
+pm2 deploy ecosystem.json production setup
+# Update
+pm2 deploy ecosystem.json production
 ```
