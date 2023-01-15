@@ -1,27 +1,25 @@
 {
   "name": "lethil",
-  "version": "1.2.9",
+  "version": "1.3.0",
   "description": "...a minimal and configurable Node.js web framework!",
-
-  "main": "./lib/index.js",
-  "module": "./lib/index.js",
-  "types": "./lib/index.js",
+  "main": "./dist/index.js",
+  "module": "./index.mjs",
+  "types": "./types/index.d.ts",
   "type": "module",
-
   "docs": {
-    "live":{
+    "live": {
       "main": "./dist/index.js",
       "module": "./index.mjs",
-      "types": "./dist/index.d.ts"
+      "types": "./types/index.d.ts"
     },
-    "test":{
+    "test": {
       "main": "./lib/index.js",
       "module": "./lib/index.js"
     },
-    "local":{
+    "local": {
       "main": "./lib/index.js",
       "module": "./lib/index.js",
-      "types": "./lib/index.js",
+      "types": "./types/index.js",
       "type": "module"
     },
     "type": {
@@ -32,7 +30,6 @@
       ]
     }
   },
-
   "exports": {
     ".": {
       "import": {
@@ -40,51 +37,45 @@
         "default": "./dist/index.js"
       },
       "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./types/index.d.ts"
     }
   },
   "files": [
     "lib",
     "test",
     "dist",
-    "type",
+    "types",
     "index.mjs"
   ],
-
   "scripts": {
     "prepublishOnly": "npm run task:prepublish",
-
     "build": "npm run build:cjs",
     "build:cjs": "tsc -p tsconfig-cjs.json",
     "build:esm": "tsc -p tsconfig-esm.json",
-
     "lint": "eslint . --ext .js",
     "-test": "mocha -r ts-node/register test/*.ts",
     "-test-single": "mocha -r ts-node/register",
-
     "watch": "tsc --watch --project ./tsconfig.json",
-
     "task:prepublish": "node ./task.prepublish.mjs",
-
     "tst": "mocha",
     "test": "mocha test/mocha-*.js",
     "test:route": "mocha test/mocha-route.js"
   },
-
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khensolomon/lethil.git"
   },
-
   "keywords": [
-    "web","framework",
+    "web",
+    "framework",
     "command line interface",
     "minimal",
     "configurable",
     "pug",
     "mysql",
     "classic",
-    "reverse proxy","server"
+    "reverse proxy",
+    "server"
   ],
   "author": "Khen Solomon Lethil",
   "license": "MIT",
@@ -95,8 +86,7 @@
   "engines": {
     "node": ">=16.x"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "typescript": "^4.9.4",
     "@types/node": "^18.11.18",
