@@ -1,5 +1,9 @@
-/test
-/lib
+# /lib
+# /test
+# /test/mocha-*.js
+/test/*.md
+# /dist
+# /types
 /asset
 /docs
 
