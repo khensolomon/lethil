@@ -3,8 +3,8 @@
 import 'mocha';
 import * as assert from 'assert';
 import http from 'http';
-import core from '../lib/index.js';
-// import {server, config, default as set} from '../lib/index.js';
+import core from '../lib/lethil.js';
+// import {server, config, default as set} from '../lib/lethil.js';
 
 const $ = core.config();
 

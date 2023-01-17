@@ -1,30 +1,29 @@
 // import 'mocha';
-import * as assert from 'assert';
-import http from 'http';
-import core from '../lib/index.js';
+import * as assert from "assert";
+// import http from "http";
+import core from "../lethil.mjs";
+// import core from "../lib/lethil.js";
 
 const app = core.server();
 const config = core.config;
 
-var requestUrl = 'http://localhost:80';
-describe('GUI',  () => {
-
+var requestUrl = "http://localhost:80";
+describe("GUI", () => {
   before(() => {
     // core.server();
     // core.set('root','../evh-test-app');
     // core.set('port',8086);
   });
 
-    // requestUrl = requestUrl.replace('localhost',config.HOST).replace('80',config.PORT);
-    // core.server();
+  // requestUrl = requestUrl.replace('localhost',config.HOST).replace('80',config.PORT);
+  // core.server();
 
-  it('listen ', (done) => {
+  it("listen ", (done) => {
     app.listen(config.PORT, config.HOST, (error) => {
       assert.strict.ifError(error);
       done();
     });
   });
-
 
   // it('404', (done) => {
   //   http.get({
@@ -81,5 +80,4 @@ describe('GUI',  () => {
     // console.log('close')
     // process.exit()
   });
-
 });
