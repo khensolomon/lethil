@@ -108,6 +108,6 @@
   },
   "homepage": "https://github.com/khensolomon/lethil/#readme",
   "engines": {
-    "node": ">=12.x"
+    "node": ">=16.x"
   }
 }
