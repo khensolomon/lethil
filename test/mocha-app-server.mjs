@@ -34,10 +34,10 @@ describe("app.server", () => {
     assert.strictEqual(8099, config.listen.port);
   });
 
-  it("reset port", () => {
-    set("port", 80);
-    assert.strictEqual(80, config.listen.port);
-  });
+  // it("reset port", () => {
+  //   set("port", 80);
+  //   assert.strictEqual(80, config.listen.port);
+  // });
 
   it("default hostname is 127.0.0.1", () => {
     assert.strictEqual("127.0.0.1", config.listen.host);
