@@ -2,7 +2,7 @@ import "mocha";
 import * as assert from "assert";
 import { deploy } from "../lethil.mjs";
 
-describe("Deployment", () => {
+describe("deploy.*", () => {
   it("Execute", async () => {
     assert.ok(typeof deploy.executeChildProcess == "function");
     assert.ok(typeof deploy.executeWithPromisify == "function");

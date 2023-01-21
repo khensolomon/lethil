@@ -2,7 +2,7 @@ import "mocha";
 import * as assert from "assert";
 import { timer } from "../lethil.mjs";
 
-describe("Timer", () => {
+describe("timer", () => {
   it("[10:00,00:22] isSeconds -> 10:22", async () => {
     const job = timer(["10:00", "00:22"]);
     const result = job.isSeconds().shorten();

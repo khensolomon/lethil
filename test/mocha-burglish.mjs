@@ -2,7 +2,7 @@ import "mocha";
 import * as assert from "assert";
 import { burglish } from "../lethil.mjs";
 
-describe("Burglish", () => {
+describe("burglish", () => {
   it("toUnicode", async () => {
     const job = burglish("ၾကင္နာေသာ");
     assert.strictEqual("ကြင်နာသော", job.toUnicode);

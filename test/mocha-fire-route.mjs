@@ -4,7 +4,7 @@ import { fire } from "../lethil.mjs";
 
 const available = Object.keys(fire.route);
 
-describe("fire.route: available", () => {
+describe("fire.route: available methods", () => {
   it(available.join(", "), () => {
     assert.strictEqual(3, available.length);
     assert.ok(
@@ -22,9 +22,46 @@ describe("fire.route: available", () => {
   // it('test', () => {});
 });
 
-describe("fire.route: test", () => {
-  // before(function(){})
+describe("fire.route: parse", () => {
+  it("parse.uri(/post/:id) -> /post/345 is {id: 345}", () => {
+    let requestURL = "/post/345";
+    let job = fire.route.pass("/post/:id");
+    /**
+     * @type {any} reg - to avoid 'reg' is possibly 'null'
+     */
+    const reg = requestURL.match(job);
+    const params = reg.groups;
 
+    assert.ok(job.test(requestURL));
+    assert.strictEqual("345", params?.id);
+  });
+
+  it("parse.uri(/post/title)", () => {
+    let requestURL = "/post/title";
+    let job = fire.route.pass(requestURL).test("/post/title");
+    assert.ok(job);
+  });
+
+  // it('parse.uri(/post/:id)', () => {
+  //   let requestURL = '/post/ww';
+  //   let job = parse.uri(requestURL).test('/post/:id');
+  //   assert.ok(job);
+  // });
+
+  it("parse.uri(/post/:id?) -> /post", () => {
+    let job = fire.route.pass("/post/:id?");
+    assert.ok(job.test("/post"));
+    assert.ok(job.test("/post/14"));
+  });
+
+  // it('parse.query(?k=33&t2=string) -> {k:33,t2:string}', () => {
+  // 	let job = parse.query('?k=33&t2=string');
+  //   assert.strictEqual("33",job.k);
+  //   assert.strictEqual("string",job.t2);
+  // });
+});
+
+describe("fire.route: test", () => {
   it("match /post == /post, /post/ != /posts, /post/none ", () => {
     let job = fire.route.pass("/post");
     assert.strictEqual(true, job.test("/post"));
