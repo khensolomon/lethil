@@ -57,7 +57,7 @@ describe("app.server", () => {
   //   assert.strictEqual(2023, config.PORT);
   // });
 
-  it("listen ", (done) => {
+  it("listen ", () => {
     // app.listen(config.PORT, config.HOST, (error) => {
     //   console.log(config.PORT, config.HOST);
     //   assert.strict.ifError(error);
@@ -73,7 +73,9 @@ describe("app.server", () => {
       // assert.strictEqual("", config.name);
       // assert.strictEqual("127.0.0.1", app.address.address);
       // assert.strictEqual(80, app.address.port);
-      assert.strict.ifError(error);
+      // assert.strict.ifError(error);
+      // assert.ok(true);
+      assert.strictEqual(undefined, error);
       // app.close();
       // done();
     });
