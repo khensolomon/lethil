@@ -16,12 +16,9 @@
     "task:prepublish": "node ./task.prepublish.mjs",
     "tst": "mocha",
     "test": "mocha test/mocha-*.mjs",
-    "--test": "mocha test/mocha-*.js",
-    "test:route": "mocha test/mocha-route.js",
-    "test:mjs": "mocha test/mocha-*.js",
-    "test:cjs": "mocha test/mocha-*.js",
-    "-test": "mocha -r ts-node/register test/*.ts",
-    "test:single": "mocha -r ts-node/register"
+    "test:current": "mocha test/mocha-utility.mjs",
+    "test:ts": "mocha -r ts-node/register test/*.ts",
+    "test:ts-current": "mocha -r ts-node/register"
   },
   "files": [
     "lib",

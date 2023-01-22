@@ -2,55 +2,55 @@ import "mocha";
 import * as assert from "assert";
 import { check } from "../lethil.mjs";
 
-describe("check.object(obj)", () => {
+describe("check.isObject(obj)", () => {
   it("is Object", () => {
-    const a = check.object(Object.create({}));
+    const a = check.isObject(Object.create({}));
     assert.ok(a);
 
-    const b = check.object({});
+    const b = check.isObject({});
     assert.ok(b);
 
-    const c = check.object([]);
+    const c = check.isObject([]);
     assert.strictEqual(true, c);
   });
 });
 
-describe("check.array(arr)", () => {
+describe("check.isArray(arr)", () => {
   it("is Array", () => {
-    const a = check.array([]);
+    const a = check.isArray([]);
     assert.ok(a);
 
-    const b = check.array("[]");
+    const b = check.isArray("[]");
     assert.strictEqual(false, b);
   });
 });
 
-describe("check.function(fn)", () => {
+describe("check.isFunction(fn)", () => {
   it("is Function", () => {
-    const a = check.function(() => {});
+    const a = check.isFunction(() => {});
     assert.ok(a);
 
-    const b = check.function("() => {}");
+    const b = check.isFunction("() => {}");
     assert.strictEqual(false, b);
   });
 });
 
-describe("check.string(str)", () => {
+describe("check.isString(str)", () => {
   it("is String", () => {
-    const a = check.string("12");
+    const a = check.isString("12");
     assert.ok(a);
 
-    const b = check.string(123);
+    const b = check.isString(123);
     assert.strictEqual(false, b);
   });
 });
 
-describe("check.number(num)", () => {
+describe("check.isNumber(num)", () => {
   it("is Number", () => {
-    const a = check.number("12");
+    const a = check.isNumber("12");
     assert.ok(a);
 
-    const b = check.number(123);
+    const b = check.isNumber(123);
     assert.strictEqual(true, b);
   });
 });
