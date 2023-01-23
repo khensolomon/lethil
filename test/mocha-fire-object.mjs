@@ -49,6 +49,37 @@ describe("fire.object", () => {
     });
   });
 
+  const mergeTargetObject = {
+    a: true,
+    b: {
+      a: 1,
+      b: 2,
+    },
+    c: {},
+  };
+  const mergeSourceObject = {
+    b: {
+      x: true,
+    },
+  };
+  const mergeTargetStringify = JSON.stringify(mergeTargetObject).replace(
+    /"/g,
+    ""
+  );
+  const mergeSourceStringify = JSON.stringify(mergeSourceObject).replace(
+    /"/g,
+    ""
+  );
+  describe(`.merge(${mergeTargetStringify},${mergeSourceStringify})`, () => {
+    fire.object.merge(mergeTargetObject, mergeSourceObject);
+    // console.log(mergeTargetObject);
+
+    it(`target.b.x == true`, () => {
+      assert.deepEqual(true, mergeTargetObject.b.x);
+      // assert.ok(true);
+    });
+  });
+
   // it(`.getKeybyValue(?)`, () => {
   //   assert.ok(true);
   // });

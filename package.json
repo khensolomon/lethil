@@ -16,7 +16,7 @@
     "task:prepublish": "node ./task.prepublish.mjs",
     "tst": "mocha",
     "test": "mocha test/mocha-*.mjs",
-    "test:current": "mocha test/mocha-utility.mjs",
+    "test:current": "mocha test/mocha-fire-object.mjs",
     "test:ts": "mocha -r ts-node/register test/*.ts",
     "test:ts-current": "mocha -r ts-node/register"
   },
