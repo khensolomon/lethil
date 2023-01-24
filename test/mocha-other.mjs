@@ -16,3 +16,16 @@ describe("Other", () => {
 // 	var abcs = Object.assign(setting,config);
 // 	return abcs;
 // }
+
+/**
+ * @template T
+ * @template [U = T]
+ * @param { T } item
+ * @param { function(T): U } [mapper = t => t]
+ * @returns { U }
+ */
+// export function map(item, mapper = t => t) {
+// 	return mapper(item);
+// }
+
+// const abc = map("123", parseInt);
