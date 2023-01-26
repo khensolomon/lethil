@@ -10,8 +10,8 @@ const app = server();
 describe("app.server", () => {
   before(() => {
     // core.server();
-    // core.set('root','../evh-test-app');
-    // core.set("port", 8087);
+    // core.set.only('root','../evh-test-app');
+    // core.set.only("port", 8087);
   });
   it("add default route", () => {
     new route.gui("navPage", "/").get("/", function (req, res) {
@@ -30,12 +30,12 @@ describe("app.server", () => {
   });
 
   it("update port to 8099", () => {
-    set("port", 8099);
+    set.only("port", 8099);
     assert.strictEqual(8099, config.listen.port);
   });
 
   // it("reset port", () => {
-  //   set("port", 80);
+  //   set.only("port", 80);
   //   assert.strictEqual(80, config.listen.port);
   // });
 
@@ -44,12 +44,12 @@ describe("app.server", () => {
   });
 
   it("update host to 0.0.0.0", () => {
-    set("hostname", "0.0.0.0");
+    set.only("hostname", "0.0.0.0");
     assert.strictEqual("0.0.0.0", config.listen.host);
   });
 
   it("reset host", () => {
-    set("hostname", "127.0.0.1");
+    set.only("hostname", "127.0.0.1");
     assert.strictEqual("127.0.0.1", config.listen.host);
   });
 

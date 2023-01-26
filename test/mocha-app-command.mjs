@@ -1,27 +1,27 @@
 import "mocha";
 import * as assert from "assert";
-import core from "../lethil.mjs";
+import { command, set } from "../lethil.mjs";
 // import {command, default as set} from '../lib/lethil.js';
 
-const app = core.command();
+const app = command();
 
 describe("app.command", () => {
   before(() => {
-    // app = core.command();
+    // app = command();
     // core.server();
-    // core.set('root','../evh-test-app');
-    // core.set('port',8086);
+    // core.set.only('root','../evh-test-app');
+    // core.set.only('port',8086);
   });
 
   it("init", () => {
-    app.set("root", "../evh-test-app");
+    set.only("root", "../evh-test-app");
 
     assert.ok(app);
     // assert.strict.ifError(app);
   });
 
   // it('invalid directory should return "no Module found"', () => {
-  //   app.set('root','../evh-test-app-invalid');
+  //   set.only('root','../evh-test-app-invalid');
   //   let job = app.command();
   //   assert.strict.deepEqual('no Module found',job)
   // });
