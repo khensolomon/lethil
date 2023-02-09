@@ -5,18 +5,16 @@
   "main": "./dist/lethil.js",
   "module": "./lethil.mjs",
   "types": "./types/lethil.d.ts",
-  "-type": "module",
   "scripts": {
-    "prepublishOnly": "npm run task:prepublish",
+    "prepublishOnly": "npm run build",
     "build": "npm run build:cjs",
     "build:cjs": "tsc -p tsconfig-cjs.json",
     "build:esm": "tsc -p tsconfig-esm.json",
     "lint": "eslint . --ext .js",
     "watch": "tsc --watch --project ./tsconfig.json",
-    "task:prepublish": "node ./task.prepublish.mjs",
     "tst": "mocha",
     "test": "mocha test/mocha-*.mjs",
-    "test:current": "mocha test/mocha-fire-object.mjs",
+    "test:current": "mocha test/mocha-parse.mjs",
     "test:ts": "mocha -r ts-node/register test/*.ts",
     "test:ts-current": "mocha -r ts-node/register"
   },
@@ -42,45 +40,11 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "typescript": "^4.9.4",
-    "@types/node": "^18.11.18",
+    "typescript": "^4.9.5",
+    "@types/node": "^18.13.0",
     "mocha": "^10.2.0",
     "@babel/core": "^7.20.12",
     "@babel/preset-env": "^7.20.2"
-  },
-  "docs": {
-    "live": {
-      "main": "./dist/lethil.js",
-      "module": "./lethil.mjs",
-      "types": "./types/lethil.d.ts"
-    },
-    "test": {
-      "main": "./lib/lethil.js",
-      "module": "./lib/lethil.js"
-    },
-    "local": {
-      "main": "./lib/lethil.js",
-      "module": "./lib/lethil.js",
-      "types": "./types/lethil.js",
-      "type": "module"
-    },
-    "type": {
-      "help": [
-        "[type] need to disabled when publishing, nor never need if nothing to import from module",
-        "but required in development",
-        "NOTE: publish to npm before git commit"
-      ]
-    }
-  },
-  "exports---": {
-    ".": {
-      "import": {
-        "node": "./lethil.mjs",
-        "default": "./dist/lethil.js"
-      },
-      "require": "./dist/lethil.js",
-      "types": "./types/lethil.d.ts"
-    }
   },
   "repository": {
     "type": "git",

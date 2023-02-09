@@ -45,6 +45,14 @@ describe("check.isValid(str): XSS query", () => {
     );
     assert.strictEqual(
       "",
+      check.isValid("%3E%3Cimg+src%3Dx+onerror%3Dprompt%281%29%3E")
+    );
+    assert.strictEqual(
+      "",
+      check.isValid("%22%3E%3Cimg+src%3Dx+onerror%3Dprompt%281%29%3E")
+    );
+    assert.strictEqual(
+      "",
       check.isValid(
         "<img+src%3Dx+click%3D%22location.href%3D%27https%3A%2F%2Fexample.com%2F%27%22>"
       )

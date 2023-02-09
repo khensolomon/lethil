@@ -55,3 +55,82 @@ describe("parse.count", () => {
     assert.strictEqual(3, job);
   });
 });
+
+describe("parse.cli", function () {
+  // process.argv.splice(2);
+
+  it("npm run script param", function () {
+    // @ts-ignore
+    let title = this.test.title;
+    let splice = title.split(" ");
+    let job = parse.cli(splice);
+    assert.strictEqual("/npm?run&script&param", job);
+  });
+
+  it("node run first second", function () {
+    // @ts-ignore
+    let title = this.test.title;
+    let splice = title.split(" ");
+    let job = parse.cli(splice);
+    assert.strictEqual("/node?run&first&second", job);
+  });
+
+  it("node run first second", function () {
+    // @ts-ignore
+    let title = this.test.title;
+    let splice = title.split(" ").splice(2);
+    let job = parse.cli(splice);
+    assert.strictEqual("/first?second", job);
+    assert.ok(true);
+  });
+
+  it("node run first --second", function () {
+    // @ts-ignore
+    let title = this.test.title;
+    let splice = title.split(" ").splice(2);
+    let job = parse.cli(splice);
+    assert.strictEqual("/first?second", job);
+  });
+
+  it("node run first --q:love k=key", function () {
+    // @ts-ignore
+    let title = this.test.title;
+    let splice = title.split(" ").splice(2);
+    let job = parse.cli(splice);
+    assert.strictEqual("/first?q=love&k=key", job);
+  });
+
+  it("node run first --q:love --k=key", function () {
+    // @ts-ignore
+    let title = this.test.title;
+    let splice = title.split(" ").splice(2);
+    let job = parse.cli(splice);
+    assert.strictEqual("/first?q=love&k=key", job);
+  });
+
+  it("node run first?q=love&k=key", function () {
+    // @ts-ignore
+    let title = this.test.title;
+    let splice = title.split(" ").splice(2);
+    let job = parse.cli(splice);
+    assert.strictEqual("/first?q=love&k=key", job);
+  });
+
+  it("node run first q=love k=key", function () {
+    // @ts-ignore
+    let title = this.test.title;
+    let splice = title.split(" ").splice(2);
+    let job = parse.cli(splice);
+    assert.strictEqual("/first?q=love&k=key", job);
+  });
+
+  it("npm run first --q --k", function () {
+    // @ts-ignore
+    let title = this.test.title;
+    let splice = title.split(" ").splice(2);
+    let job = parse.cli(splice);
+    assert.strictEqual("/first?q&k", job);
+    // console.log(job);
+    // assert.ok(true);
+  });
+});
