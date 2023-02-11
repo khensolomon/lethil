@@ -8,6 +8,16 @@ Install globally
 sudo npm install -g pm2
 ```
 
+...?
+
+```sh
+pm2 startup                   # Detect init system, generate and configure pm2 boot on startup
+pm2 save                      # Save current process list
+pm2 resurrect                 # Restore previously saved processes
+pm2 unstartup                 # Disable and remove startup system
+# pm2 unstartup systemd
+```
+
 ... list
 
 ```sh

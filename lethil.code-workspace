@@ -1,5 +1,5 @@
 {
-	"folders": [
+  "folders": [
     {
       "name": "lethil",
       "path": "."
@@ -31,30 +31,33 @@
     {
       "name": "ttfmeta",
       "path": "../ttfmeta"
+    },
+    {
+      "name": "thesaurus",
+      "path": "../thesaurus"
     }
   ],
-	"settings": {
+  "settings": {
     "[javascript]": {
       "editor.formatOnSave": true
     },
-	  "files.trimFinalNewlines": true,
+    "files.trimFinalNewlines": true,
     "files.trimTrailingWhitespace": true,
     "editor.renderLineHighlight": "none",
     "editor.detectIndentation": true,
     "editor.fontSize": 13,
-    "files.exclude": {
-    },
+    "files.exclude": {},
     "editor.tabSize": 2,
     "workbench.colorCustomizations": {
       "activityBar.background": "#dfdddd",
-      "activityBar.foreground":"#585858",
-      "textLink.foreground":"#ff0000",
-      "activityBar.inactiveForeground":"#aaaaac",
-      "statusBar.background" : "#b6b7b8"
+      "activityBar.foreground": "#585858",
+      "textLink.foreground": "#ff0000",
+      "activityBar.inactiveForeground": "#aaaaac",
+      "statusBar.background": "#b6b7b8"
     },
     "workbench.colorTheme": "Default Light+",
     "js/ts.implicitProjectConfig.checkJs": true,
     "editor.formatOnSave": true,
     "editor.formatOnPaste": true
-	}
+  }
 }

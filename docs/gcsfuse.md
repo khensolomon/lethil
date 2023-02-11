@@ -56,3 +56,4 @@ mkdir media
 gcsfuse -o rw --key-file=~/gsaks.json storage.lethil.me /var/www/storage
 # copy assets
 cp -r storage/media/. media/
+cp -r /var/www/storage/media/glossary/. /var/www/media/glossary
