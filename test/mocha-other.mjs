@@ -2,7 +2,7 @@ import "mocha";
 import * as assert from "assert";
 
 describe("Other", () => {
-  it("tmp", async () => {
+  it("other", async () => {
     assert.ok(true);
   });
 });
