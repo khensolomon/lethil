@@ -8,6 +8,19 @@ describe("parse.hostName*", () => {
     assert.strictEqual(/^localhost\.local$/i.toString(), job.toString());
   });
 
+  it("hostNameRegex([a,b,c]) -> /a|b|c/i", () => {
+    let job = parse.hostNameRegex(["a", "b", "c"]);
+    assert.strictEqual(/a|b|c/i.toString(), job.toString());
+  });
+
+  it("hostNameRegex([host.com,*.host.com]) -> /host.com|([^.]+).host.com/i", () => {
+    let job = parse.hostNameRegex(["host.com", "*.host.com"]);
+    assert.strictEqual(
+      /host\.com|([^.]+)\.host\.com/i.toString(),
+      job.toString()
+    );
+  });
+
   it("hostNameExec(*.example.com) -> example.com", () => {
     let job = parse.hostNameExec("http://www.*.example.com");
     assert.strictEqual("example.com", job);
@@ -28,6 +41,33 @@ describe("parse.url", () => {
   it("url(https://localhost:443/test) -> localhost", () => {
     let job = parse.url("https://localhost:443/test");
     assert.strictEqual("localhost", job.host);
+  });
+});
+
+describe("middle referer: ???", () => {
+  it("https://myordbok.lethil.me/", () => {
+    let ref = parse.url("https://myordbok.lethil.me/");
+    let host = "myordbok.lethil.me";
+    // res.locals.referer = req.headers.host == ref.host;
+    assert.ok(ref.host == host);
+  });
+  it("http://localhost/", () => {
+    let ref = parse.url("http://localhost/");
+    let host = "localhost";
+    // res.locals.referer = req.headers.host == ref.host;
+    assert.ok(ref.host == host);
+  });
+  it("https://myordbok.lethil.me/api/suggestion?q=v", () => {
+    let ref = parse.url("https://myordbok.lethil.me/api/suggestion?q=v");
+    let host = "myordbok.lethil.me";
+    // res.locals.referer = req.headers.host == ref.host;
+    assert.ok(ref.host == host);
+  });
+  it("http://localhost/api/suggestion?q=v", () => {
+    let ref = parse.url("http://localhost/api/suggestion?q=v");
+    let host = "localhost";
+    // res.locals.referer = req.headers.host == ref.host;
+    assert.ok(ref.host == host);
   });
 });
 
