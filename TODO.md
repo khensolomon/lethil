@@ -32,6 +32,12 @@
 - [x] support command line interface
 - [x] support restrict
 
+## Template engine
+
+- [x] pug - module
+- [ ] mustache - module
+- [ ] custom - user defined custom template engine
+
 ## Improve code and jsDoc
 
 - aid
