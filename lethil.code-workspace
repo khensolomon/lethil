@@ -9,6 +9,10 @@
       "path": "../html"
     },
     {
+      "name": "express",
+      "path": "../express"
+    },
+    {
       "name": "zaideih",
       "path": "../zaideih"
     },
