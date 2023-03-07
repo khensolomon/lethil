@@ -1,23 +1,29 @@
 import "mocha";
 import * as assert from "assert";
 import { command, set } from "../lethil.mjs";
-// import {command, default as set} from '../lib/lethil.js';
 
-const app = command();
+// const app = command();
+var app;
 
 describe("app.command", () => {
   before(() => {
-    // app = command();
+    app = command();
     // core.server();
     // core.set.only('root','../evh-test-app');
     // core.set.only('port',8086);
   });
 
-  it("init", () => {
-    set.only("root", "../evh-test-app");
+  // it("init", () => {
+  //   set.only("root", "../evh-test-app");
 
-    assert.ok(app);
-    // assert.strict.ifError(app);
+  //   assert.ok(app);
+  //   // assert.strict.ifError(app);
+  // });
+
+  it("add route", () => {
+    app.routes().register("apple", function (req) {
+      return "yes";
+    });
   });
 
   // it('invalid directory should return "no Module found"', () => {
@@ -31,12 +37,25 @@ describe("app.command", () => {
   //   let job = await app.command();
   //   assert.strict.deepEqual('no Method found',job)
   // });
+
+  it("listen ", () => {
+    app.listen((res) => {
+      assert.strict.equal(undefined, res);
+    });
+  });
+
+  it("close", () => {
+    app.close(function (error) {
+      // assert.ok(true);
+      assert.strict.equal("No route exists", error);
+    });
+  });
+
+  /**
+   * process.exit()
+   */
   after((done) => {
-    app.close();
-    // console.log('close')
-    // process.exit()
+    // app.exit();
     done();
   });
 });
-// app.root('/server/evh-test-app/.env');
-// app.command().then(console.log).catch(console.log);
