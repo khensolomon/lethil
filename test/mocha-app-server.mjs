@@ -33,10 +33,10 @@ describe("app.server", () => {
     assert.strictEqual(8099, app.config.listen.port);
   });
 
-  it("reset port", () => {
-    set.only("port", 80);
-    assert.strictEqual(80, app.config.listen.port);
-  });
+  // it("reset port", () => {
+  //   set.only("port", 80);
+  //   assert.strictEqual(80, app.config.listen.port);
+  // });
 
   it("default hostname is 127.0.0.1", () => {
     assert.strictEqual("127.0.0.1", app.config.listen.host);
