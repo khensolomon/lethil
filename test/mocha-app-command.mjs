@@ -1,6 +1,6 @@
 import "mocha";
 import * as assert from "assert";
-import { command, set } from "../lethil.mjs";
+import { command, config } from "../lethil.mjs";
 
 // const app = command();
 var app;
@@ -8,13 +8,13 @@ var app;
 describe("app.command", () => {
   before(() => {
     app = command();
-    // core.server();
-    // core.set.only('root','../evh-test-app');
-    // core.set.only('port',8086);
+    // core.command();
+    // config.root("../evh-test-app");
+    // config.port(8086);
   });
 
   // it("init", () => {
-  //   set.only("root", "../evh-test-app");
+  //   config.root("../evh-test-app");
 
   //   assert.ok(app);
   //   // assert.strict.ifError(app);
@@ -27,7 +27,7 @@ describe("app.command", () => {
   });
 
   // it('invalid directory should return "no Module found"', () => {
-  //   set.only('root','../evh-test-app-invalid');
+  //   config.root('../evh-test-app-invalid');
   //   let job = app.command();
   //   assert.strict.deepEqual('no Module found',job)
   // });

@@ -1,7 +1,7 @@
 import "mocha";
 import * as assert from "assert";
 import http from "http";
-import { server, set } from "../lethil.mjs";
+import { server, config } from "../lethil.mjs";
 // import core from "../lib/lethil.js";
 
 // const app = server();
@@ -12,8 +12,8 @@ describe("app.server", () => {
   before(() => {
     app = server();
     // core.server();
-    // core.set.only('root','../evh-test-app');
-    // core.set.only("port", 8087);
+    // config.root('../evh-test-app');
+    // config.port(8087);
   });
 
   it("add route", () => {
@@ -29,12 +29,12 @@ describe("app.server", () => {
   });
 
   it("update port to 8099", () => {
-    set.only("port", 8099);
+    config.port(8099);
     assert.strictEqual(8099, app.config.listen.port);
   });
 
   // it("reset port", () => {
-  //   set.only("port", 80);
+  //   config.port(80);
   //   assert.strictEqual(80, app.config.listen.port);
   // });
 
@@ -43,12 +43,12 @@ describe("app.server", () => {
   });
 
   it("update host to 0.0.0.0", () => {
-    set.only("hostname", "0.0.0.0");
+    config.hostname("0.0.0.0");
     assert.strictEqual("0.0.0.0", app.config.listen.host);
   });
 
   it("reset host", () => {
-    set.only("hostname", "127.0.0.1");
+    config.hostname("127.0.0.1");
     assert.strictEqual("127.0.0.1", app.config.listen.host);
     // console.log("app.config.listen", app.config.listen);
     // console.log("config.listen", config.listen);
