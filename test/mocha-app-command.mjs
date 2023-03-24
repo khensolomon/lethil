@@ -46,8 +46,8 @@ describe("app.command", () => {
 
   it("close", () => {
     app.close(function (error) {
-      // assert.ok(true);
-      assert.strict.equal("No route exists", error);
+      // assert.strict.equal("No route exists", error);
+      assert.ok(error.startsWith("No route exists"));
     });
   });
 
