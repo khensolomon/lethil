@@ -3,6 +3,7 @@
 - [Getting started](Readme.md)
 - [Configuration](nginx-configuration.md)
 - [shell](nginx.sh.md)
+- [sample](nginx.sample.md)
 - [log](nginx-log.md)
 
 ## Install

@@ -2,6 +2,7 @@
 
 - [Getting started](Readme.md)
 - [Nginx](nginx.md)
+- [sample](nginx.sample.md)
 
 ## clean
 
