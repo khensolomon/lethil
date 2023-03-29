@@ -28,6 +28,10 @@ nano /etc/profile
 # nano ~/.profile
 export GOOGLE_APPLICATION_CREDENTIALS="/var/www/media/gsaks.json"
 echo $GOOGLE_APPLICATION_CREDENTIALS
+export GOOGLE_APPLICATION_CREDENTIALS="~/gsaks.json"
+
+sudo nano ~/.bashrc
+export GOOGLE_APPLICATION_CREDENTIALS="/var/www/media/gsaks.json"
 
 # cmd
 echo %GOOGLE_APPLICATION_CREDENTIALS%
@@ -60,3 +64,4 @@ cp -r /var/www/storage/media/glossary/. /var/www/media/glossary
 
 # copy glossary
 cp -r /var/www/storage/media/glossary/. /var/www/media/glossary
+cp -r /var/www/storage/media/store/. /var/www/media/store

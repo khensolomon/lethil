@@ -10,6 +10,11 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name  _;
+    location / {
+        # First attempt to serve request as file, then
+        # as directory, then fall back to displaying a 404.
+        try_files $uri $uri/ =404;
+    }
 }
 ```
 
@@ -21,16 +26,25 @@ upstream example {
 }
 
 server {
+    # strip www from URL
+    server_name  www.example.com;
+    rewrite ^(.*) https://example.com$1 permanent;
+}
+
+server {
     # server_name example.com;
-    server_name example.parent.com;
-    # server_name example.parent.com example.com;
+    # server_name example.parent.com;
+    server_name example.com example.parent.com;
+    # server_name example.com www.example.com example.parent.com;
+
+    
     root /var/www/example/static;
     set $common_static "/var/www/html";
     access_log /var/log/nginx/access.example.log;
     location / {
         access_log off;
         autoindex off;
-        # expires 3d;
+        expires 3d;
         add_header Cache-Control "public";
         try_files $uri @node;
     }
@@ -54,6 +68,10 @@ server {
         proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
         proxy_intercept_errors on;
         proxy_connect_timeout 1;
+    }
+    error_page 503 /maintain.html;
+    location = /maintain.html {
+        root $common_static;
     }
     error_page 403 404 /notfound.html;
     location = /notfound.html {

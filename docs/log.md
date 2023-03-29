@@ -40,6 +40,9 @@ python log.py myordbok word scan
 python log.py zaideih visit scan
 
 python log.py myordbok word sortedToJSON
+
+# Backup
+rsync -avP /var/www/media/log/ /var/www/storage/media/log
 ```
 
 ## Other
