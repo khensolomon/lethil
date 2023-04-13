@@ -1,6 +1,6 @@
 {
   "name": "lethil",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "...a minimal and configurable Node.js web framework!",
   "main": "./dist/lethil.js",
   "module": "./lethil.mjs",
