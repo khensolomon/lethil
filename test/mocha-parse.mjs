@@ -136,7 +136,7 @@ describe("parse.cli", function () {
 
   it("node run first --q:love --k=key", function () {
     let title = this.test?.title;
-    let splice = title.split(" ").splice(2);
+    let splice = title?.split(" ").splice(2);
     let job = parse.cli(splice);
     assert.strictEqual("/first?q=love&k=key", job);
   });
