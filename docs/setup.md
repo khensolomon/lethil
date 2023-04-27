@@ -2,7 +2,7 @@
 
 ```sh
 # Create ecosystem.json
-node run ecosystem
+node run setup ecosystem
 
 # Setup
 pm2 deploy ecosystem.json production setup
@@ -10,4 +10,4 @@ pm2 deploy ecosystem.json production setup
 pm2 deploy ecosystem.json production
 
 # Upload .env
-node run environment
+node run setup environment

@@ -6,7 +6,7 @@
 
 ```sh
 # mklink Link Target
-mklink /D "c:/storage" "d:/storage"
+mklink /D "c:/storage" "k:/storage"
 unlink c:/storage
 ```
 

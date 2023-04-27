@@ -8,4 +8,7 @@ ls -f | wc -l
 du -sh
 
 du -sh /var/www/myordbok/cache
+
+# remove cache
+rm -rf en
 ```

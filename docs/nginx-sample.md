@@ -26,9 +26,14 @@ upstream example {
 }
 
 server {
+    listen 80;
     # strip www from URL
     server_name  www.example.com;
-    rewrite ^(.*) https://example.com$1 permanent;
+    # rewrite ^(.*) https://example.com$1 permanent;
+    # return 301 $scheme://www.$host$request_uri;
+    # return 301 $scheme://$host$request_uri;
+    # return 301 $scheme://www.$host$request_uri;
+    return 301 $scheme://example.com$request_uri;
 }
 
 server {
