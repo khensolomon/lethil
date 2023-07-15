@@ -211,6 +211,12 @@ server {
     server_name myordbok.com www.myordbok.com;
     return 404; # managed by Certbot
 }
+server {
+    listen 80;
+    server_name myordbok.com;
+    return 301 https://$host$request_uri;
+}
+
 ```
 
 ```sh
