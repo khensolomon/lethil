@@ -151,9 +151,22 @@ upstream myordbok {
 }
 
 server {
-    # listen 80;
-    server_name www.myordbok.com;
-    # server_name myordbok.zotune.* myordbok.* www.myordbok.*;
+    listen 80;
+    server_name myordbok.lethil.me;
+    return 307 https://myordbok.com$request_uri;
+}
+
+server {
+    server_name  www.myordbok.com;
+    listen 80;
+    return 301 https://myordbok.com$request_uri;
+}
+
+server {
+    # server_name myordbok.com;
+    # server_name myordbok.lethil.me;
+    server_name myordbok.com myordbok.lethil.me;
+    # server_name myordbok.com www.myordbok.com myordbok.lethil.me;
     root /var/www/myordbok/static;
     set $common_static "/var/www/html";
     access_log /var/log/nginx/access.myordbok.log;
@@ -169,13 +182,17 @@ server {
             return 503;
         }
         proxy_pass http://myordbok;
+        # proxy_set_header Host $http_host;
+
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "Upgrade";
         proxy_cache_bypass $http_upgrade;
         # proxy_cache_bypass $http_cache_control;
+
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
+
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
         proxy_intercept_errors on;
@@ -193,28 +210,13 @@ server {
     location = /under-construction.html {
         root $common_static;
     }
+
     listen 443 ssl; # managed by Certbot
     ssl_certificate /etc/letsencrypt/live/myordbok/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/myordbok/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-}
 
-server {
-    if ($host = www.myordbok.com) {
-            return 301 https://$host$request_uri;
-    } # managed by Certbot
-    if ($host = myordbok.com) {
-            return 301 https://www.$host$request_uri;
-    } # managed by Certbot
-    listen 80;
-    server_name myordbok.com www.myordbok.com;
-    return 404; # managed by Certbot
-}
-server {
-    listen 80;
-    server_name myordbok.com;
-    return 301 https://$host$request_uri;
 }
 
 ```
@@ -225,8 +227,22 @@ upstream zaideih {
 }
 
 server {
-    server_name www.zaideih.com;
+    listen 80;
+    server_name zaideih.lethil.me;
+    return 307 https://zaideih.com$request_uri;
+}
+
+server {
+    server_name  www.zaideih.com;
+    listen 80;
+    return 301 https://zaideih.com$request_uri;
+}
+
+server {
+    # server_name www.zaideih.com;
     # server_name zaideih.zotune.* zaideih.* www.zaideih.*;
+    # server_name zaideih.com www.zaideih.com zaideih.lethil.me
+    server_name zaideih.com zaideih.lethil.me;
     root /var/www/zaideih/static;
     set $common_static "/var/www/html";
     access_log /var/log/nginx/access.zaideih.log;
@@ -272,16 +288,16 @@ server {
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 }
 
-server {
-    if ($host = www.zaideih.com) {
-        return 301 https://$host$request_uri;
-    } # managed by Certbot
-    if ($host = zaideih.com) {
-        return 301 https://www.$host$request_uri;
-    } # managed by Certbot
-    listen 80;
-    server_name zaideih.com www.zaideih.com;
-    return 404; # managed by Certbot
-}
+# server {
+#     if ($host = www.zaideih.com) {
+#         return 301 https://$host$request_uri;
+#     } # managed by Certbot
+#     if ($host = zaideih.com) {
+#         return 301 https://www.$host$request_uri;
+#     } # managed by Certbot
+#     listen 80;
+#     server_name zaideih.com www.zaideih.com;
+#     return 404; # managed by Certbot
+# }
 
 ```
