@@ -1,8 +1,9 @@
 # Version
 
-## 1.3.4
+## 1.3.4-5-6
 
 - Improved parse.cli
+- Middleware theme default value to "auto"
 
 ## 1.3.3
 
