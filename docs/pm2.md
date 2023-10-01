@@ -50,3 +50,15 @@ pm2 deploy ecosystem.json production setup
 # Update
 pm2 deploy ecosystem.json production
 ```
+
+Please make sure you have the correct access rights and the repository exists.
+
+```sh
+# on production server generate ssh-key and add the ssh-key to github->settings->deploy keys
+ssh-keygen -t ed25519
+# then  clone init, lets say /var/www
+# cd /var/www
+
+git clone git@github.com:<user>/<project>.git <directory>
+
+```

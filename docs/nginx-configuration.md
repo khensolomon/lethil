@@ -24,7 +24,7 @@ sudo ln -s /etc/nginx/sites-available/zaideih /etc/nginx/sites-enabled/
 ```sh
 server {
     listen       80 default_server;
-    # listen       [::]:80;
+    listen       [::]:80 default_server;
     server_name  _;
     # return 301 $scheme://$host$request_uri;
 
@@ -39,20 +39,12 @@ server {
     index index.html;
 
     location / {
-        # First attempt to serve request as file, then
-        # as directory, then fall back to displaying a 404.
-        # try_files $uri $uri/ =404;
-        
-        # try_files $uri @node;
-        # try_files index.html $uri/ @node;
-
-        # First attempt to serve request as file, then
         # check index, then fall back to displaying a 404.
         try_files $uri $uri/index.html =404;
     }
-    location /hooks/ {
-        proxy_pass http://127.0.0.1:9000/hooks/;
-    }
+    # location /hooks/ {
+    #     proxy_pass http://127.0.0.1:9000/hooks/;
+    # }
     error_page 403 404 /notfound.html;
         location = /notfound.html {
     }
@@ -67,6 +59,24 @@ server {
     #     deny all;
     # }
 }
+
+# Temporary redirect www to non-www
+server {
+    server_name www.lethil.me;
+    return 307 $scheme://lethil.me$request_uri;
+}
+
+# Permanent redirect www to non-www
+server {
+    server_name www.lethil.me;
+    return 301 $scheme://lethil.me$request_uri;
+}
+```
+
+Test
+
+```sh
+curl -I www.lethil.me
 ```
 
 ## var/www/example
@@ -150,23 +160,20 @@ upstream myordbok {
     server localhost:8082;
 }
 
-server {
-    listen 80;
-    server_name myordbok.lethil.me;
-    return 307 https://myordbok.com$request_uri;
-}
+# Only on production and live machine
+# server {
+#     server_name myordbok.lethil.me;
+#     return 307 $scheme://myordbok.com$request_uri;
+# }
 
+# Permanent redirect www to non-www
 server {
     server_name  www.myordbok.com;
-    listen 80;
-    return 301 https://myordbok.com$request_uri;
+    return 301 $scheme://myordbok.com$request_uri;
 }
 
 server {
-    # server_name myordbok.com;
-    # server_name myordbok.lethil.me;
     server_name myordbok.com myordbok.lethil.me;
-    # server_name myordbok.com www.myordbok.com myordbok.lethil.me;
     root /var/www/myordbok/static;
     set $common_static "/var/www/html";
     access_log /var/log/nginx/access.myordbok.log;
@@ -182,17 +189,12 @@ server {
             return 503;
         }
         proxy_pass http://myordbok;
-        # proxy_set_header Host $http_host;
-
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "Upgrade";
         proxy_cache_bypass $http_upgrade;
-        # proxy_cache_bypass $http_cache_control;
-
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header Host $http_host;
-
+        proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
         proxy_intercept_errors on;
@@ -210,38 +212,29 @@ server {
     location = /under-construction.html {
         root $common_static;
     }
-
-    listen 443 ssl; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/myordbok/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/myordbok/privkey.pem; # managed by Certbot
-    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-
 }
-
 ```
+
+`/etc/nginx/sites-available/zaideih`
 
 ```sh
 upstream zaideih {
     server localhost:8081;
 }
 
-server {
-    listen 80;
-    server_name zaideih.lethil.me;
-    return 307 https://zaideih.com$request_uri;
-}
+# Only on production and live machine
+# server {
+#     server_name zaideih.lethil.me;
+#     return 307 $scheme://zaideih.com$request_uri;
+# }
 
+# Permanent redirect www to non-www
 server {
     server_name  www.zaideih.com;
-    listen 80;
-    return 301 https://zaideih.com$request_uri;
+    return 301 $scheme://zaideih.com$request_uri;
 }
 
 server {
-    # server_name www.zaideih.com;
-    # server_name zaideih.zotune.* zaideih.* www.zaideih.*;
-    # server_name zaideih.com www.zaideih.com zaideih.lethil.me
     server_name zaideih.com zaideih.lethil.me;
     root /var/www/zaideih/static;
     set $common_static "/var/www/html";
@@ -281,23 +274,5 @@ server {
     location = /under-construction.html {
         root $common_static;
     }
-    listen 443 ssl; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/zaideih/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/zaideih/privkey.pem; # managed by Certbot
-    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 }
-
-# server {
-#     if ($host = www.zaideih.com) {
-#         return 301 https://$host$request_uri;
-#     } # managed by Certbot
-#     if ($host = zaideih.com) {
-#         return 301 https://www.$host$request_uri;
-#     } # managed by Certbot
-#     listen 80;
-#     server_name zaideih.com www.zaideih.com;
-#     return 404; # managed by Certbot
-# }
-
 ```

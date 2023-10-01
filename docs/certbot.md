@@ -12,7 +12,9 @@ Installation
 # Install snapd
 sudo apt update
 sudo apt install snapd
-sudo snap install core; sudo snap refresh core
+# install the core snap in order to get the latest snapd.
+sudo snap install core
+sudo snap refresh core
 
 # Install Certbot
 sudo snap install --classic certbot

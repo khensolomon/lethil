@@ -1,9 +1,10 @@
 # Version
 
-## 1.3.4-5-6
+## 1.3.4-5-6-7
 
 - Improved parse.cli
 - Middleware theme default value to "auto"
+- Add service -> digit
 
 ## 1.3.3
 

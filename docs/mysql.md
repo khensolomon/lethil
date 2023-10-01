@@ -16,6 +16,7 @@
 # sudo apt install mysql-server
 sudo apt install mariadb-server mariadb-client
 # sudo mysql_secure_installation
+# systemctl restart mysqld
 systemctl restart mariadb
 ```
 

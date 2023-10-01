@@ -36,6 +36,7 @@ cd /var/www
 git clone git@github.com:khensolomon/myordbok.git myordbok
 # clone a branch
 # git clone --branch html git@github.com:khensolomon/lethil.git html
+# git clone --branch html https://github.com/khensolomon/lethil.git html
 cd myordbok
 npm install
 

@@ -5,9 +5,11 @@
 ## Install
 
 ```sh
+# https://github.com/nodesource/distributions
 # Update rep
 # curl -fsSL https://deb.nodesource.com/setup_current.x | sudo -E bash -
-curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+# curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+# curl -sL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 
 
 sudo apt-get install nodejs

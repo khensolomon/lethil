@@ -11,6 +11,7 @@ chown -R $USER:www-data *.log
 
 # or
 chown -R $(whoami) /var/path-?
+chown -R $(whoami) /var/www
 ```
 
 ```sh
