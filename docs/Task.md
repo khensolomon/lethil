@@ -30,6 +30,7 @@ rsync -avP /var/www/storage/media/grammar/ /var/www/media/grammar
 
 # update store
 rsync -avP /var/www/storage/media/store/ /var/www/media/store
+rsync -avP /var/www/storage/media/fonts/ /var/www/media/fonts
 
 # backup fonts-JSON
 rsync -avP /var/www/media/fonts/*.json /var/www/storage/media/fonts

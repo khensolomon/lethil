@@ -37,6 +37,7 @@ rsync -avP /var/www/storage/media/log/ /var/www/media/log
 
 # copy (glossary)
 rsync -avP /var/www/storage/media/glossary/ /var/www/media/glossary
+rsync -avP /var/www/storage/media/fonts/ /var/www/media/fonts
 
 # backup log (fonts & hits count )
 rsync -avP /var/www/media/fonts/ /var/www/storage/media/fonts
