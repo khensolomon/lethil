@@ -1,5 +1,9 @@
 # Version
 
+## 1.3.9
+
+- Update devDependencies
+
 ## 1.3.8
 
 - Add prepare environment for `.env` & `package.json`, calling `environment()`
