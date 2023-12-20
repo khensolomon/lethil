@@ -25,6 +25,10 @@
       "path": "../lethil-cjs"
     },
     {
+      "name": "bible",
+      "path": "../bible"
+    },
+    {
       "name": "myordbok",
       "path": "../myordbok"
     },

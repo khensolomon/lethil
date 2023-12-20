@@ -1,5 +1,11 @@
 # Version
 
+## 1.3.10
+
+- Update devDependencies
+- WriteJSON > writeJSON
+- ReadJSON > readJSON
+
 ## 1.3.9
 
 - Update devDependencies
