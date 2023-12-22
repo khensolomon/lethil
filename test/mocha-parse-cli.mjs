@@ -68,11 +68,11 @@ describe("parse.cli", function () {
     assert.strictEqual("/first/q=love/k=key", job);
   });
 
-  it("npm run none-param --q --k", function () {
+  it("npm run none-param --q a --k b", function () {
     let title = this.test?.title;
     let splice = title?.split(" ").splice(2);
     let job = parse.cli(splice);
-    assert.strictEqual("/none-param", job);
+    assert.strictEqual("/none-param?q=a&k=b", job);
   });
 
   it("npm run gist request list --file /abc/org boolen false", function () {
@@ -80,6 +80,38 @@ describe("parse.cli", function () {
     let splice = title?.split(" ").splice(2);
     let job = parse.cli(splice);
     assert.strictEqual("/gist/request/list?file=/abc/org&boolen=false", job);
+  });
+
+  it("bible search tedim --keyword='Topa kiangah'", function () {
+    // node run bible search tedim --keyword='Topa kiangah'
+    let title = this.test?.title;
+    // let splice = title?.split(" ").splice(2);
+    let job = parse.cli(title);
+    assert.strictEqual("/bible/search/tedim?keyword=Topa kiangah", job);
+    // console.log(job);
+  });
+  it("bible search tedim --keyword='k w' k='a b'", function () {
+    // node run bible search tedim --keyword='Topa kiangah'
+    let title = this.test?.title;
+    // let splice = title?.split(" ").splice(2);
+    let job = parse.cli(title);
+    assert.strictEqual("/bible/search/tedim?keyword=k w&k=a b", job);
+    // console.log(job);
+  });
+  it("bible search tedim?keyword='k w'&k='a b'", function () {
+    // node run bible search tedim --keyword='Topa kiangah'
+    let title = this.test?.title;
+    // let splice = title?.split(" ").splice(2);
+    let job = parse.cli(title);
+    assert.strictEqual("/bible/search/tedim?keyword=k w&k=a b", job);
+    // console.log(job);
+  });
+  it("bible search tedim?keyword='k w' k='a b'", function () {
+    // node run bible search tedim --keyword='Topa kiangah'
+    let title = this.test?.title;
+    // let splice = title?.split(" ").splice(2);
+    let job = parse.cli(title);
+    assert.strictEqual("/bible/search/tedim?keyword=k w&k=a b", job);
     // console.log(job);
   });
 });
