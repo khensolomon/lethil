@@ -47,7 +47,7 @@ describe("parse.cli", function () {
     assert.strictEqual("/first?q=love&k=key", job);
   });
 
-  it("node run first?q:love --k=key", function () {
+  it("node run first?q=love --k=key", function () {
     let title = this.test?.title;
     let splice = title?.split(" ").splice(2);
     let job = parse.cli(splice);
@@ -112,6 +112,14 @@ describe("parse.cli", function () {
     // let splice = title?.split(" ").splice(2);
     let job = parse.cli(title);
     assert.strictEqual("/bible/search/tedim?keyword=k w&k=a b", job);
+    // console.log(job);
+  });
+  it("reference?q='Gen.1:3;Gen.2:3' a:b", function () {
+    // node run bible search tedim --q='Gen.1:3;Gen.2:3'
+    let title = this.test?.title;
+    // let splice = title?.split(" ").splice(2);
+    let job = parse.cli(title);
+    assert.strictEqual("/reference?q=Gen.1:3;Gen.2:3", job);
     // console.log(job);
   });
 });
