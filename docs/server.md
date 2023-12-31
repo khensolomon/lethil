@@ -27,6 +27,29 @@ sudo df -h
 # directory
 du -h | sort -h
 ls -lh
+
+# Clean
+du -sh /var/cache/apt/archives
+sudo apt-get clean
+
+# remove old kernels
+sudo apt-get autoremove --purge
+
+
+# sudo truncate --size 0 /var/log/nginx/access.log
+```
+
+## sharing
+
+```sh
+sudo gpasswd --add <username> sambashare
+sudo smbpasswd -a <username>
+
+# Restart
+sudo service smbd restart
+
+# Install
+sudo apt install samba
 ```
 
 ## Package

@@ -34,14 +34,14 @@ cat ~/.ssh/id_ed25519.pub
 # then copy the .pub content to github Deploy keys
 cd /var/www
 git clone git@github.com:khensolomon/myordbok.git myordbok
+
 # clone a branch
-# git clone --branch html git@github.com:khensolomon/lethil.git html
-# git clone --branch html https://github.com/khensolomon/lethil.git html
+
 cd myordbok
 npm install
+# git clone https://github.com/laisiangtho/bible.git bible
 
 # now start creating .env
-
 
 # git clone https://myrepo.com/git.git temp
 # git clone https://github.com/scriptive/www.git temp

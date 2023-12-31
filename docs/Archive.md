@@ -33,3 +33,26 @@ sudo apt-get install curl software-properties-common
 # wget
 sudo apt-get install wget
 ```
+
+## Each Archive (use in bible)
+
+```shell
+# Compress multiple folders, each into its own zip archive
+for i in */; do tar -czvf "${i%/}.tar.gz" "$i"; done
+
+  # Single folder compress
+  tar -czvf 1.tar.gz 1
+  # Change output directory
+  tar -czvf output/1.tar.gz 1 
+
+# Decompress each zip archive, into its own folder
+for f in *.tar.gz; do tar -xvf "$f"; done
+  # or
+for f in *.tar.gz; do tar xf "$f"; done
+
+  # Single archive decompress
+  tar -xvf 1.tar.gz
+  # Change output directory
+  tar -xvf 1.tar.gz -C output/
+
+```

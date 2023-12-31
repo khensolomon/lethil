@@ -35,9 +35,9 @@ format: `datetime wordCount`
 ```sh
 cd /var/www/html
 # python log.py myordbok
-python log.py myordbok visit scan
-python log.py myordbok word scan
-python log.py zaideih visit scan
+python3 log.py myordbok visit scan
+python3 log.py myordbok word scan
+python3 log.py zaideih visit scan
 
 python log.py myordbok word sortedToJSON
 
