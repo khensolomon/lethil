@@ -40,15 +40,20 @@ sudo apt-get install wget
 # Compress multiple folders, each into its own zip archive
 for i in */; do tar -czvf "${i%/}.tar.gz" "$i"; done
 
+# Compress multiple files, each into its own zip archive
+for i in *; do tar -czf $i.tar.gz $i; done
+# Or provide extension eg. .json instead of every files
+for i in *.json; do tar -czf $i.tar.gz $i; done
+
   # Single folder compress
   tar -czvf 1.tar.gz 1
   # Change output directory
   tar -czvf output/1.tar.gz 1 
 
 # Decompress each zip archive, into its own folder
-for f in *.tar.gz; do tar -xvf "$f"; done
+for i in *.tar.gz; do tar -xvf "$i"; done
   # or
-for f in *.tar.gz; do tar xf "$f"; done
+for i in *.tar.gz; do tar xf "$i"; done
 
   # Single archive decompress
   tar -xvf 1.tar.gz
