@@ -34,7 +34,7 @@ h1>span:first-child {
   color: rgb(190, 190, 190);
 }
 
-q.message{
+q{
   color: rgb(139, 139, 139);
   font-size: 1.7rem;
 }
