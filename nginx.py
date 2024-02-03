@@ -3,10 +3,10 @@
 import re
 import gzip
 import os
-import sys
+# import sys
 import time
 from urllib.parse import urlparse, parse_qs, parse_qsl
-import csv, json, chardet
+import csv, json
 
 class logParser(object):
   ''' Read NGINX logs '''
