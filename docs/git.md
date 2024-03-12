@@ -14,6 +14,13 @@ git restore .
 git show --name-only
 ```
 
+Commit
+
+```sh
+git add index.html
+git commit
+```
+
 Make it executable
 
 ```sh
@@ -28,9 +35,8 @@ Deploy keys
 
 ```sh
 # generate
-ssh-keygen -t ed25519
-cat ~/.ssh/id_ed25519.pub
-
+ssh-keygen -t rsa
+cat ~/.ssh/id_rsa.pub
 # then copy the .pub content to github Deploy keys
 cd /var/www
 git clone git@github.com:khensolomon/myordbok.git myordbok
