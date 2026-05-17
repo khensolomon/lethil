@@ -10,7 +10,7 @@ iso/ubuntu --dry-run
 ./ubuntu.sh
 
 # Ubuntu Environment Interactive Setup Script
-curl https://raw.githubusercontent.com/khensolomon/auto/make/dev/ubuntu-setup.py | python3 -
+curl https://raw.githubusercontent.com/khensolomon/lethil/master/dev/ubuntu-desktop.py | python3 -
 ```
 
 ## Desktop
