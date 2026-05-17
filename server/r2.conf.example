@@ -1,0 +1,32 @@
+# /opt/bucket/storage/access/r2.conf
+#
+# Cloudflare R2 credentials and tool defaults.
+# This file should be chmod 600, owned by root.
+#
+# Any value can be overridden by an environment variable of the same name.
+
+# === Cloudflare R2 (required) ===
+R2_ACCOUNT_ID=your_cloudflare_account_id_here
+R2_ACCESS_KEY_ID=your_r2_access_key_id_here
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key_here
+R2_ENDPOINT=https://your_cloudflare_account_id_here.r2.cloudflarestorage.com
+R2_BUCKET=storage
+
+# === Tool defaults (optional) ===
+
+# How many timestamped dumps to keep when running `r2.py prune mysql`.
+# latest.sql.gz is never pruned.
+RETENTION_KEEP=7
+
+# gzip compression level for mysqldump output. 1=fast, 9=smallest. 6 is the
+# standard default. Use 9 if R2 storage/egress matters more than CPU time.
+COMPRESSION_LEVEL=6
+
+# Filesystem root the script operates under. The script refuses to run if
+# cwd is not somewhere under this path.
+R2_ROOT=/opt/bucket
+
+# Where deployment .env files live (used to detect deployed apps).
+# A folder under R2_ROOT/<bucket>/<n>/ is treated as an app if and only
+# if <APP_DEPLOY_ROOT>/<n>/.env exists.
+APP_DEPLOY_ROOT=/opt

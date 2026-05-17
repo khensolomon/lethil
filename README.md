@@ -1,132 +1,32 @@
-# Lethil
+# Utilities Automation
 
-[![Build Status][travis]][travis-url]
-[![Github][workflows]][workflows-url]
-[![npm-download-count]][npm-url]
-[![npm][npm-version]][npm-url]
-![Mocha][test-mocha]
-
-...`lethil` is a minimal and configurable Node.js web framework, it has no dependencies but customizable and allow developer to deploy multiply applications simultaneously, and which has a very minimum requirement and aim to provided as light as possible.
-
-Please refer to [Getting started][getting-started] for directories strucuture, dependencies guide and basic command-line for setup/task.
+## Automate installation
 
 ```bash
-npm install --save lethil
+chmod +x iso/ubuntu.py
+chmod +x iso/debian.py
+iso/debian --dry-run
+iso/ubuntu --dry-run
+./ubuntu.sh
+
+# Ubuntu Environment Interactive Setup Script
+curl https://raw.githubusercontent.com/khensolomon/auto/make/dev/ubuntu-setup.py | python3 -
 ```
 
-> ... `lethil` is currently ECMAScript modules and expected to be import (esm) but not require.
+## Desktop
 
-## How does it work
+... [Autoinstall][autoinstall],
 
-### server
+## Server
 
-```js
-// serve.js
-import core from 'lethil';
+... [R2][r2], [Secrets][secrets], [Setup][setup]
 
-const app = core.server();
-const config = app.config;
+## Framework
 
-app.get('/', function(req, res) {
-  res.send('Home')
-});
+... Looking for Node.js [framework]
 
-app.get('/about', function(req, res) {
-  res.send('About')
-});
-
-app.get('/none', function(req, res) {
-  res.status(404).send('Not found');
-});
-
-app.get('/test/:id', function(req, res) {
-  res.json(Object.assign({test:true},req.params,req.query));
-});
-
-app.get('/middleware', function(req, res,next) {
-  setTimeout(next, 2000);
-  // setTimeout(() => { next(); }, 1000);
-},function(req, res) {
-  res.send('Middleware...')
-});
-
-app.get('/get-file/:fileName', function(req, res) {
-  res.setHeaders({
-    "Content-Type": "application/json; charset=utf-8"
-  });
-  res.setHeaders("Content-Type", "application/json; charset=utf-8");
-
-  const file = path.resolve(
-    "my-storage/" + req.params.fileName
-  );
-  core.seek.readStream(file).pipe(res);
-});
-
-app.listen(config.listen, () => {
-  console.log(config.name,app.address.address,app.address.port);
-  // NOTE: app.close() helps mysql pool connection gracefully end.
-  // app.close();
-});
-
-```
-
-```sh
-node serve
-```
-
-### command
-
-```js
-// run.js
-import core from 'lethil';
-
-const app = core.command();
-
-app.get('/', function(req) {
-  return 'Main';
-});
-app.get('/about', function(req) {
-  return 'About';
-});
-
-app.get('/test/:id', function(req) {
-  return req.params.id
-});
-
-app.execute(() => {
-  app.close();
-});
-
-app.on('success',function(e) {
-  console.log('...',e)
-});
-
-// NOTE: on error
-app.on('error',function(e) {
-  console.log('...',e)
-});
-
-```
-
-```sh
-node run
-> Main
-node run about
-> About
-node run test/123
-> 123
-```
-
-## License
-
-[MIT](LICENSE)
-
-[test-mocha]: https://img.shields.io/badge/test-mocha-green.svg?longCache=true
-[travis]: https://app.travis-ci.com/khensolomon/lethil.svg?branch=master
-[travis-url]: https://www.travis-ci.com/github/khensolomon/lethil
-[npm-download-count]: https://img.shields.io/npm/dt/lethil.svg
-[npm-url]: https://www.npmjs.com/package/lethil
-[npm-version]: https://img.shields.io/npm/v/lethil.svg
-[workflows]: https://github.com/khensolomon/lethil/workflows/Node/badge.svg
-[workflows-url]: https://github.com/khensolomon/lethil/actions/workflows/node.yml
-[getting-started]: docs/Readme.md
+[autoinstall]: ./iso/README.md
+[r2]: ./server/r2.md
+[secrets]: ./server/secrets.md
+[setup]: ./server/setup.md
+[framework]: https://github.com/khensolomon/lethil/tree/framework

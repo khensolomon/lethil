@@ -1,0 +1,120 @@
+# Ubuntu Desktop preset (migrated from legacy autoinstall.yaml)
+#
+# The `autoinstall:` section is a real cloud-init document that Ubuntu's
+# Subiquity installer reads verbatim. The `builder:` section is read only
+# by isobuilder for prompts and overrides — the installer ignores it.
+
+autoinstall:
+  version: 1
+  refresh-installer:
+    update: false
+
+  locale: en_US.UTF-8
+  timezone: UTC
+
+  keyboard:
+    layout: "no"
+    variant: ""
+    toggle: ""
+
+  identity:
+    hostname: os-mini
+    username: khensolomon
+    realname: "Khen Solomon"
+    # Default password: abc (replace at build time)
+    password: "$6$oR4/ufuAw.Kwb885$Q0a8TIFeHxhUP5nZ2/6E/8aXBAMiLErpGbm91yYLTrV6Yz.q8R.Qyz8937qFUxzf4eemWlQ9Yt7j7rAhSAb6P1"
+
+  storage:
+    layout:
+      name: direct
+
+  apt:
+    primary:
+      - arches: [default]
+        uri: http://archive.ubuntu.com/ubuntu
+
+  packages:
+    - network-manager
+    - remmina
+    - inkscape
+    - gimp
+    - audacity
+    - sqlitebrowser
+    - curl
+    - wget
+    - gpg
+    - python-is-python3
+    - openssh-server
+
+  user-data:
+    package_upgrade: false
+
+
+# isobuilder-specific extensions: prompts and conditional overrides
+builder:
+  shared:
+    prompts:
+      - ask: "Install Google Chrome?"
+        default: "yes"
+        late-commands:
+          - "wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -O /tmp/chrome.deb"
+          - "apt-get install -y /tmp/chrome.deb"
+
+      - ask: "Install VS Code?"
+        default: "yes"
+        ubuntu:
+          snaps: ["code|classic"]
+        debian:
+          late-commands:
+            - "wget -qO /tmp/code.deb 'https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64'"
+            - "apt-get install -y /tmp/code.deb"
+
+      - ask: "Install DBeaver CE?"
+        default: "yes"
+        ubuntu:
+          snaps: ["dbeaver-ce"]
+        debian:
+          late-commands:
+            - "wget -qO /tmp/dbeaver.deb 'https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb'"
+            - "apt-get install -y /tmp/dbeaver.deb"
+
+      - ask: "Install Docker?"
+        default: "yes"
+        ubuntu:
+          snaps: ["docker"]
+        debian:
+          packages: ["docker.io"]
+
+  ubuntu:
+    late-commands:
+      # Disable Ubuntu Dock panel mode
+      - 'echo -e "[org.gnome.shell.extensions.dash-to-dock]\nextend-height=false" > /usr/share/glib-2.0/schemas/99-ubuntu-custom-dock.gschema.override'
+      - "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+      # Set up autostarts (Remmina, VS Code, ssh-agent)
+      - 'echo -e "[Desktop Entry]\nType=Application\nExec=remmina\nHidden=false\nNoDisplay=false\nX-GNOME-Autostart-enabled=true\nName=Start Remmina" > /etc/xdg/autostart/custom-remmina.desktop'
+      - 'echo -e "[Desktop Entry]\nType=Application\nExec=code\nHidden=false\nNoDisplay=false\nX-GNOME-Autostart-enabled=true\nName=VS Code" > /etc/xdg/autostart/custom-vscode.desktop'
+      - 'echo -e "[Desktop Entry]\nType=Application\nExec=ssh-agent\nHidden=false\nNoDisplay=false\nX-GNOME-Autostart-enabled=true\nName=SSH Agent" > /etc/xdg/autostart/custom-ssh-agent.desktop'
+    prompts:
+      - ask: "Install proprietary WiFi and GPU drivers?"
+        default: "yes"
+        late-commands: ["ubuntu-drivers install"]
+
+      - ask: "Install third-party media codecs?"
+        default: "yes"
+        packages: ["ubuntu-restricted-extras"]
+
+  debian:
+    packages:
+      - spice-vdagent
+    prompts:
+      - ask: "Install standard system utilities (curl, wget, etc)?"
+        default: "yes"
+        packages: ["standard"]
+
+      - ask: "Select desktop environment"
+        default: "1"
+        choices:
+          - label: "Minimal GNOME (no games, no LibreOffice)"
+            packages: ["gnome-core"]
+          - label: "Headless server (no GUI)"
+            packages: []
