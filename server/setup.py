@@ -138,6 +138,20 @@ def parse_args():
                             "Repeatable — use once per domain."
                         ))
 
+    # ── rclone / R2 ────────────────────────────────────────────────────────────
+    # rclone is always installed. The R2 remote is configured only if BOTH
+    # --r2-access-key-id and --r2-secret-access-key are supplied. The endpoint
+    # account ID falls back to --cf-account-id if --r2-account-id is omitted.
+    parser.add_argument('--r2-access-key-id', type=str,
+                        help="Cloudflare R2 Access Key ID. If supplied with the secret, "
+                             "writes ~/.config/rclone/rclone.conf with an 'r2' remote.")
+    parser.add_argument('--r2-secret-access-key', type=str,
+                        help="Cloudflare R2 Secret Access Key. Required together with "
+                             "--r2-access-key-id.")
+    parser.add_argument('--r2-account-id', type=str,
+                        help="Cloudflare Account ID for the R2 endpoint URL. Defaults to "
+                             "--cf-account-id when robotic mode is in use.")
+
     return parser.parse_args()
 
 
@@ -663,6 +677,107 @@ def setup_directories(directories, dry_run=False):
             log.warning(f"Could not set permissions on {dir_path}: {e}")
 
 
+def setup_rclone(access_key_id=None, secret_access_key=None, account_id=None,
+                 force=False, dry_run=False):
+    """
+    Install rclone (always) and write an R2 remote config (only if credentials
+    are supplied).
+
+    Why install always: rclone is useful on the box regardless — copying
+    between R2 buckets, ad-hoc backups, restore drills — and it's a single
+    static binary with no Python deps. Cost is ~50 MB and one apt-free
+    install. The official curl-installer is preferred over the apt package,
+    which lags releases by months on Debian/Ubuntu.
+
+    Config is written to ~/.config/rclone/rclone.conf of the invoking user
+    (SUDO_USER if available, else $USER, else root). Mode 600 — it contains
+    secrets. The 'r2' remote name matches the convention used by the project's
+    backup tooling.
+    """
+    print("Setting up rclone...")
+
+    if not is_tool_installed('rclone') or force:
+        if dry_run:
+            print("[DRY-RUN] Would install rclone via official installer.")
+        else:
+            # The official script pulls the latest stable release as a deb on
+            # Debian/Ubuntu (zip on others). Quieter and more current than apt.
+            run_cmd("curl -fsSL https://rclone.org/install.sh | bash",
+                    hide_output=True)
+            print("✅ rclone installed.")
+    else:
+        print("Skip: rclone is already installed.")
+
+    # Write the R2 remote config only if BOTH key and secret are present.
+    # Partial credentials are a footgun — fail loudly.
+    if not (access_key_id or secret_access_key):
+        print("ℹ️  No R2 credentials supplied — skipping rclone.conf. "
+              "Pass --r2-access-key-id and --r2-secret-access-key to configure.")
+        return
+    if not (access_key_id and secret_access_key):
+        log.error(
+            "rclone R2 config needs BOTH --r2-access-key-id AND "
+            "--r2-secret-access-key (got only one)."
+        )
+        sys.exit(1)
+    if not account_id:
+        log.error(
+            "rclone R2 config needs an account ID for the endpoint URL. "
+            "Pass --r2-account-id, or run in robotic mode where --cf-account-id "
+            "is reused automatically."
+        )
+        sys.exit(1)
+
+    # Resolve who owns ~/.config/rclone/rclone.conf. SUDO_USER is the human
+    # who ran `sudo python3 setup.py`; falling back to USER covers the case
+    # where the script runs as root directly (rare for this codebase).
+    target_user = os.environ.get('SUDO_USER') or os.environ.get('USER') or 'root'
+    try:
+        pw = pwd.getpwnam(target_user)
+    except KeyError:
+        log.error(f"User '{target_user}' not found on this system.")
+        sys.exit(1)
+
+    home = Path(pw.pw_dir)
+    conf_dir  = home / '.config' / 'rclone'
+    conf_path = conf_dir / 'rclone.conf'
+    endpoint  = f"https://{account_id}.r2.cloudflarestorage.com"
+
+    rclone_conf = (
+        "[r2]\n"
+        "type = s3\n"
+        "provider = Cloudflare\n"
+        f"access_key_id = {access_key_id}\n"
+        f"secret_access_key = {secret_access_key}\n"
+        f"endpoint = {endpoint}\n"
+        "region = auto\n"
+        "acl = private\n"
+    )
+
+    if dry_run:
+        print(f"[DRY-RUN] Would write {conf_path} (owner: {target_user}, mode: 600).")
+        print(f"[DRY-RUN]   endpoint = {endpoint}")
+        return
+
+    # Idempotency: if a remote called [r2] already exists and --force was not
+    # passed, leave it alone. Avoids clobbering a manually-tuned config on
+    # re-runs of setup.py.
+    if conf_path.exists() and not force:
+        existing = conf_path.read_text()
+        if '[r2]' in existing:
+            print(f"Skip: {conf_path} already contains an [r2] remote. "
+                  f"Pass --force to overwrite.")
+            return
+
+    conf_dir.mkdir(parents=True, exist_ok=True)
+    conf_path.write_text(rclone_conf)
+    os.chown(conf_dir,  pw.pw_uid, pw.pw_gid)
+    os.chown(conf_path, pw.pw_uid, pw.pw_gid)
+    os.chmod(conf_dir,  0o700)
+    os.chmod(conf_path, 0o600)
+    print(f"✅ rclone R2 remote written to {conf_path} (600, owner: {target_user}).")
+
+
 def setup_docker(force=False, dry_run=False):
     if not is_tool_installed('docker') or force:
         print("Installing Docker Engine...")
@@ -780,6 +895,12 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
     # apps can find each other on; without a shared network NPM has nothing
     # to forward to. Port 81 (admin UI) is bound to 127.0.0.1 only — not
     # reachable from the public internet.
+    #
+    # /opt/bucket/html is mounted read-only at the same path inside the
+    # container. NPM's "dead host" (the server that catches requests with no
+    # matching proxy host) is overridden via /data/nginx/custom/server_dead.conf
+    # below to serve files from this directory. Drop an index.html in there to
+    # replace the stock "Congratulations! You're connected!" landing page.
     services_part = """\
   app:
     image: jc21/nginx-proxy-manager:latest
@@ -791,6 +912,7 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
+      - /opt/bucket/html:/opt/bucket/html:ro
     networks:
       - gateway"""
 
@@ -830,6 +952,50 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
 
     with open(compose_file, 'w') as f:
         f.write(compose)
+
+    # ── Custom landing page for the NPM "dead host" ──────────────────────────
+    # NPM emits a default server block for unmatched hostnames (the "dead
+    # host") that serves a stock "Congratulations" page from inside the
+    # container. The /data/nginx/custom/server_dead.conf file is appended to
+    # the end of that server block by NPM itself, so any location directive
+    # here wins over the built-in fallback.
+    #
+    # By adding a `location /` that serves /opt/bucket/html (which we mounted
+    # read-only into the container above), the default page becomes whatever
+    # HTML the operator drops into /opt/bucket/html on the host — no NPM UI
+    # clicks required, no NPM DB rows to mess with.
+    custom_dir = npm_dir / 'data' / 'nginx' / 'custom'
+    custom_dir.mkdir(parents=True, exist_ok=True)
+    dead_conf = custom_dir / 'server_dead.conf'
+    dead_conf.write_text(
+        "# Override NPM's default 'dead host' landing page.\n"
+        "# Serves whatever is in /opt/bucket/html on the host (mounted ro).\n"
+        "location / {\n"
+        "    root /opt/bucket/html;\n"
+        "    index index.html;\n"
+        "    try_files $uri $uri/ /index.html =404;\n"
+        "}\n"
+    )
+    print(f"✅ NPM default-host override written to {dead_conf}.")
+
+    # Seed a placeholder index.html only if /opt/bucket/html is empty — never
+    # clobber operator-supplied content on re-runs.
+    html_dir = Path('/opt/bucket/html')
+    if html_dir.exists() and not any(html_dir.iterdir()):
+        placeholder = html_dir / 'index.html'
+        placeholder.write_text(
+            "<!doctype html>\n"
+            "<html lang=\"en\">\n"
+            "<head><meta charset=\"utf-8\"><title>Not configured</title></head>\n"
+            "<body style=\"font-family:system-ui;max-width:40rem;margin:4rem auto;"
+            "padding:0 1rem;color:#333\">\n"
+            "<h1>Nothing here yet</h1>\n"
+            "<p>This server is online but no site is configured at this hostname. "
+            "Drop an <code>index.html</code> into <code>/opt/bucket/html</code> "
+            "to replace this page.</p>\n"
+            "</body></html>\n"
+        )
+        print(f"✅ Seeded placeholder {placeholder}.")
 
     run_cmd(['docker', 'compose', 'up', '-d'], cwd_path=npm_dir)
     print("✅ Nginx Proxy Manager is running.")
@@ -905,6 +1071,9 @@ def main():
         {"path": "/opt/bucket",       "owner": "current-user", "permissions": 0o755},
         {"path": "/opt/bucket/storage","owner": "current-user", "permissions": 0o755},
         {"path": "/opt/bucket/media", "owner": "current-user", "permissions": 0o755},
+        # Custom landing page served by NPM's dead host (mounted read-only
+        # into the NPM container by setup_nginx_proxy_manager).
+        {"path": "/opt/bucket/html",  "owner": "current-user", "permissions": 0o755},
         # Per-app deployment directories (deploy.yml writes compose + .env here)
         {"path": "/opt/myordbok",     "owner": "current-user", "permissions": 0o700},
         {"path": "/opt/zaideih",      "owner": "current-user", "permissions": 0o700},
@@ -1022,6 +1191,16 @@ def main():
     setup_security(dry_run=args.dry_run)
     setup_firewall(dry_run=args.dry_run)
     setup_directories(system_directories, dry_run=args.dry_run)
+    # rclone install is unconditional; R2 remote is only configured if
+    # credentials were supplied. Account ID falls back to --cf-account-id
+    # when robotic mode is in use, so a single account ID covers both.
+    setup_rclone(
+        access_key_id     = args.r2_access_key_id,
+        secret_access_key = args.r2_secret_access_key,
+        account_id        = args.r2_account_id or args.cf_account_id,
+        force             = args.force,
+        dry_run           = args.dry_run,
+    )
     setup_docker(force=args.force, dry_run=args.dry_run)
     setup_docker_swarm(dry_run=args.dry_run)
     setup_nginx_proxy_manager(cf_token=token, force=args.force, dry_run=args.dry_run)
