@@ -897,10 +897,11 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
     # reachable from the public internet.
     #
     # /opt/bucket/html is mounted read-only at the same path inside the
-    # container. NPM's "dead host" (the server that catches requests with no
-    # matching proxy host) is overridden via /data/nginx/custom/server_dead.conf
-    # below to serve files from this directory. Drop an index.html in there to
-    # replace the stock "Congratulations! You're connected!" landing page.
+    # container. NPM's default-site server block (the catch-all in
+    # /etc/nginx/conf.d/default.conf that handles unmatched hostnames) is
+    # overridden via /data/nginx/custom/default_http.conf below to serve
+    # files from this directory. Drop an index.html (or a whole SPA) in
+    # there to replace the stock "Congratulations" landing page.
     services_part = """\
   app:
     image: jc21/nginx-proxy-manager:latest
@@ -953,30 +954,47 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
     with open(compose_file, 'w') as f:
         f.write(compose)
 
-    # ── Custom landing page for the NPM "dead host" ──────────────────────────
-    # NPM emits a default server block for unmatched hostnames (the "dead
-    # host") that serves a stock "Congratulations" page from inside the
-    # container. The /data/nginx/custom/server_dead.conf file is appended to
-    # the end of that server block by NPM itself, so any location directive
-    # here wins over the built-in fallback.
+    # ── Custom landing page for NPM's default site ───────────────────────────
+    # NPM ships /etc/nginx/conf.d/default.conf with a port-80 server block
+    # whose server_name is 'localhost-nginx-proxy-manager' and whose default
+    # behaviour is `location / { return 444; }` (the "Congratulations" page is
+    # served elsewhere for that hostname). Before that default location, the
+    # block includes /data/nginx/custom/default_http.conf as a documented
+    # "HTTP extension point" — anything we put there is part of the same
+    # server block, parsed before `return 444`, and a `location /` inside it
+    # wins by nginx's most-specific-location rule.
     #
-    # By adding a `location /` that serves /opt/bucket/html (which we mounted
-    # read-only into the container above), the default page becomes whatever
-    # HTML the operator drops into /opt/bucket/html on the host — no NPM UI
-    # clicks required, no NPM DB rows to mess with.
+    # IMPORTANT: this is NOT server_dead.conf. server_dead.conf is appended to
+    # *user-created 404 Hosts* in the NPM UI, not the system-wide default
+    # site. The default_http.conf injection point is what actually replaces
+    # the "Congratulations" page without UI clicks or DB seeding.
+    #
+    # The Let's Encrypt ACME challenge include sits at server level, so cert
+    # renewal at /.well-known/acme-challenge/... still works — that location
+    # is more specific than our `location /` and is matched first.
     custom_dir = npm_dir / 'data' / 'nginx' / 'custom'
     custom_dir.mkdir(parents=True, exist_ok=True)
-    dead_conf = custom_dir / 'server_dead.conf'
-    dead_conf.write_text(
-        "# Override NPM's default 'dead host' landing page.\n"
-        "# Serves whatever is in /opt/bucket/html on the host (mounted ro).\n"
+    default_http = custom_dir / 'default_http.conf'
+    default_http.write_text(
+        "# Override NPM's default-site landing page.\n"
+        "# Injected into the port-80 fallback server block in\n"
+        "# /etc/nginx/conf.d/default.conf, *before* its `return 444`.\n"
+        "# Serves /opt/bucket/html (mounted ro into the container).\n"
         "location / {\n"
         "    root /opt/bucket/html;\n"
         "    index index.html;\n"
         "    try_files $uri $uri/ /index.html =404;\n"
         "}\n"
     )
-    print(f"✅ NPM default-host override written to {dead_conf}.")
+    print(f"✅ NPM default-site override written to {default_http}.")
+
+    # Clean up the previous (incorrect) attempt if it's still on disk from an
+    # earlier run of this script. server_dead.conf only affects user-created
+    # 404 Hosts, not the system default site, so it never did what we wanted.
+    legacy_dead = custom_dir / 'server_dead.conf'
+    if legacy_dead.exists():
+        legacy_dead.unlink()
+        print(f"  Removed stale {legacy_dead} (left over from previous setup.py).")
 
     # Seed a placeholder index.html only if /opt/bucket/html is empty — never
     # clobber operator-supplied content on re-runs.
@@ -998,6 +1016,22 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
         print(f"✅ Seeded placeholder {placeholder}.")
 
     run_cmd(['docker', 'compose', 'up', '-d'], cwd_path=npm_dir)
+
+    # If the NPM container was already running, `up -d` is a no-op and our
+    # newly written default_http.conf won't be picked up until nginx is told
+    # to reload. Test the config first, then reload. ignore_errors=True covers
+    # the fresh-install case where the container just started and the reload
+    # command races startup — the test step below will catch real problems.
+    run_cmd(
+        "docker ps -q -f name=nginx-proxy-manager | head -n1 | "
+        "xargs -r -I{} docker exec {} nginx -t",
+        ignore_errors=True,
+    )
+    run_cmd(
+        "docker ps -q -f name=nginx-proxy-manager | head -n1 | "
+        "xargs -r -I{} docker exec {} nginx -s reload",
+        ignore_errors=True,
+    )
     print("✅ Nginx Proxy Manager is running.")
 
 
@@ -1071,8 +1105,8 @@ def main():
         {"path": "/opt/bucket",       "owner": "current-user", "permissions": 0o755},
         {"path": "/opt/bucket/storage","owner": "current-user", "permissions": 0o755},
         {"path": "/opt/bucket/media", "owner": "current-user", "permissions": 0o755},
-        # Custom landing page served by NPM's dead host (mounted read-only
-        # into the NPM container by setup_nginx_proxy_manager).
+        # Custom default-site landing page (mounted read-only into the NPM
+        # container by setup_nginx_proxy_manager).
         {"path": "/opt/bucket/html",  "owner": "current-user", "permissions": 0o755},
         # Per-app deployment directories (deploy.yml writes compose + .env here)
         {"path": "/opt/myordbok",     "owner": "current-user", "permissions": 0o700},
