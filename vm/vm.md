@@ -18,7 +18,7 @@ wget https://cloud-images.ubuntu.com/releases/26.04/release/ubuntu-26.04-server-
 #   --name ubuntu-26.04-golden \
 #   --memory 4096 --vcpus 4 \
 #   --disk path=ubuntu-26.04-golden.qcow2,size=30,backing_store=ubuntu-26.04-server-cloudimg-amd64.img,format=qcow2 \
-#   --cloud-init user-data=/home/khensolomon/dev/lets/vm/user-data.yaml \
+#   --cloud-init user-data=/home/khensolomon/dev/lethil/vm/user-data.yaml \
 #   --network network=default,model=virtio \
 #   --osinfo detect=on,require=off \
 #   --graphics none \
@@ -29,14 +29,14 @@ wget https://cloud-images.ubuntu.com/releases/26.04/release/ubuntu-26.04-server-
 #   --name ubuntu-25.10-golden \
 #   --memory 4096 --vcpus 2 \
 #   --disk path=ubuntu-25.10-golden.qcow2,size=30,backing_store=ubuntu-25.10-server-cloudimg-amd64.img,format=qcow2 \
-#   --cloud-init user-data=/home/khensolomon/dev/lets/vm/user-data.yaml \
+#   --cloud-init user-data=/home/khensolomon/dev/lethil/vm/user-data.yaml \
 #   --network network=default,model=virtio \
 #   --osinfo detect=on,require=off \
 #   --graphics none \
 #   --console pty,target_type=serial \
 #   --import
 
-sudo ~/dev/lets/vm/create.py
+sudo ~/dev/lethil/vm/create.py
 
 sudo virt-install \
   --name ubuntu-26.04-golden \
@@ -46,7 +46,7 @@ sudo virt-install \
   --filesystem /opt/bucket/storage,bucket_storage,driver.type=virtiofs \
   --filesystem /opt/bucket/media,bucket_media,driver.type=virtiofs \
   --memorybacking source.type=memfd,access.mode=shared \
-  --cloud-init user-data=/home/khensolomon/dev/lets/vm/user-data.yaml \
+  --cloud-init user-data=/home/khensolomon/dev/lethil/vm/user-data.yaml \
   --network network=default,model=virtio \
   --osinfo detect=on,require=off \
   --graphics none \
@@ -62,7 +62,7 @@ sudo virt-install \
   --filesystem /opt/bucket/storage,bucket_storage,driver.type=virtiofs \
   --filesystem /opt/bucket/media,bucket_media,driver.type=virtiofs \
   --memorybacking source.type=memfd,access.mode=shared \
-  --cloud-init user-data=/home/khensolomon/dev/lets/vm/user-data.yaml \
+  --cloud-init user-data=/home/khensolomon/dev/lethil/vm/user-data.yaml \
   --network network=default,model=virtio \
   --osinfo detect=on,require=off \
   --graphics none \
