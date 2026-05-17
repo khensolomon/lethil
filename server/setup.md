@@ -10,9 +10,10 @@ The bootstrap is robotic. `setup.py` provisions the VM, creates the Cloudflare T
 
 ## Todo
 
-- [ ] mkdir -p /opt/bucket/storage
-- [ ] mkdir -p /opt/bucket/media
-- [ ] install rclone and config
+- [x] mkdir -p /opt/bucket/storage
+- [x] mkdir -p /opt/bucket/media
+- [x] mkdir -p /opt/bucket/html
+- [x] install rclone and config — now handled by `setup.py` (see [Section 4](#4-running-the-setup-script))
 
 ---
 
@@ -33,6 +34,7 @@ The bootstrap is robotic. `setup.py` provisions the VM, creates the Cloudflare T
    - [7.3 Test SSH through the tunnel](#73-test-ssh-through-the-tunnel-before-closing-port-22)
    - [7.4 Close port 22](#74-close-port-22)
    - [7.5 SSL for additional hosts](#75-configure-ssl-for-additional-proxy-hosts)
+   - [7.6 Customise the default landing page](#76-customise-the-default-landing-page)
 8. [GitHub Actions Self-Hosted Runner](#8-github-actions-self-hosted-runner)
 9. [GitHub Repository Secrets (via secrets.py)](#9-github-repository-secrets-via-secretspy)
 10. [Triggering a Deployment](#10-triggering-a-deployment)
@@ -101,6 +103,28 @@ These become `--cf-service-token-id` and `--cf-service-token-secret` for `setup.
 >
 > Cloudflare returns the secret exactly once, at creation. If `setup.py` generated it, the secret would have to be captured to a file or printed to stdout, and lost values would force a rotation that invalidates every app's GitHub secret simultaneously. By creating the token once in the dashboard and storing it in a password manager, the same value can be reused across VM rebuilds, multiple `setup.py` runs, and every app repo's deploy pipeline — with no irrecoverable state on the VM.
 
+### 2.4 R2 API Token (for rclone)
+
+`setup.py` installs `rclone` unconditionally and writes a pre-configured R2 remote at `~/.config/rclone/rclone.conf` whenever R2 credentials are passed. This is what powers ad-hoc bucket copies, restore drills, and the project's backup tooling.
+
+Cloudflare dashboard → **R2 → Manage R2 API Tokens → Create API Token**:
+
+- **Permissions:** *Object Read & Write* (or read-only if this VM should never push to buckets)
+- **Specify bucket(s):** scope to the buckets the server actually needs, not "Apply to all buckets"
+- **TTL:** open-ended is fine; rotate when team changes
+
+Cloudflare returns three values:
+
+| Field | Used as |
+|---|---|
+| Access Key ID | `--r2-access-key-id` |
+| Secret Access Key | `--r2-secret-access-key` |
+| Endpoint | Constructed from your account ID — no flag needed |
+
+Both the Access Key ID and Secret Access Key are shown only once. Store them in your password manager alongside the other bootstrap credentials.
+
+The endpoint URL is `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`. `setup.py` builds it from `--cf-account-id` automatically; pass `--r2-account-id` only if you want to use a different account for R2 than for the tunnel (rare).
+
 ### Stash these somewhere safe
 
 Suggested entry in your password manager:
@@ -111,6 +135,8 @@ Production server bootstrap
   CF_ACCOUNT_ID             f47...
   CF_SERVICE_TOKEN_ID       xxxx.access
   CF_SERVICE_TOKEN_SECRET   yyyy
+  R2_ACCESS_KEY_ID          aaaa...
+  R2_SECRET_ACCESS_KEY      bbbb...
 ```
 
 ---
@@ -167,7 +193,7 @@ scp -i ~/.ssh/prod_server setup.py root@<server-ip>:/root/setup.py
 
 ### Robotic mode — recommended
 
-Run with all five required credentials. `--app-domain` is repeatable; supply one per public hostname your apps need.
+Run with all five required credentials. `--app-domain` is repeatable; supply one per public hostname your apps need. `--r2-access-key-id` and `--r2-secret-access-key` are optional — supply them to have `setup.py` write a pre-configured rclone remote for R2.
 
 ```bash
 sudo python3 setup.py \
@@ -178,8 +204,12 @@ sudo python3 setup.py \
   --domain                   "example.com" \
   --tunnel-name              "prod-server" \
   --app-domain               "myordbok.com:http://localhost:8000" \
-  --app-domain               "zaideih.com:http://localhost:8080"
+  --app-domain               "zaideih.com:http://localhost:8080" \
+  --r2-access-key-id         "aaaa..." \
+  --r2-secret-access-key     "bbbb..."
 ```
+
+`rclone` itself is installed even when the R2 flags are omitted — the binary is useful for ad-hoc work regardless. Only the `[r2]` remote in `~/.config/rclone/rclone.conf` is gated on the credentials being present.
 
 ### Manual-tunnel mode (legacy)
 
@@ -207,10 +237,11 @@ This skips all robotic steps. You then have to add public hostnames, the Access 
 | Swap | Allocates a 2 GB swap file at `/swapfile` (configurable) |
 | Security | Installs `fail2ban`, `unattended-upgrades`, `jq`, `python3-boto3` |
 | Firewall | Configures UFW: allows SSH, 80, 443. Port 81 stays closed |
-| Directories | Creates `/opt/bucket`, `/opt/myordbok`, `/opt/zaideih`, `/opt/django/media`, `/opt/mysql/data` |
+| Directories | Creates `/opt/bucket`, `/opt/bucket/html`, `/opt/myordbok`, `/opt/zaideih`, `/opt/django/media`, `/opt/mysql/data` |
+| rclone | Installs the rclone binary via the official installer; writes an R2 remote to `~/.config/rclone/rclone.conf` (600) if R2 credentials were supplied |
 | Docker CE | Installs Docker Engine + Compose plugin + Buildx; configures log rotation |
 | Docker Swarm | Initialises a single-node swarm; creates the `gateway` overlay network |
-| NPM + Tunnel | Deploys Nginx Proxy Manager and Cloudflare Tunnel via Docker Compose |
+| NPM + Tunnel | Deploys Nginx Proxy Manager and Cloudflare Tunnel via Docker Compose; mounts `/opt/bucket/html` (ro) and writes `server_dead.conf` so the default landing page serves from that directory |
 | Cloudflare API | Validates token, verifies the supplied service token exists in this account |
 | Tunnel | Creates the named tunnel and returns its connection token |
 | Ingress | Pushes ingress routing rules for `ssh.<domain>`, `npm.<domain>`, and each `--app-domain` |
@@ -239,6 +270,8 @@ Setup logs are written to `/var/log/setup.log`.
 │   ├── docker-compose.yml
 │   ├── .env                   # Cloudflare tunnel token (chmod 600)
 │   ├── data/
+│   │   └── nginx/custom/
+│   │       └── server_dead.conf  # Override for the default landing page
 │   └── letsencrypt/
 │
 ├── myordbok/                  # Application deployment directory
@@ -250,15 +283,23 @@ Setup logs are written to `/var/log/setup.log`.
 │   └── .env
 │
 ├── bucket/                    # Shared persistent storage
+│   ├── storage/
+│   ├── media/
+│   └── html/                  # Default landing page (mounted ro into NPM)
 │
 ├── django/
 │   └── media/                 # Django media file uploads
 │
 └── mysql/
     └── data/                  # MySQL data directory (owned by uid 999)
+
+~/.config/rclone/
+└── rclone.conf                # R2 remote, mode 600, owned by SUDO_USER
 ```
 
 > `/opt/<app>/.env` is **not** a manually managed file. It is recreated from the `ENV_FILE_CONTENT` GitHub secret on every deployment run. The marker that an app has been deployed to this host is the existence of `/opt/<app>/.env`.
+
+> `~/.config/rclone/rclone.conf` is owned by the user who invoked `sudo python3 setup.py` (resolved via `$SUDO_USER`), not root — so `rclone lsd r2:` works without sudo from the operator's shell.
 
 ---
 
@@ -406,6 +447,36 @@ Same SSL pattern for any additional domain or subdomain in NPM:
 
 1. **SSL** tab → **Request a new SSL Certificate**
 2. Enable **Force SSL**, **HTTP/2 Support**, **HSTS**
+
+### 7.6 Customise the default landing page
+
+When a request arrives at the server with a `Host:` header that doesn't match any configured proxy host, NPM serves a "dead host" — by default a built-in *Congratulations! You're connected to Nginx Proxy Manager!* page. That's fine to leave in place if the server is private behind a tunnel, but for any host with port 80/443 open to the internet (mainly for cert renewal here, but still), it gives away more than it should.
+
+`setup.py` handles this without any UI clicks:
+
+- `/opt/bucket/html` is created on the host and mounted **read-only** into the NPM container at the same path.
+- `/data/nginx/custom/server_dead.conf` is written with a `location /` that serves files from `/opt/bucket/html` with `try_files` falling back to `/index.html`.
+- A placeholder `index.html` is seeded on first install only if the directory is empty — re-runs never clobber operator content.
+
+To replace the page, drop files into `/opt/bucket/html/` on the host:
+
+```bash
+# Single file
+sudo cp my-landing.html /opt/bucket/html/index.html
+
+# Or a whole site (static export, etc.)
+sudo rsync -av ./dist/ /opt/bucket/html/
+```
+
+No container restart needed — nginx reads files from the bind mount on every request.
+
+If you change `server_dead.conf` itself (e.g. to add custom headers or rewrites), reload NPM to pick it up:
+
+```bash
+docker exec $(docker ps -q -f name=nginx-proxy-manager) nginx -s reload
+```
+
+> Per-app proxy hosts created in the NPM UI are unaffected by this — they have their own server blocks and take priority over the dead host. The custom landing page only shows for hostnames NPM doesn't know about.
 
 ---
 
@@ -716,6 +787,9 @@ The Cloudflare-side operations are partly idempotent:
 | Access app for `ssh.<domain>` | Reused if one already exists for that hostname. |
 | Service Auth policy | Reused if one already references this service token. |
 | Service token | Never created — it's an input, not an output. |
+| rclone config | Skipped if `~/.config/rclone/rclone.conf` already contains an `[r2]` section, unless `--force` is passed. |
+| `/opt/bucket/html/index.html` | Seeded only if `/opt/bucket/html` is empty. Existing content is never overwritten. |
+| `server_dead.conf` | Always (re-)written to the version this `setup.py` ships with. Edit by hand only if you understand the version stamp will be lost on next run. |
 
 > **The service token is durable.** Its credentials are inputs to `setup.py`, stored in your password manager and reused across runs. There is no secret on the VM that gets lost on reinstall. Tearing down the VM and provisioning a fresh one with the same flags reattaches the same service token to a fresh Access policy on a fresh tunnel — your apps' GitHub secrets continue to work without rotation.
 
@@ -815,3 +889,55 @@ If you see `cp: '/usr/bin/cloudflared' and '/usr/local/bin/cloudflared' are the 
 - The token was deleted in the dashboard
 
 Fix any of those and re-run.
+
+### `rclone lsd r2:` returns `NoSuchBucket` or `InvalidAccessKeyId`
+
+The remote is configured but the credentials aren't matching what Cloudflare expects.
+
+**1.** Check the config file exists and is owned by the user running rclone (not root):
+
+```bash
+ls -l ~/.config/rclone/rclone.conf
+# Expected: -rw------- 1 <you> <you> ...
+cat ~/.config/rclone/rclone.conf
+```
+
+**2.** Confirm the endpoint matches your account ID. The line should read `endpoint = https://<account-id>.r2.cloudflarestorage.com`. Account ID is the same one in the Cloudflare dashboard sidebar, not the zone ID.
+
+**3.** Confirm the R2 API token has access to the bucket you're listing. R2 tokens can be scoped per-bucket — `Apply to all buckets` is permissive but auditable; per-bucket scoping is safer but easier to misconfigure.
+
+**4.** Verify with a one-shot call:
+
+```bash
+rclone --config ~/.config/rclone/rclone.conf lsd r2:
+```
+
+To rewrite the config, re-run `setup.py --force` with the R2 flags. Without `--force`, the existing `[r2]` section is preserved.
+
+### Custom landing page doesn't show
+
+Default landing page at `/opt/bucket/html/index.html` should appear when you hit the server with a hostname NPM doesn't know about (e.g. `curl -H "Host: nothing.invalid" http://<server-ip>/`).
+
+**1.** Confirm `server_dead.conf` exists inside the NPM data dir:
+
+```bash
+cat /opt/nginx-proxy-manager/data/nginx/custom/server_dead.conf
+```
+
+**2.** Confirm `/opt/bucket/html` is mounted into the container:
+
+```bash
+docker exec $(docker ps -q -f name=nginx-proxy-manager) ls /opt/bucket/html
+```
+
+If empty inside the container, check the host directory exists and has files. If the mount itself is missing, re-run `setup.py --force` to rewrite `docker-compose.yml`.
+
+**3.** If you edited `server_dead.conf` by hand and nginx didn't pick it up, reload:
+
+```bash
+docker exec $(docker ps -q -f name=nginx-proxy-manager) nginx -s reload
+```
+
+A syntax error in the file will fail the reload; check `docker logs $(docker ps -q -f name=nginx-proxy-manager)` for the nginx error message.
+
+**4.** If a hostname is configured as a proxy host in NPM, the dead-host config doesn't apply — proxy hosts take priority. The landing page only serves for unmatched hostnames.
