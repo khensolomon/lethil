@@ -4,7 +4,7 @@ Project-aware GitHub secrets manager.
 
 A single Python script that reads your project's `.env` file, validates it, and pushes the right pieces to GitHub Actions as repository secrets. No separate config file — the `.env` is the single source of truth.
 
-- **Source:** https://github.com/khensolomon/lets/blob/make/server/secrets.py
+- **Source:** https://github.com/khensolomon/lethil/blob/master/server/secrets.py
 - **Dependencies:** Python 3 + the GitHub CLI (`gh`)
 
 ---
@@ -90,7 +90,7 @@ The script needs `gh` to be authenticated with `repo` scope so it can read and w
 ### 3. Download the script
 
 ```bash
-sudo wget https://raw.githubusercontent.com/khensolomon/lets/make/server/secrets.py -O /usr/local/bin/secrets.py
+sudo wget https://raw.githubusercontent.com/khensolomon/lethil/master/server/secrets.py -O /usr/local/bin/secrets.py
 sudo chmod +x /usr/local/bin/secrets.py
 ```
 
@@ -112,7 +112,7 @@ Should report that `gh` is authenticated, you're inside a git repo, and your `.e
 Same command as install — the script is one self-contained file:
 
 ```bash
-sudo wget https://raw.githubusercontent.com/khensolomon/lets/make/server/secrets.py -O /usr/local/bin/secrets.py
+sudo wget https://raw.githubusercontent.com/khensolomon/lethil/master/server/secrets.py -O /usr/local/bin/secrets.py
 ```
 
 Your `.env` is never touched.
