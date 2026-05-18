@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-**Stack:** Django · MySQL · Nginx · Docker Swarm · Nginx Proxy Manager · Cloudflare Tunnel · GitHub Actions
+**Stack:** Django · MySQL · Nginx · Docker Swarm · Cloudflare Tunnel · GitHub Actions
 
 This guide covers the complete setup of a production server from a fresh Ubuntu/Debian droplet to a fully automated deployment pipeline. Follow each section in order on a first-time setup.
 
@@ -10,10 +10,9 @@ The bootstrap is robotic. `setup.py` provisions the VM, creates the Cloudflare T
 
 ## Todo
 
-- [x] mkdir -p /opt/bucket/storage
-- [x] mkdir -p /opt/bucket/media
+- [ ] mkdir -p /opt/bucket/storage
+- [ ] mkdir -p /opt/bucket/media
 - [x] install rclone and config — now handled by `setup.py` (see [Section 4](#4-running-the-setup-script))
-- [x] sudo usermod -aG docker $USER
 
 ---
 
@@ -27,14 +26,10 @@ The bootstrap is robotic. `setup.py` provisions the VM, creates the Cloudflare T
 5. [Directory Structure](#5-directory-structure)
 6. [Manual Cloudflare Steps Still Required](#6-manual-cloudflare-steps-still-required)
    - [6.1 Verify the tunnel is healthy](#61-verify-the-tunnel-is-healthy)
-   - [6.2 Add an Access policy for the NPM admin UI](#62-add-an-access-policy-for-the-npm-admin-ui)
-7. [Nginx Proxy Manager Configuration](#7-nginx-proxy-manager-configuration)
-   - [7.1 First login](#71-first-login)
-   - [7.2 Create proxy host for Django](#72-create-a-proxy-host-for-the-django-application)
-   - [7.3 Test SSH through the tunnel](#73-test-ssh-through-the-tunnel-before-closing-port-22)
-   - [7.4 Close port 22](#74-close-port-22)
-   - [7.5 SSL for additional hosts](#75-configure-ssl-for-additional-proxy-hosts)
-   - [7.6 Customise the default landing page](#76-customise-the-default-landing-page)
+7. [Post-install: SSH cutover and landing page](#7-post-install-ssh-cutover-and-landing-page)
+   - [7.1 Test SSH through the tunnel](#71-test-ssh-through-the-tunnel-before-closing-port-22)
+   - [7.2 Close port 22](#72-close-port-22)
+   - [7.3 Customise the landing page](#73-customise-the-landing-page)
 8. [GitHub Actions Self-Hosted Runner](#8-github-actions-self-hosted-runner)
 9. [GitHub Repository Secrets (via secrets.py)](#9-github-repository-secrets-via-secretspy)
 10. [Triggering a Deployment](#10-triggering-a-deployment)
@@ -183,7 +178,7 @@ ssh -i ~/.ssh/prod_server root@<server-ip>
 
 ## 4. Running the Setup Script
 
-`setup.py` does almost everything: installs Docker, configures UFW, creates application directories, brings up Nginx Proxy Manager + Cloudflare Tunnel, creates DNS records, and configures the Access application that gates SSH.
+`setup.py` does almost everything: installs Docker, configures UFW, creates application directories, brings up the Cloudflare Tunnel and the landing-page nginx, creates DNS records, and configures the Access application that gates SSH.
 
 ### Transfer the script to the server
 
@@ -213,7 +208,7 @@ sudo python3 setup.py \
 
 ### Manual-tunnel mode (legacy)
 
-If you've already created the tunnel in the Cloudflare dashboard and just want to install Docker + NPM on the server, pass the tunnel token directly:
+If you've already created the tunnel in the Cloudflare dashboard and just want `setup.py` to handle the server-side install (Docker, tunnel container, landing nginx), pass the tunnel token directly:
 
 ```bash
 sudo python3 setup.py --cloudflare-token <TUNNEL_TOKEN_FROM_DASHBOARD>
@@ -229,6 +224,28 @@ This skips all robotic steps. You then have to add public hostnames, the Access 
 | `--dry-run` | Print every action without making changes |
 | `--force` | Recreate an existing tunnel (destroys connections; use cautiously) |
 
+### Adding or renaming admin subdomains
+
+Every admin subdomain (DNS record + tunnel ingress + optional Access app) is declared in a single dict named `admin_subdomains` near the top of `main()` in `setup.py`. Edit one place and DNS, ingress, Access wiring, and the post-install summary all follow.
+
+```python
+admin_subdomains = {
+    "ssh": {
+        "service": "ssh://localhost:22",
+        "protect_with_access_app": True,
+        "app_name": f"SSH — {admin_domain}",
+    },
+    "npm": {
+        "service": "http://localhost:81",
+    },
+    # Add new internal proxies here, e.g.:
+    # "grafana":   {"service": "http://localhost:3000"},
+    # "portainer": {"service": "https://localhost:9443"},
+}
+```
+
+To rename `ssh` to something else (e.g. `access`), just change the dict key — `setup.py` will create a DNS record, ingress rule, Access app, and Service Auth policy on the new hostname. The old Cloudflare resources at the previous hostname stay in place and need manual cleanup in the dashboard.
+
 ### What the script does
 
 | Step | What happens |
@@ -236,18 +253,18 @@ This skips all robotic steps. You then have to add public hostnames, the Access 
 | Python alias | Links `python3` → `python` |
 | Swap | Allocates a 2 GB swap file at `/swapfile` (configurable) |
 | Security | Installs `fail2ban`, `unattended-upgrades`, `jq`, `python3-boto3` |
-| Firewall | Configures UFW: allows SSH, 80, 443. Port 81 stays closed |
+| Firewall | Configures UFW: allows SSH, 80, 443 |
 | Directories | Creates `/opt/bucket`, `/opt/bucket/html`, `/opt/myordbok`, `/opt/zaideih`, `/opt/django/media`, `/opt/mysql/data` |
 | rclone | Installs the rclone binary via the official installer; writes an R2 remote to `~/.config/rclone/rclone.conf` (600) if R2 credentials were supplied |
 | Docker CE | Installs Docker Engine + Compose plugin + Buildx; configures log rotation; adds the invoking user to the `docker` group so `docker` works without `sudo` (run `newgrp docker` in your shell after install to activate it without re-login) |
 | Docker Swarm | Initialises a single-node swarm; creates the `gateway` overlay network |
-| NPM + Tunnel | Deploys Nginx Proxy Manager and Cloudflare Tunnel via Docker Compose; bind-mounts `/opt/bucket/html` over the container's `/var/www/html` so files dropped in that host directory become the default landing page |
+| Cloudflare Tunnel | Deploys the cloudflared container as its own Docker Compose stack at `/opt/cloudflare-tunnel/` (network_mode: host so the tunnel reaches every service via `localhost:<port>`) |
+| Landing nginx | Deploys an `nginx:alpine` container at `/opt/landing/` listening on port 80, serving `/opt/bucket/html` as a static site with SPA `try_files` fallback. This is the catch-all for any request the tunnel ingress doesn't route somewhere specific |
 | Cloudflare API | Validates token, verifies the supplied service token exists in this account |
 | Tunnel | Creates the named tunnel and returns its connection token |
-| Ingress | Pushes ingress routing rules for `ssh.<domain>`, `npm.<domain>`, and each `--app-domain` |
+| Ingress | Pushes tunnel ingress routing rules for every entry in `admin_subdomains` (default: `ssh.<domain>` and `npm.<domain>`), every `--app-domain`, and a catch-all to `localhost:80` (the landing nginx) |
 | DNS | Upserts proxied CNAMEs in each domain's zone, pointing at the tunnel |
-| Access app | Creates a self-hosted Access application bound to `ssh.<domain>` |
-| Access policy | Attaches a Service Auth policy referencing the supplied service token |
+| Access app | For every `admin_subdomains` entry flagged `protect_with_access_app: True` (default: `ssh.<domain>` only), creates a self-hosted Access application and attaches a Service Auth policy referencing the supplied service token |
 
 ### Verify the install completed
 
@@ -266,11 +283,14 @@ Setup logs are written to `/var/log/setup.log`.
 
 ```
 /opt/
-├── nginx-proxy-manager/       # NPM stack (docker-compose.yml + data)
-│   ├── docker-compose.yml     # Mounts /opt/bucket/html → /var/www/html (ro)
-│   ├── .env                   # Cloudflare tunnel token (chmod 600)
-│   ├── data/                  # NPM's persistent data (DB, generated nginx confs)
-│   └── letsencrypt/
+├── landing/                   # Vanilla nginx landing-page stack
+│   ├── docker-compose.yml     # nginx:alpine, port 80, mounts the two below
+│   └── conf/
+│       └── nginx.conf         # The server block (try_files, root, etc.)
+│
+├── cloudflare-tunnel/         # Cloudflare Tunnel as its own stack
+│   ├── docker-compose.yml     # cloudflared:latest, network_mode: host
+│   └── .env                   # TUNNEL_TOKEN (chmod 600)
 │
 ├── myordbok/                  # Application deployment directory
 │   ├── docker.production.yml  # Copied here by deploy.yml on each deploy
@@ -283,7 +303,7 @@ Setup logs are written to `/var/log/setup.log`.
 ├── bucket/                    # Shared persistent storage
 │   ├── storage/
 │   ├── media/
-│   └── html/                  # Default landing page (mounted ro into NPM)
+│   └── html/                  # Landing page document root (mounted ro into landing nginx)
 │
 ├── django/
 │   └── media/                 # Django media file uploads
@@ -299,11 +319,13 @@ Setup logs are written to `/var/log/setup.log`.
 
 > `~/.config/rclone/rclone.conf` is owned by the user who invoked `sudo python3 setup.py` (resolved via `$SUDO_USER`), not root — so `rclone lsd r2:` works without sudo from the operator's shell.
 
+> **If you're upgrading from a previous version of this setup that used Nginx Proxy Manager:** the new layout uses `/opt/landing/` and `/opt/cloudflare-tunnel/` instead of `/opt/nginx-proxy-manager/`. Re-running `setup.py` creates the new directories but does **not** clean up the old NPM stack. To migrate, stop and remove NPM by hand: `cd /opt/nginx-proxy-manager && sudo docker compose down -v && sudo rm -rf /opt/nginx-proxy-manager`, then re-run `setup.py`. Otherwise both stacks will fight over port 80.
+
 ---
 
 ## 6. Manual Cloudflare steps still required
 
-Robotic mode handles SSH-related Access configuration end-to-end. Two things still need a couple of dashboard clicks:
+Robotic mode handles SSH-related Access configuration end-to-end. One thing still benefits from a quick dashboard check:
 
 ### 6.1 Verify the tunnel is healthy
 
@@ -313,80 +335,15 @@ Zero Trust → **Networks → Tunnels** — find the tunnel named in `--tunnel-n
 docker logs --tail 50 cloudflare-tunnel
 ```
 
-The most common cause of an inactive tunnel after `setup.py` finishes is a wrong tunnel token in `/opt/nginx-proxy-manager/.env` — usually because robotic mode was bypassed and the manual `--cloudflare-token` value didn't match the named tunnel.
-
-### 6.2 Add an Access policy for the NPM admin UI
-
-The script protects `ssh.<domain>` automatically (Service Auth policy for the deploy pipeline). It does **not** auto-protect `npm.<domain>` because that hostname is for human access — the appropriate policy depends on who should reach it.
-
-1. Zero Trust → **Access → Applications**
-2. Click **Add an application** → **Self-hosted**
-3. **Application domain:** `npm.<your-admin-domain>`
-4. **Application name:** `NPM Admin`
-5. Click **Next**, then **Add a policy**:
-   - **Policy name:** `owner-only`
-   - **Action:** `Allow`
-   - **Include** rule: `Emails` → your email address
-6. Save → **Add application**
-
-After this, visiting `npm.<your-admin-domain>` will show a Cloudflare Access login that emails a one-time PIN.
-
-> Don't add a Service Auth policy to the NPM admin app. Service Auth bypasses identity verification — appropriate for the deploy pipeline's SSH access, but the NPM admin UI should require a human login.
+The most common cause of an inactive tunnel after `setup.py` finishes is a wrong tunnel token in `/opt/cloudflare-tunnel/.env` — usually because robotic mode was bypassed and the manual `--cloudflare-token` value didn't match the named tunnel.
 
 ---
 
-## 7. Nginx Proxy Manager Configuration
+## 7. Post-install: SSH cutover and landing page
 
-Port 81 is bound to `127.0.0.1` only and is not reachable from the public internet. Access the NPM admin UI exclusively through the `npm.<your-admin-domain>` hostname configured by `setup.py`.
+With `setup.py` complete, the Cloudflare tunnel is up, ingress rules are routing, and a placeholder landing page is serving on port 80. Two things still want attention before declaring the server done.
 
-### 7.1 First login
-
-> If you haven't yet added the NPM admin Access policy from [6.2](#62-add-an-access-policy-for-the-npm-admin-ui), use an SSH port-forward from the local machine for the first login:
-> ```bash
-> ssh -i ~/.ssh/prod_server -L 8181:127.0.0.1:81 root@<server-ip>
-> ```
-> Then open `http://localhost:8181` in the browser.
-
-Once `npm.<your-admin-domain>` is reachable through the tunnel and the Access policy is in place:
-
-1. Open `https://npm.<your-admin-domain>`
-2. Cloudflare Access prompts for an email — enter the address set in the Access policy
-3. Check that email for a one-time PIN
-4. The NPM login screen appears
-
-Default credentials:
-```
-Email:    admin@example.com
-Password: changeme
-```
-
-**Change both immediately after first login.**
-
-### 7.2 Create a proxy host for the Django application
-
-The tunnel routes `<your-app-domain>` traffic to NPM on port 80. NPM forwards that traffic to the per-stack **nginx** service inside Docker Swarm. NPM and the stack's nginx both join the shared external `gateway` overlay network created by `setup.py`.
-
-1. NPM → **Hosts → Proxy Hosts → Add Proxy Host**
-2. Fill in the **Details** tab:
-
-| Field | Value |
-|---|---|
-| Domain names | e.g. `myordbok.com` |
-| Scheme | `http` |
-| Forward hostname / IP | Per-stack nginx service name (e.g. `myordbok_nginx`) |
-| Forward port | Port nginx listens on inside the container (typically `80`) |
-| Block common exploits | ✅ enabled |
-| Websockets support | enable if the app uses websockets |
-
-3. **SSL** tab:
-   - Select **Request a new SSL Certificate**
-   - Enable **Force SSL**, **HTTP/2 Support**, and **HSTS**
-
-4. Save.
-
-> To find the exact service name, run `docker service ls` on the server. The nginx service appears in the `NAME` column as `<stack>_nginx`.
-
-### 7.3 Test SSH through the tunnel (before closing port 22)
+### 7.1 Test SSH through the tunnel (before closing port 22)
 
 Install `cloudflared` on the **local machine**:
 
@@ -426,7 +383,7 @@ ssh -o ProxyCommand="cloudflared access ssh \
 
 If this connects without prompting for a browser login, the Service Auth policy created by `setup.py` is working correctly and the deploy pipeline will authenticate the same way.
 
-### 7.4 Close port 22
+### 7.2 Close port 22
 
 > Only close port 22 after the tunnel-based SSH test above succeeds.
 
@@ -439,49 +396,40 @@ sudo ufw status
 
 Port 22 is now closed. Future terminal access goes through the tunnel. The DigitalOcean web console remains as an emergency fallback (see Section 14).
 
-### 7.5 Configure SSL for additional proxy hosts
+### 7.3 Customise the landing page
 
-Same SSL pattern for any additional domain or subdomain in NPM:
+Anything not matched by a specific tunnel ingress rule falls through the catch-all to `localhost:80`, where the landing-page nginx serves whatever is in `/opt/bucket/html/`. This is the lightweight nginx container at `/opt/landing/` — not Nginx Proxy Manager. There is no admin UI, no DB, no template injection points. The container does one thing: serve `/opt/bucket/html` as a static site.
 
-1. **SSL** tab → **Request a new SSL Certificate**
-2. Enable **Force SSL**, **HTTP/2 Support**, **HSTS**
-
-### 7.6 Customise the default landing page
-
-When a request arrives over HTTP with a `Host:` header that doesn't match any configured proxy host, NPM's default-site server block serves a built-in *Congratulations! You're connected to Nginx Proxy Manager!* page. Fine on a private LAN; not what you want on a public server where ports 80/443 are open (here they are, for cert renewal). The factory page also leaks the fact that NPM is running.
-
-NPM's default-site server block has a hardcoded `location / { root /var/www/html; index index.html; }` that serves whatever is at `/var/www/html/index.html` inside the container. `setup.py` replaces that directory with a bind mount from the host:
-
-```yaml
-volumes:
-  - /opt/bucket/html:/var/www/html:ro
-```
-
-`/opt/bucket/html` on the host becomes `/var/www/html` inside the container, read-only. Whatever you drop into the host directory becomes the default landing page — no nginx config files, no NPM UI clicks, no DB seeding. NPM's own `root` directive serves it.
-
-`setup.py` handles the wiring:
-
-- Creates `/opt/bucket/html` on the host (owner: invoking user, mode 0755).
-- Adds the bind mount to NPM's `docker-compose.yml`.
-- On a fresh install, seeds a placeholder `index.html` only if the directory is empty — re-runs never clobber operator content.
-- On re-run from any prior version of this script, removes any stale `server_dead.conf` or `default_http.conf` left in `data/nginx/custom/` from earlier (incorrect) approaches.
-- Recreates the `app` service so the new volume layout takes effect (`docker compose up -d --force-recreate app`). The tunnel container is unaffected.
-
-To replace the page, drop files into `/opt/bucket/html/` on the host:
+To replace the placeholder, drop files into `/opt/bucket/html/` on the host:
 
 ```bash
 # Single file
 sudo cp my-landing.html /opt/bucket/html/index.html
 
-# Or a whole SPA build output
+# Or a whole SPA / static-site build output
 sudo rsync -av ./dist/ /opt/bucket/html/
 ```
 
-No restart, no reload — nginx reads files from the bind mount on every request. For SPAs with client-side routing, your SPA's build should generate an `index.html` that handles unknown routes itself; nginx will serve `index.html` for the root path and any other static asset files (`.js`, `.css`, fonts, images) it finds in the directory.
+No restart, no reload — nginx reads files from the bind mount on every request. The server block uses `try_files $uri $uri/ /index.html =404;`, which means:
 
-> **Why a bind mount instead of an nginx config snippet?** Earlier versions of this script tried two different `data/nginx/custom/` injection points (`server_dead.conf`, then `default_http.conf`) — both were architecturally wrong. The dead-host injection point only applies to user-created 404 Hosts in the UI; the http-default injection point doesn't load into the actual default-site server block NPM uses. The default-site block is in `/etc/nginx/conf.d/default.conf` inside the image and points at `/var/www/html` — mounting over that path is the only intervention that actually works, and it has the bonus of needing zero nginx config. If you're upgrading from an older version, re-running `setup.py` cleans up the legacy files.
+- Concrete files (`style.css`, `script.js`, `favicon.ico`, `assets/logo.png`, etc.) resolve via `$uri` and serve as static files directly from disk.
+- Requests for client-side-routed SPA paths (e.g. `/about`, `/users/42`) don't match a file or directory, so they fall back to `/index.html` — the SPA shell — which then handles routing in the browser.
+- Genuinely missing paths with no SPA shell to fall back to return 404, not an infinite loop.
 
-> Per-app proxy hosts created in the NPM UI are unaffected by this — they're their own server blocks matched by `server_name` and take priority over the catch-all default. The custom landing page only shows for hostnames NPM doesn't know about, hitting the server over plain HTTP. (HTTPS to unknown hostnames still triggers NPM's dummy-cert warning before reaching anything — handling that means overriding NPM's HTTPS default-site too, which we're not doing here.)
+To change the nginx server block itself (custom headers, gzip, additional locations), edit `/opt/landing/conf/nginx.conf` on the host and recreate the container:
+
+```bash
+cd /opt/landing && sudo docker compose up -d --force-recreate landing
+```
+
+> **What hits this landing page?** Three things:
+> - `http://<server-ip>/` — direct HTTP to the server's public IP
+> - `https://<server-ip>/` — direct HTTPS won't reach here (no TLS on the host); Cloudflare's edge handles HTTPS for domains pointed at this server
+> - Any unknown-hostname request that reaches the tunnel — Cloudflare routes via the catch-all ingress rule to `localhost:80`
+>
+> Per-app domains (`myordbok.example.com`, `zaideih.example.com`) and admin domains (`ssh.<domain>`, `npm.<domain>`) bypass the landing page entirely — they match specific tunnel ingress rules that route to their app/SSH ports directly.
+
+> **Why a vanilla nginx container and not NPM?** Earlier versions of this setup used Nginx Proxy Manager. With Cloudflare doing TLS at the edge and the tunnel doing host-to-app routing via `localhost:<port>`, NPM was doing nothing useful — except acting as a default-host server for the landing page, which it did poorly (its shipped `default.conf` includes a regex `assets.conf` that intercepts CSS/JS asset requests and 502s them). Replacing NPM with vanilla nginx made the landing-page concern trivial: one server block, one root, one try_files. See the comments in `setup.py`'s `setup_landing()` function for the full history.
 
 ---
 
@@ -766,9 +714,8 @@ UFW is configured by `setup.py`. Rules in effect after setup:
 | Port | Protocol | Status | Reason |
 |---|---|---|---|
 | 22 | TCP | Open (initially) | SSH access — close after tunnel is verified |
-| 80 | TCP | Open | NPM HTTP + Let's Encrypt cert renewal |
-| 443 | TCP | Open | NPM HTTPS |
-| 81 | TCP | **Closed** | NPM admin — accessible only via tunnel |
+| 80 | TCP | Open | Landing-page nginx; also useful for direct debugging |
+| 443 | TCP | Open | No service listens here on the host; Cloudflare terminates TLS at the edge and the tunnel forwards plain HTTP to localhost:80. Kept open as a no-op escape valve |
 
 ```bash
 sudo ufw status verbose
@@ -781,7 +728,7 @@ sudo ufw reload
 
 ## 16. Re-running setup.py
 
-`setup.py` is a one-shot bootstrap, but most steps are idempotent — apt installs, swap, UFW rules, directory creation, Docker install, swarm init, NPM compose. Running it again is safe for picking up incremental fixes.
+`setup.py` is a one-shot bootstrap, but most steps are idempotent — apt installs, swap, UFW rules, directory creation, Docker install, swarm init, compose stacks. Running it again is safe for picking up incremental fixes.
 
 The Cloudflare-side operations are partly idempotent:
 
@@ -794,7 +741,8 @@ The Cloudflare-side operations are partly idempotent:
 | Service token | Never created — it's an input, not an output. |
 | rclone config | Skipped if `~/.config/rclone/rclone.conf` already contains an `[r2]` section, unless `--force` is passed. |
 | `/opt/bucket/html/index.html` | Seeded only if `/opt/bucket/html` is empty. Existing content is never overwritten. |
-| Landing page mount | NPM's `app` service is force-recreated so the new volume layout (`/opt/bucket/html → /var/www/html`) takes effect. Stale `server_dead.conf` and `default_http.conf` from earlier (incorrect) script versions are deleted from `data/nginx/custom/`. The tunnel container is unaffected. |
+| Cloudflare Tunnel stack | `/opt/cloudflare-tunnel/.env` and `docker-compose.yml` are rewritten on every run. `--force` brings the container down first; otherwise `docker compose up -d` is a no-op if nothing changed. |
+| Landing nginx stack | `/opt/landing/conf/nginx.conf` and `docker-compose.yml` are rewritten on every run. The `landing` service is always force-recreated so a freshly written nginx.conf takes effect. |
 
 > **The service token is durable.** Its credentials are inputs to `setup.py`, stored in your password manager and reused across runs. There is no secret on the VM that gets lost on reinstall. Tearing down the VM and provisioning a fresh one with the same flags reattaches the same service token to a fresh Access policy on a fresh tunnel — your apps' GitHub secrets continue to work without rotation.
 
@@ -867,17 +815,6 @@ docker service logs <app>_web --tail 100
 ```
 
 The `Dump Service Logs on Failure` step in the pipeline captures these automatically and displays them in the Actions run output.
-
-### NPM admin UI is unreachable at `npm.<your-admin-domain>`
-
-**1.** Tunnel healthy? See above.
-
-**2.** In the Cloudflare Tunnel config, public hostname `npm.<your-admin-domain>` is mapped to `http://localhost:81`. `localhost` is correct — the tunnel container runs with `network_mode: host`, so its `localhost` is the Docker host where NPM has port 81 bound to `127.0.0.1`.
-
-**3.** NPM running?
-```bash
-docker ps | grep nginx-proxy-manager
-```
 
 ### `cp` fails when installing cloudflared in CI
 
@@ -952,51 +889,56 @@ newgrp docker
 
 The watch-out: shell scripts and command substitutions like `$(docker ps -q -f name=...)` run in *subshells*, which inherit the parent shell's groups. So `sudo docker exec $(docker ps -q ...)` runs the outer command as root but the inner one as your normal user — and the inner one fails with the permission error you saw, leaving the outer `docker exec` with no container ID to operate on. Fix the group membership instead of sprinkling `sudo` inside command substitutions.
 
-### Custom landing page doesn't show
+### Landing page doesn't show, or assets return 502
 
-The default landing page (whatever is at `/opt/bucket/html/index.html`) should appear when you hit the server over plain HTTP with a hostname NPM doesn't know about:
-
-```bash
-curl -H "Host: nothing.invalid" http://<server-ip>/
-```
-
-If you still see NPM's Congratulations page, work through these in order.
-
-**1.** Confirm the bind mount is in `docker-compose.yml` and active inside the container:
+The landing page should appear when you hit the server over plain HTTP, with or without a hostname header:
 
 ```bash
-grep "var/www/html" /opt/nginx-proxy-manager/docker-compose.yml
-# Expected: - /opt/bucket/html:/var/www/html:ro
-
-# Check what's actually mounted inside the container
-docker exec $(docker ps -q -f name=nginx-proxy-manager) ls -la /var/www/html/
+curl -sI http://<server-ip>/
+curl -sI -H "Host: nothing.invalid" http://<server-ip>/
 ```
 
-If the host directory `/opt/bucket/html` has files but the container shows different files (or just the NPM-baked `index.html`), the mount didn't apply. NPM was probably started before the mount was added. Recreate the container:
+Both should return `200 OK` with `Server: nginx/...` and a `Content-Length` matching your `/opt/bucket/html/index.html` file size.
+
+**Container running?**
 
 ```bash
-cd /opt/nginx-proxy-manager && sudo docker compose up -d --force-recreate app
+docker ps --filter name=landing
+# Expected: STATUS shows 'Up <duration>'
 ```
 
-**2.** Clean up stale conf files from earlier (incorrect) versions of `setup.py`. These never worked but leave clutter:
+If it's not running, check the logs:
 
 ```bash
-sudo rm -f /opt/nginx-proxy-manager/data/nginx/custom/server_dead.conf
-sudo rm -f /opt/nginx-proxy-manager/data/nginx/custom/default_http.conf
+docker logs --tail 50 landing
 ```
 
-Neither file is needed for the bind-mount approach.
+The most common reason for the container failing to start is a syntax error in `/opt/landing/conf/nginx.conf`. `nginx -t` runs at startup and the error will be in the logs verbatim.
 
-**3.** Confirm the file nginx is actually serving. The response from a curl gives you `Content-Length` and `Last-Modified` — match those to the file inside the container:
+**Wrong files served (or empty 403 Forbidden)?**
 
 ```bash
-curl -sI -H "Host: nothing.invalid" http://localhost/
-# Compare Content-Length to:
-docker exec $(docker ps -q -f name=nginx-proxy-manager) ls -la /var/www/html/index.html
+# What's on the host?
+ls -la /opt/bucket/html/
+
+# What does the container see?
+docker exec landing ls -la /usr/share/nginx/html/
 ```
 
-If `Content-Length` matches `/var/www/html/index.html`'s size from inside the container, nginx is serving from your bind mount. If the sizes differ, the mount isn't being read.
+The two listings should match. If the container is empty or shows different files, the bind mount didn't apply — `docker compose up -d --force-recreate landing` from `/opt/landing/` will rebuild with the mount.
 
-**4.** If you're testing over HTTPS rather than HTTP: NPM's HTTPS catch-all is a separate server block using a dummy SSL cert. Overriding it would require either a similar bind mount on a different path or a custom nginx config injection. This script handles HTTP only.
+**Port conflict?**
 
-**5.** If a hostname is configured as a proxy host in NPM, the catch-all doesn't apply — proxy hosts match by `server_name` and take priority. The landing page only serves for unmatched hostnames.
+If `docker logs landing` shows `bind() to 0.0.0.0:80 failed (98: Address already in use)`, something else is already listening on port 80. The usual suspect on an upgraded server is a leftover NPM container:
+
+```bash
+sudo lsof -i :80
+# or
+sudo ss -tlnp | grep ':80'
+```
+
+If you see `nginx-proxy-manager` in the output, follow the upgrade-cleanup note in Section 5.
+
+**SPA deep links return 404?**
+
+The server block uses `try_files $uri $uri/ /index.html =404;`. Deep links work as long as `/opt/bucket/html/index.html` exists. If it doesn't, deep links 404 because the fallback target doesn't exist. Drop a real `index.html` into the directory and reload the browser.
