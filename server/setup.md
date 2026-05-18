@@ -10,10 +10,10 @@ The bootstrap is robotic. `setup.py` provisions the VM, creates the Cloudflare T
 
 ## Todo
 
-- [ ] mkdir -p /opt/bucket/storage
-- [ ] mkdir -p /opt/bucket/media
+- [x] mkdir -p /opt/bucket/storage
+- [x] mkdir -p /opt/bucket/media
 - [x] install rclone and config — now handled by `setup.py` (see [Section 4](#4-running-the-setup-script))
-- [ ] sudo usermod -aG docker $USER
+- [x] sudo usermod -aG docker $USER
 
 ---
 
@@ -239,9 +239,9 @@ This skips all robotic steps. You then have to add public hostnames, the Access 
 | Firewall | Configures UFW: allows SSH, 80, 443. Port 81 stays closed |
 | Directories | Creates `/opt/bucket`, `/opt/bucket/html`, `/opt/myordbok`, `/opt/zaideih`, `/opt/django/media`, `/opt/mysql/data` |
 | rclone | Installs the rclone binary via the official installer; writes an R2 remote to `~/.config/rclone/rclone.conf` (600) if R2 credentials were supplied |
-| Docker CE | Installs Docker Engine + Compose plugin + Buildx; configures log rotation |
+| Docker CE | Installs Docker Engine + Compose plugin + Buildx; configures log rotation; adds the invoking user to the `docker` group so `docker` works without `sudo` (run `newgrp docker` in your shell after install to activate it without re-login) |
 | Docker Swarm | Initialises a single-node swarm; creates the `gateway` overlay network |
-| NPM + Tunnel | Deploys Nginx Proxy Manager and Cloudflare Tunnel via Docker Compose; mounts `/opt/bucket/html` (ro) and writes `default_http.conf` so the default-site landing page serves from that directory |
+| NPM + Tunnel | Deploys Nginx Proxy Manager and Cloudflare Tunnel via Docker Compose; bind-mounts `/opt/bucket/html` over the container's `/var/www/html` so files dropped in that host directory become the default landing page |
 | Cloudflare API | Validates token, verifies the supplied service token exists in this account |
 | Tunnel | Creates the named tunnel and returns its connection token |
 | Ingress | Pushes ingress routing rules for `ssh.<domain>`, `npm.<domain>`, and each `--app-domain` |
@@ -267,11 +267,9 @@ Setup logs are written to `/var/log/setup.log`.
 ```
 /opt/
 ├── nginx-proxy-manager/       # NPM stack (docker-compose.yml + data)
-│   ├── docker-compose.yml
+│   ├── docker-compose.yml     # Mounts /opt/bucket/html → /var/www/html (ro)
 │   ├── .env                   # Cloudflare tunnel token (chmod 600)
-│   ├── data/
-│   │   └── nginx/custom/
-│   │       └── default_http.conf    # Override for the default-site landing page
+│   ├── data/                  # NPM's persistent data (DB, generated nginx confs)
 │   └── letsencrypt/
 │
 ├── myordbok/                  # Application deployment directory
@@ -450,16 +448,24 @@ Same SSL pattern for any additional domain or subdomain in NPM:
 
 ### 7.6 Customise the default landing page
 
-When a request arrives over HTTP with a `Host:` header that doesn't match any configured proxy host, NPM serves a built-in *Congratulations! You're connected to Nginx Proxy Manager!* page from its default-site server block. Fine on a private LAN; not what you want on a public server where ports 80/443 are open (here they are, for Let's Encrypt renewal). The factory page also leaks the fact that NPM is running.
+When a request arrives over HTTP with a `Host:` header that doesn't match any configured proxy host, NPM's default-site server block serves a built-in *Congratulations! You're connected to Nginx Proxy Manager!* page. Fine on a private LAN; not what you want on a public server where ports 80/443 are open (here they are, for cert renewal). The factory page also leaks the fact that NPM is running.
 
-NPM exposes a documented injection point inside that default-site server block: `/data/nginx/custom/default_http.conf` is `include`d before the catch-all `return 444;`. Anything we put there becomes part of the same server block, evaluated first, with normal nginx location-precedence rules.
+NPM's default-site server block has a hardcoded `location / { root /var/www/html; index index.html; }` that serves whatever is at `/var/www/html/index.html` inside the container. `setup.py` replaces that directory with a bind mount from the host:
+
+```yaml
+volumes:
+  - /opt/bucket/html:/var/www/html:ro
+```
+
+`/opt/bucket/html` on the host becomes `/var/www/html` inside the container, read-only. Whatever you drop into the host directory becomes the default landing page — no nginx config files, no NPM UI clicks, no DB seeding. NPM's own `root` directive serves it.
 
 `setup.py` handles the wiring:
 
-- `/opt/bucket/html` is created on the host and mounted **read-only** into the NPM container at the same path.
-- `/opt/nginx-proxy-manager/data/nginx/custom/default_http.conf` is written with a `location /` that serves files from `/opt/bucket/html` with `try_files` falling back to `/index.html` (works for SPAs).
-- A placeholder `index.html` is seeded on first install only if the directory is empty — re-runs never clobber operator content.
-- After writing the conf, `setup.py` runs `nginx -t` then `nginx -s reload` inside the running container so the change takes effect immediately (no full restart, no dropped connections on existing proxy hosts).
+- Creates `/opt/bucket/html` on the host (owner: invoking user, mode 0755).
+- Adds the bind mount to NPM's `docker-compose.yml`.
+- On a fresh install, seeds a placeholder `index.html` only if the directory is empty — re-runs never clobber operator content.
+- On re-run from any prior version of this script, removes any stale `server_dead.conf` or `default_http.conf` left in `data/nginx/custom/` from earlier (incorrect) approaches.
+- Recreates the `app` service so the new volume layout takes effect (`docker compose up -d --force-recreate app`). The tunnel container is unaffected.
 
 To replace the page, drop files into `/opt/bucket/html/` on the host:
 
@@ -467,22 +473,15 @@ To replace the page, drop files into `/opt/bucket/html/` on the host:
 # Single file
 sudo cp my-landing.html /opt/bucket/html/index.html
 
-# Or a whole SPA (static export, etc.)
+# Or a whole SPA build output
 sudo rsync -av ./dist/ /opt/bucket/html/
 ```
 
-No container restart needed — nginx reads files from the bind mount on every request. `try_files` with the `/index.html` fallback means SPA client-side routing works (deep links resolve to the SPA shell).
+No restart, no reload — nginx reads files from the bind mount on every request. For SPAs with client-side routing, your SPA's build should generate an `index.html` that handles unknown routes itself; nginx will serve `index.html` for the root path and any other static asset files (`.js`, `.css`, fonts, images) it finds in the directory.
 
-If you change `default_http.conf` itself (rare — most edits go in `/opt/bucket/html` instead), reload nginx:
+> **Why a bind mount instead of an nginx config snippet?** Earlier versions of this script tried two different `data/nginx/custom/` injection points (`server_dead.conf`, then `default_http.conf`) — both were architecturally wrong. The dead-host injection point only applies to user-created 404 Hosts in the UI; the http-default injection point doesn't load into the actual default-site server block NPM uses. The default-site block is in `/etc/nginx/conf.d/default.conf` inside the image and points at `/var/www/html` — mounting over that path is the only intervention that actually works, and it has the bonus of needing zero nginx config. If you're upgrading from an older version, re-running `setup.py` cleans up the legacy files.
 
-```bash
-docker exec $(docker ps -q -f name=nginx-proxy-manager) nginx -t && \
-docker exec $(docker ps -q -f name=nginx-proxy-manager) nginx -s reload
-```
-
-> **Earlier versions of `setup.py` wrote `server_dead.conf` here by mistake.** That file is appended to user-created 404 Hosts (entries you'd add via NPM's UI), not the system-wide default site, so the override silently did nothing for the Congratulations page. The newer `setup.py` removes any stray `server_dead.conf` on re-run. If you don't re-run `setup.py`, delete it manually with `rm /opt/nginx-proxy-manager/data/nginx/custom/server_dead.conf`.
-
-> Per-app proxy hosts created in the NPM UI are unaffected by this — they're their own server blocks matched by `server_name` and take priority over the catch-all default. The custom landing page only shows for hostnames NPM doesn't know about, hitting the server over plain HTTP. (HTTPS to unknown hostnames still triggers NPM's dummy-cert warning before reaching this block — that's a deeper change we're not making here.)
+> Per-app proxy hosts created in the NPM UI are unaffected by this — they're their own server blocks matched by `server_name` and take priority over the catch-all default. The custom landing page only shows for hostnames NPM doesn't know about, hitting the server over plain HTTP. (HTTPS to unknown hostnames still triggers NPM's dummy-cert warning before reaching anything — handling that means overriding NPM's HTTPS default-site too, which we're not doing here.)
 
 ---
 
@@ -795,7 +794,7 @@ The Cloudflare-side operations are partly idempotent:
 | Service token | Never created — it's an input, not an output. |
 | rclone config | Skipped if `~/.config/rclone/rclone.conf` already contains an `[r2]` section, unless `--force` is passed. |
 | `/opt/bucket/html/index.html` | Seeded only if `/opt/bucket/html` is empty. Existing content is never overwritten. |
-| `default_http.conf` | Always (re-)written to the version this `setup.py` ships with. If a stale `server_dead.conf` from earlier `setup.py` versions is present, it's deleted (it was a no-op anyway). Edit by hand only if you understand the next `setup.py` run will overwrite. |
+| Landing page mount | NPM's `app` service is force-recreated so the new volume layout (`/opt/bucket/html → /var/www/html`) takes effect. Stale `server_dead.conf` and `default_http.conf` from earlier (incorrect) script versions are deleted from `data/nginx/custom/`. The tunnel container is unaffected. |
 
 > **The service token is durable.** Its credentials are inputs to `setup.py`, stored in your password manager and reused across runs. There is no secret on the VM that gets lost on reinstall. Tearing down the VM and provisioning a fresh one with the same flags reattaches the same service token to a fresh Access policy on a fresh tunnel — your apps' GitHub secrets continue to work without rotation.
 
@@ -920,43 +919,84 @@ rclone --config ~/.config/rclone/rclone.conf lsd r2:
 
 To rewrite the config, re-run `setup.py --force` with the R2 flags. Without `--force`, the existing `[r2]` section is preserved.
 
+### `docker: permission denied while trying to connect to the docker API`
+
+```
+permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+```
+
+`setup.py` adds the invoking user to the `docker` group, but Linux only refreshes group memberships when a process starts. The shell you're typing in started before `setup.py` ran, so it still has the old groups.
+
+Two options:
+
+```bash
+# Activate the group in the current shell only:
+newgrp docker
+
+# Or pick it up everywhere by re-logging in:
+exit       # then SSH back in
+```
+
+After either of those, `docker ps` works without `sudo`. Confirm with:
+
+```bash
+groups | grep -o docker
+```
+
+If you see `docker` in the output, you're good. If `setup.py` ran but didn't add you to the group (e.g. you ran it as root directly, with no `SUDO_USER` set), do it manually:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+The watch-out: shell scripts and command substitutions like `$(docker ps -q -f name=...)` run in *subshells*, which inherit the parent shell's groups. So `sudo docker exec $(docker ps -q ...)` runs the outer command as root but the inner one as your normal user — and the inner one fails with the permission error you saw, leaving the outer `docker exec` with no container ID to operate on. Fix the group membership instead of sprinkling `sudo` inside command substitutions.
+
 ### Custom landing page doesn't show
 
-Default landing page at `/opt/bucket/html/index.html` should appear when you hit the server over plain HTTP with a hostname NPM doesn't know about:
+The default landing page (whatever is at `/opt/bucket/html/index.html`) should appear when you hit the server over plain HTTP with a hostname NPM doesn't know about:
 
 ```bash
 curl -H "Host: nothing.invalid" http://<server-ip>/
 ```
 
-**1.** Confirm `default_http.conf` exists inside the NPM data dir and contains the location block:
+If you still see NPM's Congratulations page, work through these in order.
+
+**1.** Confirm the bind mount is in `docker-compose.yml` and active inside the container:
 
 ```bash
-cat /opt/nginx-proxy-manager/data/nginx/custom/default_http.conf
+grep "var/www/html" /opt/nginx-proxy-manager/docker-compose.yml
+# Expected: - /opt/bucket/html:/var/www/html:ro
+
+# Check what's actually mounted inside the container
+docker exec $(docker ps -q -f name=nginx-proxy-manager) ls -la /var/www/html/
 ```
 
-If a stale `server_dead.conf` from an older `setup.py` is sitting next to it, delete it — that file injects into user-created 404 Hosts (a different NPM concept), not the default site, so it was a no-op the whole time:
+If the host directory `/opt/bucket/html` has files but the container shows different files (or just the NPM-baked `index.html`), the mount didn't apply. NPM was probably started before the mount was added. Recreate the container:
 
 ```bash
-rm /opt/nginx-proxy-manager/data/nginx/custom/server_dead.conf
+cd /opt/nginx-proxy-manager && sudo docker compose up -d --force-recreate app
 ```
 
-**2.** Confirm `/opt/bucket/html` is mounted into the container and has files:
+**2.** Clean up stale conf files from earlier (incorrect) versions of `setup.py`. These never worked but leave clutter:
 
 ```bash
-docker exec $(docker ps -q -f name=nginx-proxy-manager) ls /opt/bucket/html
+sudo rm -f /opt/nginx-proxy-manager/data/nginx/custom/server_dead.conf
+sudo rm -f /opt/nginx-proxy-manager/data/nginx/custom/default_http.conf
 ```
 
-If empty inside the container, check the host directory has files. If the mount itself is missing, re-run `setup.py --force` to rewrite `docker-compose.yml`.
+Neither file is needed for the bind-mount approach.
 
-**3.** Reload nginx so a freshly written `default_http.conf` takes effect:
+**3.** Confirm the file nginx is actually serving. The response from a curl gives you `Content-Length` and `Last-Modified` — match those to the file inside the container:
 
 ```bash
-docker exec $(docker ps -q -f name=nginx-proxy-manager) nginx -t && \
-docker exec $(docker ps -q -f name=nginx-proxy-manager) nginx -s reload
+curl -sI -H "Host: nothing.invalid" http://localhost/
+# Compare Content-Length to:
+docker exec $(docker ps -q -f name=nginx-proxy-manager) ls -la /var/www/html/index.html
 ```
 
-A syntax error in the file will fail `nginx -t`; the running config is unchanged until a successful reload. Check `docker logs $(docker ps -q -f name=nginx-proxy-manager)` for nginx's error message.
+If `Content-Length` matches `/var/www/html/index.html`'s size from inside the container, nginx is serving from your bind mount. If the sizes differ, the mount isn't being read.
 
-**4.** You're testing over HTTPS, not HTTP. NPM's HTTPS catch-all is a separate server block (with the dummy SSL cert) and uses its own `default_https.conf` injection point. This override is HTTP-only. If you also need HTTPS, add an analogous file at `/opt/nginx-proxy-manager/data/nginx/custom/default_https.conf` and reload.
+**4.** If you're testing over HTTPS rather than HTTP: NPM's HTTPS catch-all is a separate server block using a dummy SSL cert. Overriding it would require either a similar bind mount on a different path or a custom nginx config injection. This script handles HTTP only.
 
 **5.** If a hostname is configured as a proxy host in NPM, the catch-all doesn't apply — proxy hosts match by `server_name` and take priority. The landing page only serves for unmatched hostnames.
