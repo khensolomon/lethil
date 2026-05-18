@@ -71,6 +71,7 @@ import os
 import re
 import sys
 import pwd
+import grp
 import json
 import base64
 import secrets
@@ -830,6 +831,48 @@ def setup_docker(force=False, dry_run=False):
             sys.exit(1)
         print(f"✅ {result.stdout.strip()}")
 
+    # Add the invoking user to the 'docker' group so they can run `docker`
+    # without sudo. This is post-install hygiene — every Docker CLI command
+    # in the rest of this script is run as root (we're under sudo), so this
+    # step doesn't affect setup.py itself; it's purely for the operator's
+    # interactive use afterwards.
+    #
+    # usermod -aG is idempotent (re-adding a user to a group they're already
+    # in is a no-op), so this is safe on every re-run. We skip if the
+    # resolved user is root (root is implicitly in all groups; adding root
+    # to 'docker' is pointless).
+    #
+    # newgrp is intentionally NOT called here — newgrp only affects the shell
+    # that runs it, and a shell spawned by Python exits immediately. The user
+    # has to run `newgrp docker` themselves (or log out and back in) to
+    # activate the group in their current terminal session. We print a hint
+    # to that effect, but only when the user wasn't already a member — no
+    # point repeating the hint on every re-run.
+    target_user = os.environ.get('SUDO_USER') or os.environ.get('USER') or 'root'
+    if target_user == 'root':
+        pass  # root doesn't need to be added to docker group
+    else:
+        already_member = False
+        try:
+            docker_group = grp.getgrnam('docker')
+            already_member = target_user in docker_group.gr_mem
+        except KeyError:
+            # The 'docker' group doesn't exist yet — the Docker package
+            # creates it on install, so this only happens in dry-run mode
+            # before the install has run.
+            pass
+
+        if dry_run:
+            print(f"[DRY-RUN] Would add user '{target_user}' to the 'docker' group.")
+        elif already_member:
+            print(f"Skip: '{target_user}' is already in the 'docker' group.")
+        else:
+            run_cmd(['usermod', '-aG', 'docker', target_user])
+            print(f"✅ Added '{target_user}' to the 'docker' group.")
+            print(f"   To use docker without sudo in your current shell, run:")
+            print(f"     newgrp docker")
+            print(f"   Or log out and back in. New shells will pick it up automatically.")
+
 
 def setup_docker_swarm(dry_run=False):
     """
@@ -896,12 +939,16 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
     # to forward to. Port 81 (admin UI) is bound to 127.0.0.1 only — not
     # reachable from the public internet.
     #
-    # /opt/bucket/html is mounted read-only at the same path inside the
-    # container. NPM's default-site server block (the catch-all in
-    # /etc/nginx/conf.d/default.conf that handles unmatched hostnames) is
-    # overridden via /data/nginx/custom/default_http.conf below to serve
-    # files from this directory. Drop an index.html (or a whole SPA) in
-    # there to replace the stock "Congratulations" landing page.
+    # The default-site landing page is replaced by bind-mounting
+    # /opt/bucket/html (host) over /var/www/html (container, read-only).
+    # /var/www/html is where NPM's own default-site server block roots
+    # its `location /` — see `nginx -T` output: the block listening on
+    # port 80 with server_name 'localhost-nginx-proxy-manager' contains
+    # `location / { root /var/www/html; index index.html; }`. By replacing
+    # the directory contents at that path, our index.html (and any SPA
+    # assets next to it) become the default landing page with no nginx
+    # config changes whatsoever. NPM's admin UI lives at /app/frontend
+    # (port 81), entirely unaffected.
     services_part = """\
   app:
     image: jc21/nginx-proxy-manager:latest
@@ -913,7 +960,7 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
-      - /opt/bucket/html:/opt/bucket/html:ro
+      - /opt/bucket/html:/var/www/html:ro
     networks:
       - gateway"""
 
@@ -955,46 +1002,23 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
         f.write(compose)
 
     # ── Custom landing page for NPM's default site ───────────────────────────
-    # NPM ships /etc/nginx/conf.d/default.conf with a port-80 server block
-    # whose server_name is 'localhost-nginx-proxy-manager' and whose default
-    # behaviour is `location / { return 444; }` (the "Congratulations" page is
-    # served elsewhere for that hostname). Before that default location, the
-    # block includes /data/nginx/custom/default_http.conf as a documented
-    # "HTTP extension point" — anything we put there is part of the same
-    # server block, parsed before `return 444`, and a `location /` inside it
-    # wins by nginx's most-specific-location rule.
+    # Strategy: bind-mount /opt/bucket/html (host) over /var/www/html
+    # (container) — see the volume in the compose snippet above. NPM's own
+    # default-site server block already does `location / { root /var/www/html; }`,
+    # so by replacing the directory contents, our index.html and SPA assets
+    # become the default landing page with zero nginx config changes.
     #
-    # IMPORTANT: this is NOT server_dead.conf. server_dead.conf is appended to
-    # *user-created 404 Hosts* in the NPM UI, not the system-wide default
-    # site. The default_http.conf injection point is what actually replaces
-    # the "Congratulations" page without UI clicks or DB seeding.
-    #
-    # The Let's Encrypt ACME challenge include sits at server level, so cert
-    # renewal at /.well-known/acme-challenge/... still works — that location
-    # is more specific than our `location /` and is matched first.
+    # No custom .conf files are needed here. Earlier versions of this script
+    # tried two different nginx-injection approaches (server_dead.conf and
+    # default_http.conf) — both were architecturally wrong for different
+    # reasons. We clean them up below so re-runs from any prior version end
+    # in the right state.
     custom_dir = npm_dir / 'data' / 'nginx' / 'custom'
-    custom_dir.mkdir(parents=True, exist_ok=True)
-    default_http = custom_dir / 'default_http.conf'
-    default_http.write_text(
-        "# Override NPM's default-site landing page.\n"
-        "# Injected into the port-80 fallback server block in\n"
-        "# /etc/nginx/conf.d/default.conf, *before* its `return 444`.\n"
-        "# Serves /opt/bucket/html (mounted ro into the container).\n"
-        "location / {\n"
-        "    root /opt/bucket/html;\n"
-        "    index index.html;\n"
-        "    try_files $uri $uri/ /index.html =404;\n"
-        "}\n"
-    )
-    print(f"✅ NPM default-site override written to {default_http}.")
-
-    # Clean up the previous (incorrect) attempt if it's still on disk from an
-    # earlier run of this script. server_dead.conf only affects user-created
-    # 404 Hosts, not the system default site, so it never did what we wanted.
-    legacy_dead = custom_dir / 'server_dead.conf'
-    if legacy_dead.exists():
-        legacy_dead.unlink()
-        print(f"  Removed stale {legacy_dead} (left over from previous setup.py).")
+    for legacy_name in ('server_dead.conf', 'default_http.conf'):
+        legacy_path = custom_dir / legacy_name
+        if legacy_path.exists():
+            legacy_path.unlink()
+            print(f"  Removed stale {legacy_path} (left over from earlier setup.py).")
 
     # Seed a placeholder index.html only if /opt/bucket/html is empty — never
     # clobber operator-supplied content on re-runs.
@@ -1015,23 +1039,16 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
         )
         print(f"✅ Seeded placeholder {placeholder}.")
 
-    run_cmd(['docker', 'compose', 'up', '-d'], cwd_path=npm_dir)
-
-    # If the NPM container was already running, `up -d` is a no-op and our
-    # newly written default_http.conf won't be picked up until nginx is told
-    # to reload. Test the config first, then reload. ignore_errors=True covers
-    # the fresh-install case where the container just started and the reload
-    # command races startup — the test step below will catch real problems.
-    run_cmd(
-        "docker ps -q -f name=nginx-proxy-manager | head -n1 | "
-        "xargs -r -I{} docker exec {} nginx -t",
-        ignore_errors=True,
-    )
-    run_cmd(
-        "docker ps -q -f name=nginx-proxy-manager | head -n1 | "
-        "xargs -r -I{} docker exec {} nginx -s reload",
-        ignore_errors=True,
-    )
+    # If the NPM stack is already running with the old volume mount layout,
+    # `docker compose up -d` alone will keep the existing container — the
+    # volume change won't take effect until the container is recreated.
+    # Force a recreate of just the 'app' service (NPM) so the new
+    # /opt/bucket/html → /var/www/html bind mount is applied. We don't pass
+    # --force-recreate without a service name because that would also bounce
+    # the tunnel container, which has no reason to restart and would briefly
+    # drop the Cloudflare tunnel connection for every proxied app.
+    run_cmd(['docker', 'compose', 'up', '-d', '--force-recreate', 'app'],
+            cwd_path=npm_dir)
     print("✅ Nginx Proxy Manager is running.")
 
 
