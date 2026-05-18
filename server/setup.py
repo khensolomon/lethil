@@ -62,9 +62,6 @@ Notes:
         token in the dashboard, create a new one, update your password
         manager, update each app's .env, run secrets.py --push, then
         re-run setup.py to re-attach the new token to the policy.
-
-    Port 81 (NPM admin) is NOT opened in UFW. Access it exclusively via the
-    Cloudflare Tunnel proxy host: npm.<admin-domain>
 """
 
 import os
@@ -127,7 +124,8 @@ def parse_args():
                               "Same source as --cf-service-token-id; both are required "
                               "together in robotic mode."))
     parser.add_argument('--domain',        type=str,
-                        help="Admin domain (e.g. admin.com). Hosts npm.<domain> and ssh.<domain>.")
+                        help="Admin domain (e.g. admin.com). Hosts the admin subdomains "
+                             "defined in main()'s admin_subdomains dict.")
     parser.add_argument('--tunnel-name',   type=str, default="prod-server",
                         help="Name for the tunnel in Cloudflare Zero Trust. Default: prod-server")
     parser.add_argument('--app-domain',    type=str, action='append', dest='app_domains',
@@ -479,10 +477,25 @@ def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
       4. Create (or recreate) the tunnel
       5. Push ingress routing rules
       6. Upsert all DNS CNAME records
-      7. Create (or reuse) the Access application for ssh.<admin-domain>
-      8. Attach a Service Auth policy referencing the supplied service token
+      7. For every admin_subdomains entry with protect_with_access_app=True:
+         create (or reuse) the Access application and attach a Service Auth
+         policy referencing the supplied service token
+
+    admin_subdomains is a dict keyed by subdomain name. Each value is a dict:
+      {
+        "service": <tunnel ingress target, e.g. "ssh://localhost:22">,
+        "protect_with_access_app": <optional bool — default False>,
+        "app_name": <optional Access app display name>,
+      }
+
+    To add a new internal proxy: append one entry to admin_subdomains in
+    main(). DNS, ingress, and (optionally) Access app are wired up
+    automatically. To rename an existing subdomain: change the key. DNS,
+    ingress, Access app, and post-install summary all follow.
 
     Returns: (tunnel_token, tunnel_id, access_app_id)
+      access_app_id is the ID of the *last* Access app created, or None if
+      no admin_subdomains entry had protect_with_access_app=True.
     """
     print("\n🤖 Initiating Robotic Cloudflare Setup...")
     validate_cf_token(api_token)
@@ -543,7 +556,8 @@ def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
     # ── DNS records ────────────────────────────────────────────────────────────
     print("\n➜ Creating / updating DNS CNAME records...")
 
-    # Admin subdomains (npm.<domain>, ssh.<domain>) → admin zone
+    # Every admin subdomain gets a DNS record in the admin zone. The
+    # subdomain dict drives this — add a key, get a DNS record.
     for sub in admin_subdomains:
         hostname = f"{sub}.{admin_domain}"
         dns_upsert(api_token, admin_zone_id, hostname, tunnel_id, force=force)
@@ -552,20 +566,29 @@ def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
     for domain_name, config in app_zone_map.items():
         dns_upsert(api_token, config["zone_id"], domain_name, tunnel_id, force=force)
 
-    # ── Access application + Service Auth policy on ssh.<admin-domain> ────────
+    # ── Access application + Service Auth policy ──────────────────────────────
+    # Driven entirely off the admin_subdomains dict: any entry that sets
+    # protect_with_access_app=True gets an Access app on its hostname plus
+    # a Service Auth policy that references the supplied service token.
+    #
     # This is the layer that makes 'cloudflared access ssh' from GitHub
     # Actions actually authenticate. Without it, the WebSocket handshake to
     # Cloudflare's edge fails with 'websocket: bad handshake' because there
     # is no policy to evaluate the service token against.
-    print("\n➜ Configuring Cloudflare Access for SSH...")
-    ssh_hostname = f"ssh.{admin_domain}"
-    access_app_id, _created = access_app_upsert(
-        api_token, account_id, ssh_hostname,
-        app_name=f"SSH — {admin_domain}",
-    )
-    access_policy_ensure(
-        api_token, account_id, access_app_id, service_token_uuid,
-    )
+    access_app_id = None
+    for sub, spec in admin_subdomains.items():
+        if not spec.get("protect_with_access_app"):
+            continue
+        hostname = f"{sub}.{admin_domain}"
+        display_name = spec.get("app_name") or f"{sub.upper()} — {admin_domain}"
+        print(f"\n➜ Configuring Cloudflare Access for {hostname}...")
+        app_id, _created = access_app_upsert(
+            api_token, account_id, hostname, app_name=display_name,
+        )
+        access_policy_ensure(
+            api_token, account_id, app_id, service_token_uuid,
+        )
+        access_app_id = app_id  # Returned to caller; last one wins if multiple
 
     print("\n🤖 Robotic Cloudflare Setup Complete.")
     return tunnel_token, tunnel_id, access_app_id
@@ -639,9 +662,10 @@ def setup_firewall(dry_run=False):
     """
     UFW rules:
       22  — SSH (open initially; close after Cloudflare Tunnel SSH is verified)
-      80  — HTTP (NPM + Let's Encrypt renewal)
-      443 — HTTPS (NPM)
-      81  — intentionally CLOSED (NPM admin is only reachable via Cloudflare Tunnel)
+      80  — HTTP (landing-page nginx; also kept open for direct debugging)
+      443 — HTTPS (not used by anything on the host currently — Cloudflare
+            terminates TLS at the edge and the tunnel forwards plain HTTP to
+            localhost:80; kept open as a no-op escape valve)
     """
     print("Configuring UFW firewall...")
     run_cmd(['apt-get', 'install', '-y', 'ufw'], hide_output=True, dry_run=dry_run)
@@ -651,7 +675,7 @@ def setup_firewall(dry_run=False):
     run_cmd(['ufw', 'allow', '80/tcp'],  dry_run=dry_run)
     run_cmd(['ufw', 'allow', '443/tcp'], dry_run=dry_run)
     run_cmd(['ufw', '--force', 'enable'], dry_run=dry_run)
-    print("✅ UFW configured. Port 81 is closed — NPM admin via Cloudflare Tunnel only.")
+    print("✅ UFW configured.")
 
 
 def setup_directories(directories, dry_run=False):
@@ -881,10 +905,14 @@ def setup_docker_swarm(dry_run=False):
     because overlay networks require Swarm mode.
 
     Networks created:
-      gateway   — the single shared network between NPM and every app stack.
-                  NPM joins it directly so it can reach each stack's public-
-                  facing service (nginx). Created here so it is guaranteed
-                  to exist before any stack deploy.
+      gateway   — Shared overlay network. Originally created so NPM could
+                  reach each app stack's public-facing nginx; with NPM gone,
+                  the network is no longer strictly required for the
+                  tunnel-to-app path (the tunnel reaches apps via
+                  localhost:<port> directly). It's kept here because app
+                  stack deploys may declare it as an external network, and
+                  re-creating it on each deploy would be wasteful. Harmless
+                  if unused.
     """
     print("Checking Docker Swarm...")
     if dry_run:
@@ -920,108 +948,171 @@ def setup_docker_swarm(dry_run=False):
         print(f"Skip: network '{network}' already exists.")
 
 
-def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
-    print("Setting up Nginx Proxy Manager...")
-    npm_dir = Path('/opt/nginx-proxy-manager')
-    if not dry_run:
-        npm_dir.mkdir(parents=True, exist_ok=True)
+def setup_cloudflare_tunnel(cf_token=None, force=False, dry_run=False):
+    """
+    Deploy the Cloudflare Tunnel container as its own compose stack at
+    /opt/cloudflare-tunnel/. The tunnel runs with network_mode: host so
+    'localhost' inside the container is the Docker host itself — which is
+    how every ingress rule (ssh.<domain>, app domains, the landing page on
+    port 80) reaches its target without container names or bridge IPs.
 
-    # Token stored in .env (chmod 600), never in the compose command string
-    if cf_token and not dry_run:
-        env_path = npm_dir / '.env'
-        env_path.write_text(f"TUNNEL_TOKEN={cf_token}\n")
-        os.chmod(env_path, 0o600)
-        print("✅ Tunnel token written to .env (600).")
+    Only runs if cf_token is supplied (which means robotic mode actually
+    completed the Cloudflare API call and got a tunnel token back, OR the
+    operator passed --cloudflare-token manually). In dry-run mode this is
+    typically a no-op because automate_cloudflare() doesn't return a real
+    token in dry-run.
+    """
+    print("Setting up Cloudflare Tunnel...")
+    if dry_run:
+        print("[DRY-RUN] Would create /opt/cloudflare-tunnel/, write .env (600) "
+              "and docker-compose.yml, then bring the tunnel up.")
+        return
+    if not cf_token:
+        print("Skip: no Cloudflare tunnel token available — pass either the "
+              "robotic flags (--cf-api-token + friends) or --cloudflare-token.")
+        return
 
-    # NPM joins the external 'gateway' overlay network — the same network each
-    # app stack's nginx service joins. This is the *only* place NPM and the
-    # apps can find each other on; without a shared network NPM has nothing
-    # to forward to. Port 81 (admin UI) is bound to 127.0.0.1 only — not
-    # reachable from the public internet.
-    #
-    # The default-site landing page is replaced by bind-mounting
-    # /opt/bucket/html (host) over /var/www/html (container, read-only).
-    # /var/www/html is where NPM's own default-site server block roots
-    # its `location /` — see `nginx -T` output: the block listening on
-    # port 80 with server_name 'localhost-nginx-proxy-manager' contains
-    # `location / { root /var/www/html; index index.html; }`. By replacing
-    # the directory contents at that path, our index.html (and any SPA
-    # assets next to it) become the default landing page with no nginx
-    # config changes whatsoever. NPM's admin UI lives at /app/frontend
-    # (port 81), entirely unaffected.
-    services_part = """\
-  app:
-    image: jc21/nginx-proxy-manager:latest
-    restart: unless-stopped
-    ports:
-      - '80:80'
-      - '127.0.0.1:81:81'
-      - '443:443'
-    volumes:
-      - ./data:/data
-      - ./letsencrypt:/etc/letsencrypt
-      - /opt/bucket/html:/var/www/html:ro
-    networks:
-      - gateway"""
+    tunnel_dir = Path('/opt/cloudflare-tunnel')
+    tunnel_dir.mkdir(parents=True, exist_ok=True)
 
-    if cf_token:
-        # network_mode: host gives the tunnel direct access to the host network.
-        # localhost inside the container = the Docker host itself.
-        # This is why all tunnel routes use localhost — no container names needed.
-        # Mutually exclusive with networks: — do not add networks: to this service.
-        services_part += """
-  tunnel:
-    image: cloudflare/cloudflared:latest
-    container_name: cloudflare-tunnel
-    restart: unless-stopped
-    env_file: .env
-    command: tunnel --no-autoupdate run
-    network_mode: host"""
+    # Token goes in .env, not in the compose YAML — keeps it out of
+    # process listings and source control.
+    env_path = tunnel_dir / '.env'
+    env_path.write_text(f"TUNNEL_TOKEN={cf_token}\n")
+    os.chmod(env_path, 0o600)
+    print(f"✅ Tunnel token written to {env_path} (600).")
 
-    # 'gateway' is declared external — created by setup_docker_swarm() before
-    # this function runs. Compose will attach to it without trying to manage it.
     compose = (
         "version: '3.8'\n"
         "services:\n"
-        f"{services_part}\n\n"
-        "networks:\n"
-        "  gateway:\n"
-        "    external: true\n"
+        "  tunnel:\n"
+        "    image: cloudflare/cloudflared:latest\n"
+        "    container_name: cloudflare-tunnel\n"
+        "    restart: unless-stopped\n"
+        "    env_file: .env\n"
+        "    command: tunnel --no-autoupdate run\n"
+        "    # network_mode: host gives the tunnel direct access to the host\n"
+        "    # network stack. 'localhost' inside this container == the Docker\n"
+        "    # host. Every ingress rule uses localhost as a result — no\n"
+        "    # container names, no bridge networks, no host-gateway magic.\n"
+        "    network_mode: host\n"
     )
 
+    compose_file = tunnel_dir / 'docker-compose.yml'
+    if compose_file.exists() and force:
+        print("⚠️  --force: bringing tunnel down before reapplying...")
+        run_cmd(['docker', 'compose', 'down'], cwd_path=tunnel_dir)
+
+    compose_file.write_text(compose)
+    run_cmd(['docker', 'compose', 'up', '-d'], cwd_path=tunnel_dir)
+    print("✅ Cloudflare Tunnel is running.")
+
+
+def setup_landing(force=False, dry_run=False):
+    """
+    Deploy a vanilla nginx container at /opt/landing/ that serves
+    /opt/bucket/html on port 80. This is the catch-all landing page for any
+    request that reaches localhost:80 — including everything the Cloudflare
+    tunnel's catch-all ingress rule sends here (i.e. anything not matched by
+    a more specific tunnel route).
+
+    Why vanilla nginx (and not NPM):
+      The previous version of this script used Nginx Proxy Manager. NPM was
+      doing nothing useful in this stack — TLS termination happens at the
+      Cloudflare edge, proxying happens at the tunnel via localhost ports —
+      so all that was left was the landing page. NPM's shipped default.conf
+      has a regex location for asset extensions (assets.conf) that intercepts
+      /*.css, /*.js etc. and proxies them upstream, which returned 502 for
+      static SPA assets. Replacing NPM with vanilla nginx makes the config
+      trivial: one server block, one root, one try_files. No fragility, no
+      bind-mount-over-someone-else's-template gymnastics, no risk of an NPM
+      upgrade silently changing something we depend on.
+
+    The container:
+      - Binds 0.0.0.0:80 (so the tunnel can reach it on localhost:80, and
+        also so the public IP can reach it directly if needed for debugging).
+      - Mounts /opt/bucket/html read-only as its document root. Drop files
+        into that host directory to update the page; nginx serves from the
+        bind mount on every request, no reload needed.
+      - Mounts nginx.conf read-write — vanilla nginx doesn't mutate it, but
+        we leave write access open for future updates of the image that
+        might need to (e.g. an nginx variant that runs a startup script
+        which sed-edits its own conf).
+      - try_files $uri $uri/ /index.html falls back to the SPA shell for
+        client-side-routed paths.
+    """
+    print("Setting up landing-page nginx...")
+    landing_dir = Path('/opt/landing')
+
     if dry_run:
-        print("[DRY-RUN] Would write docker-compose.yml and start NPM stack.")
+        print(f"[DRY-RUN] Would create {landing_dir}, write nginx.conf + "
+              f"docker-compose.yml, then bring up nginx:alpine on :80.")
         return
 
-    compose_file = npm_dir / 'docker-compose.yml'
+    landing_dir.mkdir(parents=True, exist_ok=True)
+    conf_dir = landing_dir / 'conf'
+    conf_dir.mkdir(parents=True, exist_ok=True)
+
+    nginx_conf = conf_dir / 'nginx.conf'
+    nginx_conf.write_text(
+        '# Vanilla nginx server block for the catch-all landing page.\n'
+        '# Serves /opt/bucket/html (bind-mounted into the container at\n'
+        '# /usr/share/nginx/html) with SPA fallback to /index.html.\n'
+        '\n'
+        'server {\n'
+        '    listen 80 default_server;\n'
+        '    listen [::]:80 default_server;\n'
+        '    server_name _;\n'
+        '\n'
+        '    root /usr/share/nginx/html;\n'
+        '    index index.html;\n'
+        '\n'
+        '    # Standard SPA fallback. Concrete files (style.css, script.js,\n'
+        '    # favicon.ico, etc.) resolve via $uri and serve as static files.\n'
+        '    # Unknown paths fall back to /index.html so client-side routing\n'
+        '    # can take over. =404 prevents infinite loops if the SPA shell\n'
+        '    # itself is missing.\n'
+        '    location / {\n'
+        '        try_files $uri $uri/ /index.html =404;\n'
+        '    }\n'
+        '\n'
+        '    # Sensible logging — same files nginx:alpine uses by default,\n'
+        '    # which docker logs surfaces via stdout/stderr redirects in the\n'
+        '    # base image.\n'
+        '    access_log /var/log/nginx/access.log;\n'
+        '    error_log  /var/log/nginx/error.log warn;\n'
+        '}\n'
+    )
+    print(f"✅ Landing nginx config written to {nginx_conf}.")
+
+    compose = (
+        "version: '3.8'\n"
+        "services:\n"
+        "  landing:\n"
+        "    image: nginx:alpine\n"
+        "    container_name: landing\n"
+        "    restart: unless-stopped\n"
+        "    ports:\n"
+        "      - '80:80'\n"
+        "    volumes:\n"
+        "      # SPA files. ro so a typo in the SPA can't break nginx and\n"
+        "      # a compromised nginx can't write back to the host.\n"
+        "      - /opt/bucket/html:/usr/share/nginx/html:ro\n"
+        "      # The server block. NOT ro — vanilla nginx doesn't mutate\n"
+        "      # this, but future image versions might (e.g. envsubst at\n"
+        "      # startup). Cost of leaving writable is zero.\n"
+        "      - ./conf/nginx.conf:/etc/nginx/conf.d/default.conf\n"
+    )
+
+    compose_file = landing_dir / 'docker-compose.yml'
     if compose_file.exists() and force:
-        print("⚠️  --force: bringing NPM stack down before reapplying...")
-        run_cmd(['docker', 'compose', 'down'], cwd_path=npm_dir)
+        print("⚠️  --force: bringing landing nginx down before reapplying...")
+        run_cmd(['docker', 'compose', 'down'], cwd_path=landing_dir)
 
-    with open(compose_file, 'w') as f:
-        f.write(compose)
+    compose_file.write_text(compose)
 
-    # ── Custom landing page for NPM's default site ───────────────────────────
-    # Strategy: bind-mount /opt/bucket/html (host) over /var/www/html
-    # (container) — see the volume in the compose snippet above. NPM's own
-    # default-site server block already does `location / { root /var/www/html; }`,
-    # so by replacing the directory contents, our index.html and SPA assets
-    # become the default landing page with zero nginx config changes.
-    #
-    # No custom .conf files are needed here. Earlier versions of this script
-    # tried two different nginx-injection approaches (server_dead.conf and
-    # default_http.conf) — both were architecturally wrong for different
-    # reasons. We clean them up below so re-runs from any prior version end
-    # in the right state.
-    custom_dir = npm_dir / 'data' / 'nginx' / 'custom'
-    for legacy_name in ('server_dead.conf', 'default_http.conf'):
-        legacy_path = custom_dir / legacy_name
-        if legacy_path.exists():
-            legacy_path.unlink()
-            print(f"  Removed stale {legacy_path} (left over from earlier setup.py).")
-
-    # Seed a placeholder index.html only if /opt/bucket/html is empty — never
-    # clobber operator-supplied content on re-runs.
+    # Seed a placeholder index.html only if /opt/bucket/html is empty —
+    # never clobber operator-supplied content on re-runs.
     html_dir = Path('/opt/bucket/html')
     if html_dir.exists() and not any(html_dir.iterdir()):
         placeholder = html_dir / 'index.html'
@@ -1039,68 +1130,94 @@ def setup_nginx_proxy_manager(cf_token=None, force=False, dry_run=False):
         )
         print(f"✅ Seeded placeholder {placeholder}.")
 
-    # If the NPM stack is already running with the old volume mount layout,
-    # `docker compose up -d` alone will keep the existing container — the
-    # volume change won't take effect until the container is recreated.
-    # Force a recreate of just the 'app' service (NPM) so the new
-    # /opt/bucket/html → /var/www/html bind mount is applied. We don't pass
-    # --force-recreate without a service name because that would also bounce
-    # the tunnel container, which has no reason to restart and would briefly
-    # drop the Cloudflare tunnel connection for every proxied app.
-    run_cmd(['docker', 'compose', 'up', '-d', '--force-recreate', 'app'],
-            cwd_path=npm_dir)
-    print("✅ Nginx Proxy Manager is running.")
+    # --force-recreate on the landing service so a re-run with config
+    # changes applies them. The landing stack only has one service so the
+    # whole stack is recreated — no concern about bouncing a tunnel here,
+    # since the tunnel lives in /opt/cloudflare-tunnel/ now.
+    run_cmd(['docker', 'compose', 'up', '-d', '--force-recreate', 'landing'],
+            cwd_path=landing_dir)
+    print("✅ Landing-page nginx is running on :80.")
 
 
 def print_post_install_summary(robotic_setup=False, tunnel_id=None,
-                               admin_domain=None, app_domains=None,
-                               access_app_id=None):
+                               admin_domain=None, admin_subdomains=None,
+                               app_domains=None, access_app_id=None):
     print("\n" + "=" * 62)
     print("✅  INSTALLATION COMPLETE")
     print("=" * 62)
 
     if robotic_setup:
+        # Render every admin subdomain from the dict — rename a key and it
+        # follows here automatically. The 'protected' label highlights which
+        # one(s) have the Cloudflare Access policy that the deploy pipeline
+        # authenticates against.
+        admin_lines = []
+        access_protected_hostname = None
+        for sub, spec in (admin_subdomains or {}).items():
+            host = f"{sub}.{admin_domain or '?'}"
+            target = spec.get("service", "?")
+            if spec.get("protect_with_access_app"):
+                admin_lines.append(f"    {host}  →  {target}  (Access-protected)")
+                access_protected_hostname = host
+            else:
+                admin_lines.append(f"    {host}  →  {target}")
+        admin_block = '\n'.join(admin_lines) or "    (none)"
+
         app_list = '\n'.join(
             f"    {d}  →  {v['target']}" for d, v in (app_domains or {}).items()
         ) or "    (none)"
+
+        # The service-token note only makes sense if some subdomain is
+        # actually Access-protected. If none are, skip that paragraph.
+        service_auth_note = ""
+        if access_protected_hostname:
+            service_auth_note = (
+                f"\n   The service token you supplied is now attached to a "
+                f"Service Auth policy\n"
+                f"   on {access_protected_hostname}. The same token ID and "
+                f"secret should already\n"
+                f"   be in each app repo's .env as:\n"
+                f"       CF_SERVICE_TOKEN_ID\n"
+                f"       CF_SERVICE_TOKEN_SECRET\n"
+                f"   so the deploy pipeline (deploy.yml) can SSH through the tunnel.\n"
+            )
+
         print(f"""
 🤖 ROBOTIC CLOUDFLARE SETUP COMPLETE
    Tunnel ID     : {tunnel_id or 'see Cloudflare dashboard'}
    Access app ID : {access_app_id or 'see Cloudflare dashboard'}
-   Admin         : npm.{admin_domain or '?'}  →  NPM admin (Access-gated)
-                   ssh.{admin_domain or '?'}  →  server SSH (Access-gated, Service Auth)
+   Admin routes:
+{admin_block}
    App routes:
 {app_list}
 
-   The service token you supplied is now attached to a Service Auth policy
-   on ssh.{admin_domain or '<admin-domain>'}. The same token ID and secret
-   should already be in each app repo's .env as:
-       CF_SERVICE_TOKEN_ID
-       CF_SERVICE_TOKEN_SECRET
-   so the deploy pipeline (deploy.yml) can SSH through the tunnel.
-
+   Anything not matched by a specific tunnel ingress rule falls through
+   the catch-all to localhost:80, where the landing-page nginx serves
+   /opt/bucket/html. Drop your SPA into that directory to replace the
+   placeholder.
+{service_auth_note}
    HTTP→HTTPS and WWW→root redirects must be configured in the
    Cloudflare dashboard (Rules → Redirect Rules) — not handled here.
 """)
     else:
         print("""
-   NPM admin UI is running at http://127.0.0.1:81 (loopback only).
-   To access before a tunnel is configured, use an SSH port-forward:
-     ssh -L 8181:127.0.0.1:81 root@<server-ip>
-   Then open: http://localhost:8181
-   Default credentials: admin@example.com / changeme  ← change immediately
+   Landing-page nginx is running on :80, serving /opt/bucket/html.
+   Test with:  curl -H "Host: nothing.invalid" http://localhost/
 """)
 
     print("""\
 NEXT STEPS
-  1. Register the GitHub Actions self-hosted runner:
+  1. Drop your SPA build output into /opt/bucket/html/ to replace the
+     placeholder landing page. No restart needed — nginx reads from the
+     bind mount on every request.
+  2. Register the GitHub Actions self-hosted runner:
      https://github.com/<org>/<repo>/settings/actions/runners/new
-  2. In each app repo, ensure .env has the deploy values populated, then
+  3. In each app repo, ensure .env has the deploy values populated, then
      run secrets.py --push to ship them to GitHub Actions.
-  3. Test Cloudflare Tunnel SSH before closing port 22:
+  4. Test Cloudflare Tunnel SSH before closing port 22:
      ssh -o ProxyCommand="cloudflared access ssh --hostname %h" \\
          root@ssh.<your-domain>
-  4. Once SSH tunnel is verified:  sudo ufw delete allow ssh
+  5. Once SSH tunnel is verified:  sudo ufw delete allow ssh
 """)
     print("=" * 62)
 
@@ -1122,8 +1239,8 @@ def main():
         {"path": "/opt/bucket",       "owner": "current-user", "permissions": 0o755},
         {"path": "/opt/bucket/storage","owner": "current-user", "permissions": 0o755},
         {"path": "/opt/bucket/media", "owner": "current-user", "permissions": 0o755},
-        # Custom default-site landing page (mounted read-only into the NPM
-        # container by setup_nginx_proxy_manager).
+        # Document root for the landing-page nginx — bind-mounted read-only
+        # into the container by setup_landing().
         {"path": "/opt/bucket/html",  "owner": "current-user", "permissions": 0o755},
         # Per-app deployment directories (deploy.yml writes compose + .env here)
         {"path": "/opt/myordbok",     "owner": "current-user", "permissions": 0o700},
@@ -1134,12 +1251,45 @@ def main():
         {"path": "/opt/mysql/data",   "owner": "999",          "permissions": 0o755},
     ]
 
-    # Admin domain for npm/ssh subdomains. Falls back to 'admin.com' if
+    # ── Admin subdomains ──────────────────────────────────────────────────────
+    # Admin domain for the subdomains below. Falls back to 'admin.com' if
     # --domain is not supplied (non-robotic mode).
     admin_domain = args.domain or "admin.com"
 
-    # Subdomains created on the admin domain in the admin zone
-    admin_subdomains = ["npm", "ssh"]
+    # The dict below is the SINGLE source of truth for every admin subdomain.
+    # The script derives DNS records, tunnel ingress rules, Access apps, and
+    # the post-install summary from it. To add a new internal proxy: append
+    # one entry. To rename: change the key. Everything follows.
+    #
+    # Each entry:
+    #   "service" (required) — the tunnel ingress target. Anything the
+    #     cloudflared --no-autoupdate run process can route to. Common
+    #     schemes: 'http://localhost:<port>', 'https://localhost:<port>',
+    #     'ssh://localhost:22'. localhost works because cloudflared runs
+    #     with network_mode: host (see setup_cloudflare_tunnel).
+    #   "protect_with_access_app" (optional, default False) — when True,
+    #     setup.py creates a Cloudflare Access application on this hostname
+    #     and attaches a Service Auth policy referencing the supplied
+    #     service token. This is what makes 'cloudflared access ssh' from
+    #     the GitHub Actions deploy pipeline authenticate without a human
+    #     browser login. Required for SSH; meaningless for HTTP routes
+    #     unless you also want them gated by the same service token.
+    #   "app_name" (optional) — display name shown in the Cloudflare
+    #     dashboard for the Access app. Defaults to "<SUB> — <admin_domain>".
+    #
+    # Examples of adding entries (uncomment / adapt as needed):
+    #   "grafana":   {"service": "http://localhost:3000"},
+    #   "portainer": {"service": "https://localhost:9443"},
+    admin_subdomains = {
+        "ssh": {
+            "service": "ssh://localhost:22",
+            "protect_with_access_app": True,
+            "app_name": f"SSH — {admin_domain}",
+        },
+        "npm": {
+            "service": "http://localhost:81",
+        },
+    }
 
     # ══════════════════════════════════════════════════════════════
     # END CONFIGURATION BLOCK
@@ -1162,18 +1312,21 @@ def main():
             domain_name, target = parts[0].strip(), parts[1].strip()
             app_domain_map[domain_name] = target
 
-    # ── Build ingress rules ────────────────────────────────────────────────────
+    # ── Build ingress rules from the admin_subdomains dict + --app-domain ─────
     # The tunnel container runs with network_mode: host so localhost inside
     # the container IS the Docker host. All services reachable via localhost —
     # no container names, bridge IPs, or host-gateway special hostnames needed.
-    ingress_rules = [
-        {"hostname": f"ssh.{admin_domain}", "service": "ssh://localhost:22"},
-        {"hostname": f"npm.{admin_domain}", "service": "http://localhost:81"},
-    ]
+    ingress_rules = []
+    for sub, spec in admin_subdomains.items():
+        ingress_rules.append({
+            "hostname": f"{sub}.{admin_domain}",
+            "service":  spec["service"],
+        })
     for domain_name, target in app_domain_map.items():
         ingress_rules.append({"hostname": domain_name, "service": target})
-    # Mandatory catch-all — rejects anything not explicitly listed above
-    ingress_rules.append({"service": "http_status:404"})
+    # Mandatory catch-all — anything not matched above falls through here.
+    # localhost:80 is the landing-page nginx (see setup_landing).
+    ingress_rules.append({"service": "http://localhost:80"})
 
     # ── Validate robotic mode argument completeness ────────────────────────────
     robotic_args = [
@@ -1254,7 +1407,8 @@ def main():
     )
     setup_docker(force=args.force, dry_run=args.dry_run)
     setup_docker_swarm(dry_run=args.dry_run)
-    setup_nginx_proxy_manager(cf_token=token, force=args.force, dry_run=args.dry_run)
+    setup_cloudflare_tunnel(cf_token=token, force=args.force, dry_run=args.dry_run)
+    setup_landing(force=args.force, dry_run=args.dry_run)
 
     # Build the app_domains dict for the summary (include resolved targets)
     summary_app_domains = {
@@ -1262,11 +1416,12 @@ def main():
     } if robotic_setup else {}
 
     print_post_install_summary(
-        robotic_setup = robotic_setup,
-        tunnel_id     = tunnel_id,
-        admin_domain  = admin_domain,
-        app_domains   = summary_app_domains,
-        access_app_id = access_app_id,
+        robotic_setup    = robotic_setup,
+        tunnel_id        = tunnel_id,
+        admin_domain     = admin_domain,
+        admin_subdomains = admin_subdomains,
+        app_domains      = summary_app_domains,
+        access_app_id    = access_app_id,
     )
 
 
