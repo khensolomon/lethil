@@ -1,0 +1,143 @@
+# .github/workflows/server-setup.yml
+#
+# Dispatcher around server/setup.py. The runner ships setup.py + flags to
+# the target server and runs it. The runner does NOT know what setup.py
+# does — it just provides the parameters and reports the exit code +
+# output. Same script you'd run by hand; just typed by Actions instead.
+#
+# Methods supported in v1:  ssh
+# Methods scaffolded but not implemented yet:  self-hosted, tunnel
+#
+# Adding self-hosted/tunnel later means filling in their step blocks
+# below; nothing else moves.
+
+name: server-setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      method:
+        description: "How to reach the server"
+        type: choice
+        options:
+          - ssh
+          - self-hosted    # placeholder — not implemented
+          - tunnel         # placeholder — not implemented
+        default: ssh
+      target_host:
+        description: "Target host (IP or hostname). If empty, uses SERVER_HOST secret."
+        type: string
+        required: false
+      force:
+        description: "Pass --force to setup.py (recreates an existing tunnel)"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Pass --dry-run to setup.py (no changes)"
+        type: boolean
+        default: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Resolve target host
+        id: target
+        run: |
+          host="${{ github.event.inputs.target_host }}"
+          if [ -z "$host" ]; then
+            host="${{ secrets.SERVER_HOST }}"
+          fi
+          if [ -z "$host" ]; then
+            echo "::error::No target host. Provide via form input or SERVER_HOST secret."
+            exit 1
+          fi
+          echo "host=$host" >> "$GITHUB_OUTPUT"
+          echo "Target: $host"
+
+      # ── SSH method ───────────────────────────────────────────────────────
+      - name: Set up SSH (method=ssh)
+        if: github.event.inputs.method == 'ssh'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_setup
+          chmod 600 ~/.ssh/id_setup
+          if [ -n "${{ secrets.SSH_KNOWN_HOSTS }}" ]; then
+            echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+          else
+            # No known_hosts supplied — accept on first connection. Trade-off:
+            # convenient for a fresh server with no existing key, but bypasses
+            # MITM protection. For production, set SSH_KNOWN_HOSTS.
+            echo "::warning::SSH_KNOWN_HOSTS not set; using StrictHostKeyChecking=accept-new"
+          fi
+
+      - name: Copy setup.py to server (method=ssh)
+        if: github.event.inputs.method == 'ssh'
+        env:
+          HOST: ${{ steps.target.outputs.host }}
+        run: |
+          ssh_opts="-i ~/.ssh/id_setup -o StrictHostKeyChecking=accept-new"
+          scp $ssh_opts server/setup.py "root@${HOST}:/tmp/setup.py"
+
+      - name: Run setup.py on server (method=ssh)
+        if: github.event.inputs.method == 'ssh'
+        env:
+          HOST:                    ${{ steps.target.outputs.host }}
+          CF_API_TOKEN:            ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID:           ${{ secrets.CF_ACCOUNT_ID }}
+          CF_SERVICE_TOKEN_ID:     ${{ secrets.CF_SERVICE_TOKEN_ID }}
+          CF_SERVICE_TOKEN_SECRET: ${{ secrets.CF_SERVICE_TOKEN_SECRET }}
+          R2_ACCESS_KEY_ID:        ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY:    ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          ADMIN_DOMAIN:            ${{ secrets.ADMIN_DOMAIN }}
+          TUNNEL_NAME:             ${{ secrets.TUNNEL_NAME }}
+          APP_DOMAINS:             ${{ secrets.APP_DOMAINS }}
+        run: |
+          ssh_opts="-i ~/.ssh/id_setup -o StrictHostKeyChecking=accept-new"
+
+          # Build the setup.py command on the server side. We pipe secrets
+          # to ssh via stdin (not argv) so they don't appear in process
+          # listings on either machine.
+          force_flag=""
+          [ "${{ github.event.inputs.force }}" = "true" ]   && force_flag="--force"
+          dryrun_flag=""
+          [ "${{ github.event.inputs.dry_run }}" = "true" ] && dryrun_flag="--dry-run"
+
+          # Optional R2 args — only pass them if both halves are set.
+          r2_args=""
+          if [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ]; then
+            r2_args="--r2-access-key-id '$R2_ACCESS_KEY_ID' --r2-secret-access-key '$R2_SECRET_ACCESS_KEY'"
+          fi
+
+          ssh $ssh_opts "root@${HOST}" \
+            "sudo python3 /tmp/setup.py \
+              --cf-api-token             '$CF_API_TOKEN' \
+              --cf-account-id            '$CF_ACCOUNT_ID' \
+              --cf-service-token-id      '$CF_SERVICE_TOKEN_ID' \
+              --cf-service-token-secret  '$CF_SERVICE_TOKEN_SECRET' \
+              --domain                   '$ADMIN_DOMAIN' \
+              --tunnel-name              '$TUNNEL_NAME' \
+              --app-domain               '$APP_DOMAINS' \
+              $r2_args $force_flag $dryrun_flag"
+
+      # ── self-hosted method (placeholder) ─────────────────────────────────
+      - name: Not implemented — self-hosted
+        if: github.event.inputs.method == 'self-hosted'
+        run: |
+          echo "::error::method=self-hosted is not implemented yet."
+          echo "::error::Use method=ssh for now. self-hosted will be added when"
+          echo "::error::a runner is registered on the target server."
+          exit 1
+
+      # ── tunnel method (placeholder) ──────────────────────────────────────
+      - name: Not implemented — tunnel
+        if: github.event.inputs.method == 'tunnel'
+        run: |
+          echo "::error::method=tunnel is not implemented yet."
+          echo "::error::Use method=ssh for now. tunnel will be added once SSH-over-tunnel"
+          echo "::error::with the service token has been verified to work in CI."
+          exit 1
