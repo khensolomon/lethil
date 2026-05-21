@@ -2,29 +2,28 @@
 *.v[0-9]*
 tmp
 
-# Byte-compiled / optimized / DLL files
+# Secrets — never commit. Source of truth for local development; synced
+# to GitHub Secrets via script/secrets.py.
+.env
+
+# Per-app build outputs. apps/<name>/dist/ is what gets deployed; it's
+# generated, not source.
+apps/*/dist/
+apps/*/node_modules/
+
+# Python
 __pycache__/
 *.pyc
-*.pyd
 *.pyo
-# Distributions
-dist/
-*.egg-info/
-.eggs/
-# Environments
-.venv
+.venv/
 venv/
-env/
-.env
-# Project specific
-*.ipynb_checkpoints/
-.pytest_cache/
-# Logs and experiment outputs
-*.log
-experiments/
-# IDE specific files
+
+# Editor / OS
+.DS_Store
 .vscode/
 .idea/
-# Data - keep raw data tracked, but ignore processed if large
-data/processed/
-data/vocab/
+*.swp
+*~
+
+# Logs
+*.log
