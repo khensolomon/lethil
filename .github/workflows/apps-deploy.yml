@@ -1,0 +1,225 @@
+# .github/workflows/apps-deploy.yml
+#
+# Dispatcher for deploying static apps from apps/<name>/ to the server.
+#
+# Unlike server-setup.yml which calls a server-side script, this workflow
+# does the work itself — because the work is generic (build → rsync) and
+# the same for every app. Per-app build.py would just duplicate this
+# logic in every app directory.
+#
+# The contract:
+#   * apps/<name>/ holds the app source.
+#   * If apps/<name>/package.json exists, the workflow runs
+#     `npm install && npm run build` and rsyncs apps/<name>/dist/ to the
+#     server.
+#   * Otherwise, the workflow rsyncs apps/<name>/ directly (with the
+#     usual ignores: README, .gitignore, dist).
+#   * Destination on the server is /opt/bucket/<name>/, except 'default'
+#     which goes to /opt/bucket/html (the landing-page mount).
+#
+# Methods supported in v1:  ssh
+# Methods scaffolded but not implemented yet:  self-hosted, tunnel
+
+name: apps-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Which app to deploy (must match a directory under apps/)"
+        type: string
+        required: true
+        default: default
+      method:
+        description: "How to reach the server"
+        type: choice
+        options:
+          - ssh
+          - self-hosted    # placeholder — not implemented
+          - tunnel         # placeholder — not implemented
+        default: ssh
+      target_host:
+        description: "Target host (IP or hostname). If empty, uses SERVER_HOST secret."
+        type: string
+        required: false
+      target_path:
+        description: "Override destination path on server. If empty, uses default for this app."
+        type: string
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Validate app exists
+        id: app
+        env:
+          APP: ${{ github.event.inputs.app }}
+        run: |
+          # Basic safety: app name must be a single directory name (no
+          # slashes, no '..'). Anything else means someone is trying to
+          # reach outside apps/ via the dispatch form.
+          case "$APP" in
+            ""|*/*|*..*|*\\*)
+              echo "::error::Invalid app name: '$APP'. Must be a plain directory name under apps/."
+              exit 1
+              ;;
+          esac
+          if [ ! -d "apps/$APP" ]; then
+            echo "::error::apps/$APP does not exist in this repo."
+            echo "::error::Add it (and list it in config.yml) before deploying."
+            exit 1
+          fi
+          echo "name=$APP" >> "$GITHUB_OUTPUT"
+          # The destination default depends on the app name. 'default'
+          # is the landing page and gets the special /opt/bucket/html
+          # path that the landing nginx serves from. Everything else
+          # goes to /opt/bucket/<name>/.
+          if [ "$APP" = "default" ]; then
+            echo "default_target=/opt/bucket/html" >> "$GITHUB_OUTPUT"
+          else
+            echo "default_target=/opt/bucket/$APP" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve target host
+        id: target
+        run: |
+          host="${{ github.event.inputs.target_host }}"
+          if [ -z "$host" ]; then
+            host="${{ secrets.SERVER_HOST }}"
+          fi
+          if [ -z "$host" ]; then
+            echo "::error::No target host. Provide via form input or SERVER_HOST secret."
+            exit 1
+          fi
+          echo "host=$host" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve target path
+        id: path
+        env:
+          USER_TARGET:    ${{ github.event.inputs.target_path }}
+          DEFAULT_TARGET: ${{ steps.app.outputs.default_target }}
+        run: |
+          path="$USER_TARGET"
+          [ -z "$path" ] && path="$DEFAULT_TARGET"
+          # Refuse anything that isn't an absolute /opt/... path — small
+          # guard against typos that would rsync to / or $HOME.
+          case "$path" in
+            /opt/*) ;;
+            *)
+              echo "::error::Target path must start with /opt/. Got: '$path'"
+              exit 1
+              ;;
+          esac
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+
+      # ── Build step ───────────────────────────────────────────────────────
+      # If the app has a package.json, treat it as a Node/npm-buildable app
+      # and run its build script. The build must produce a dist/ directory.
+      # Otherwise, the app is plain static files and gets rsynced as-is.
+      - name: Detect build type
+        id: build
+        env:
+          APP: ${{ steps.app.outputs.name }}
+        run: |
+          if [ -f "apps/$APP/package.json" ]; then
+            echo "needs_build=true"  >> "$GITHUB_OUTPUT"
+            echo "source_dir=apps/$APP/dist" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_build=false" >> "$GITHUB_OUTPUT"
+            echo "source_dir=apps/$APP" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node (build apps only)
+        if: steps.build.outputs.needs_build == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build the app
+        if: steps.build.outputs.needs_build == 'true'
+        env:
+          APP: ${{ steps.app.outputs.name }}
+        run: |
+          cd "apps/$APP"
+          npm install
+          npm run build
+          if [ ! -d dist ]; then
+            echo "::error::npm run build did not produce a dist/ directory in apps/$APP."
+            echo "::error::The build script in package.json must output to dist/."
+            exit 1
+          fi
+
+      # ── SSH method ───────────────────────────────────────────────────────
+      - name: Set up SSH (method=ssh)
+        if: github.event.inputs.method == 'ssh'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          if [ -n "${{ secrets.SSH_KNOWN_HOSTS }}" ]; then
+            echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+          else
+            echo "::warning::SSH_KNOWN_HOSTS not set; using StrictHostKeyChecking=accept-new"
+          fi
+
+      - name: Rsync to server (method=ssh)
+        if: github.event.inputs.method == 'ssh'
+        env:
+          HOST:    ${{ steps.target.outputs.host }}
+          REMOTE:  ${{ steps.path.outputs.path }}
+          SOURCE:  ${{ steps.build.outputs.source_dir }}
+        run: |
+          ssh_opts="-i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new"
+
+          # Make sure the destination directory exists on the server. The
+          # landing nginx mount is read-only from the container's side,
+          # but the host path is writable as root.
+          ssh $ssh_opts "root@${HOST}" "mkdir -p '${REMOTE}'"
+
+          # --delete: the deployed copy should be an exact mirror, so files
+          #           removed from the repo get removed on the server.
+          # --exclude README.md / .gitignore: source-only files, never deploy.
+          # --exclude dist: skip the build output when source is the dir itself.
+          # Trailing slash on SOURCE: rsync the *contents*, not the dir.
+          rsync -avz --delete \
+            --exclude='README.md' \
+            --exclude='.gitignore' \
+            --exclude='dist' \
+            --exclude='node_modules' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            -e "ssh $ssh_opts" \
+            "${SOURCE}/" "root@${HOST}:${REMOTE}/"
+
+          # nginx serves these as a non-root container user. Make sure the
+          # files are world-readable so the bind mount works.
+          ssh $ssh_opts "root@${HOST}" "chmod -R a+rX '${REMOTE}'"
+
+      - name: Verify deploy (method=ssh)
+        if: github.event.inputs.method == 'ssh'
+        env:
+          HOST:   ${{ steps.target.outputs.host }}
+          REMOTE: ${{ steps.path.outputs.path }}
+        run: |
+          ssh_opts="-i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new"
+          echo "── Contents of ${REMOTE} after deploy ──"
+          ssh $ssh_opts "root@${HOST}" "ls -la '${REMOTE}'"
+
+      # ── self-hosted method (placeholder) ─────────────────────────────────
+      - name: Not implemented — self-hosted
+        if: github.event.inputs.method == 'self-hosted'
+        run: |
+          echo "::error::method=self-hosted is not implemented yet."
+          exit 1
+
+      # ── tunnel method (placeholder) ──────────────────────────────────────
+      - name: Not implemented — tunnel
+        if: github.event.inputs.method == 'tunnel'
+        run: |
+          echo "::error::method=tunnel is not implemented yet."
+          exit 1
