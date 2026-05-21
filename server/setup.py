@@ -132,9 +132,12 @@ def parse_args():
                         metavar='DOMAIN:TARGET',
                         help=(
                             "App domain and its internal service target. "
-                            "Format: domain.com:http://service:port  "
-                            "Example: myordbok.com:http://localhost:8000  "
-                            "Repeatable — use once per domain."
+                            "Format: domain.com:http://service:port. "
+                            "Repeatable — use once per domain. "
+                            "Or pass multiple in one flag separated by semicolons: "
+                            "'a.com:http://localhost:80;b.com:http://localhost:81'. "
+                            "(The semicolon form is useful when called from CI where a "
+                            "single secret holds all app domains.)"
                         ))
 
     # ── rclone / R2 ────────────────────────────────────────────────────────────
@@ -1296,17 +1299,32 @@ def main():
     # ══════════════════════════════════════════════════════════════
 
     # ── Parse --app-domain flags ───────────────────────────────────────────────
-    # Format: DOMAIN:TARGET  (e.g. myordbok.com:http://localhost:8000)
-    # split(..., 1) caps at one split so http://localhost:8000 is not split further
+    # Each --app-domain flag value contains one OR MORE entries.
+    #   Single:  --app-domain "myordbok.com:http://localhost:8000"
+    #   Multi:   --app-domain "a.com:http://localhost:80;b.com:http://localhost:81"
+    # The semicolon form lets a single CI secret hold every app domain. By
+    # hand, repeating the flag is more readable. Both produce the same map.
+    #
+    # split(':', 1) caps at one split so 'http://localhost:8000' is not split
+    # at the scheme colon.
     app_domain_map = {}  # { "myordbok.com": "http://localhost:8000" }
     if args.app_domains:
-        for entry in args.app_domains:
+        # Flatten: every flag value may itself contain ;-separated entries
+        flat_entries = []
+        for flag_value in args.app_domains:
+            for entry in flag_value.split(';'):
+                entry = entry.strip()
+                if entry:
+                    flat_entries.append(entry)
+
+        for entry in flat_entries:
             parts = entry.split(':', 1)
             if len(parts) != 2 or not parts[1].startswith('http'):
                 log.error(
                     f"Invalid --app-domain value: '{entry}'\n"
                     f"Expected format:  domain.com:http://service:port\n"
-                    f"Example:          myordbok.com:http://localhost:8000"
+                    f"Example:          myordbok.com:http://localhost:8000\n"
+                    f"Multiple in one flag are separated by ';'."
                 )
                 sys.exit(1)
             domain_name, target = parts[0].strip(), parts[1].strip()
