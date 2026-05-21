@@ -1,0 +1,74 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+# ==================== Basic Config ====================
+hostname: vm
+fqdn: vm.local
+manage_etc_hosts: true
+
+# ==================== User ====================
+users:
+  - name: khensolomon
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    hashed_passwd: $6$wG5bgTvR7/ESe7Qr$Sk7RjkaJFVP47LaWdQ2QQH8nch.xZIqQbXC4QvwTMFRz23C9Ms9r7E2MirMjf8hgQD97cHI0r6.hZA4XiWvBL/
+    ssh-authorized-keys:
+      - ssh-rsa YOUR_SSH_PUBLIC_KEY_HERE
+
+# Enable password login if you want (optional)
+ssh_pwauth: true
+chpasswd:
+  # list: |
+  #   khensolomon:search
+  expire: false
+
+
+# Make sure network works reliably
+write_files:
+  - path: /etc/netplan/99-custom.yaml
+    content: |
+      network:
+        version: 2
+        ethernets:
+          en*:
+            dhcp4: true
+            dhcp-identifier: mac
+
+# ==================== Shared Memory (8GB) ====================
+runcmd:
+  - mount -o remount,size=8G /dev/shm || true
+
+# ==================== Create directories ====================
+bootcmd:
+  - mkdir -p /opt/bucket/storage /opt/bucket/media
+
+# ==================== Virtiofs Mounts ====================
+mounts:
+  - [ "bucket_storage", "/opt/bucket/storage", "virtiofs", "defaults,_netdev,nofail", "0", "0" ]
+  - [ "bucket_media",   "/opt/bucket/media",   "virtiofs", "defaults,_netdev,nofail", "0", "0" ]
+
+write_files:
+  - path: /etc/systemd/system/dev-shm.mount
+    content: |
+      [Unit]
+      Description=Large shared memory
+      [Mount]
+      What=tmpfs
+      Where=/dev/shm
+      Type=tmpfs
+      Options=size=8G,mode=1777
+      [Install]
+      WantedBy=local-fs.target
+    permissions: 0644
+
+runcmd:
+  - systemctl daemon-reload
+  - systemctl enable --now dev-shm.mount
+  - mkdir -p /opt/bucket/storage /opt/bucket/media
+
+# System update
+package_update: true
+package_upgrade: true
+
