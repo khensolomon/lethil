@@ -1,0 +1,22 @@
+# lethil — repo configuration
+#
+# Non-sensitive index. Committed. Read by workflows for dropdowns,
+# validation, and discovery. Never put secrets here.
+#
+# When you add an app under apps/<name>/, list it here. When you add a
+# server profile, list it here. Workflows pick these up automatically.
+
+# Static-site apps deployable via apps-deploy.yml.
+# Each name must match a directory under apps/.
+apps:
+  - default
+
+# Known server profiles. Used as a free-text suggestion for now; in the
+# future, may drive per-server config (default admin domain, tunnel name,
+# etc.). Until then, treat as documentation.
+servers: []
+
+# Default server-side paths. Apps deploy here unless overridden in the
+# dispatch form.
+paths:
+  apps_root: /opt/bucket   # apps/default → /opt/bucket/html, etc. (handled by workflow)
