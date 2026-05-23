@@ -6,7 +6,7 @@ the repo and on GitHub, never on a production server (that is `server/`).
 ## What's here
 
 | Script | Purpose |
-|---|---|
+| --- | --- |
 | `secrets.py` | Read the repo-root `.env`, push secrets to GitHub Actions Secrets via the GitHub CLI (`gh`). Git-root aware: run it from anywhere inside the repo. |
 
 ## secrets.py — the .env zone model
@@ -14,7 +14,7 @@ the repo and on GitHub, never on a production server (that is `server/`).
 The `.env` is divided into three zones by marker lines of the form `#@ <mode>`:
 
 | Zone | Marker | Behaviour |
-|---|---|---|
+| --- |---| --- |
 | Bundle | (content before the first marker) | Concatenated, pushed as one secret `ENV_BASE` |
 | Individual | `#@ individual` | Each key pushed as its own secret. `SSH_PRIVATE_KEY_PATH` is special: the file it points to is read and its CONTENTS pushed as `SSH_PRIVATE_KEY` |
 | Local | `#@ local` | Never pushed. Read by the script only (`REPO_OWNER`, `REPO_NAME`) |
