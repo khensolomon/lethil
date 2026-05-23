@@ -112,7 +112,7 @@ def _invoking_user_home() -> Path:
 #   3. This default
 USER_DATA: Path = Path(
     os.environ.get("VM_USER_DATA")
-    or _invoking_user_home() / "dev/lethil/vm/user-data.yaml"
+    or _invoking_user_home() / "dev/lethil/me/vm/user-data.yaml"
 )
 
 # Default base image filename (used when --image is not supplied and
