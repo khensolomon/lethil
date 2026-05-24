@@ -394,16 +394,63 @@ _SSH_PWAUTH_RE = re.compile(
     re.MULTILINE,
 )
 
+# Matches top-level `hostname:` / `fqdn:` lines (no indent — these live at
+# the root of the autoinstall mapping), capturing the current value.
+_HOSTNAME_RE = re.compile(
+    r"^(?P<indent>[ \t]*)hostname\s*:\s*(?P<value>\S+).*$",
+    re.MULTILINE,
+)
+_FQDN_RE = re.compile(
+    r"^(?P<indent>[ \t]*)fqdn\s*:\s*(?P<value>\S+).*$",
+    re.MULTILINE,
+)
+
+
+def read_hostname_fqdn(template_path: Path) -> tuple[Optional[str], str]:
+    """
+    Pull the current hostname and the fqdn's domain suffix from the
+    template, without modifying it.
+
+    Returns:
+        (hostname, suffix)
+        - hostname: the `hostname:` value, or None if not present.
+        - suffix:   the part of `fqdn:` after the first dot (e.g. "local"
+                    from "vm.local"). Falls back to "local" if there is no
+                    fqdn line or it has no dot.
+    """
+    text = template_path.read_text(encoding="utf-8")
+
+    hm = _HOSTNAME_RE.search(text)
+    hostname = hm.group("value") if hm else None
+
+    suffix = "local"
+    fm = _FQDN_RE.search(text)
+    if fm and "." in fm.group("value"):
+        suffix = fm.group("value").split(".", 1)[1]
+
+    return hostname, suffix
+
+
+def derive_fqdn(hostname: str, suffix: str) -> str:
+    """Build an fqdn as '<hostname>.<suffix>'."""
+    return f"{hostname}.{suffix}"
+
 
 def prepare_user_data(template_path: Path, *, ssh_pwauth: bool,
-                      public_key: str) -> Path:
+                      public_key: str, hostname: Optional[str] = None,
+                      fqdn: Optional[str] = None) -> Path:
     """
     Produce a temporary, patched copy of the cloud-init user-data.
 
-    Reads `template_path` (never writes to it), applies the SSH key and
-    ssh_pwauth substitutions in memory, writes the result to a NamedTemporary
-    file, and returns its Path. Caller is responsible for deleting it
-    (see action_create_golden's finally block).
+    Reads `template_path` (never writes to it), applies the substitutions
+    in memory, writes the result to a NamedTemporary file, and returns its
+    Path. Caller is responsible for deleting it (see action_create_golden's
+    finally block).
+
+    Substitutions applied:
+        - SSH public key over the placeholder.
+        - ssh_pwauth true/false.
+        - hostname / fqdn, only when `hostname`/`fqdn` are provided.
     """
     text = template_path.read_text(encoding="utf-8")
 
@@ -438,6 +485,24 @@ def prepare_user_data(template_path: Path, *, ssh_pwauth: bool,
     else:
         warn("No 'ssh_pwauth:' line found in user-data — cannot override it.")
         warn(f"(Wanted ssh_pwauth: {new_value}.) Leaving file as-is.")
+
+    # ----- 3. Hostname / fqdn (only if requested) -----
+    if hostname is not None:
+        if _HOSTNAME_RE.search(text):
+            text = _HOSTNAME_RE.sub(
+                lambda m: f"{m.group('indent')}hostname: {hostname}",
+                text, count=1,
+            )
+        else:
+            warn("No 'hostname:' line found in user-data — cannot set it.")
+    if fqdn is not None:
+        if _FQDN_RE.search(text):
+            text = _FQDN_RE.sub(
+                lambda m: f"{m.group('indent')}fqdn: {fqdn}",
+                text, count=1,
+            )
+        else:
+            warn("No 'fqdn:' line found in user-data — cannot set it.")
 
     # ----- Write the temp copy -----
     fd = tempfile.NamedTemporaryFile(
@@ -564,6 +629,8 @@ class GoldenSettings:
     user_data: Path = USER_DATA
     ssh_pwauth: bool = DEFAULT_SSH_PWAUTH
     ssh_key_path: Path = DEFAULT_SSH_KEY
+    hostname: Optional[str] = None
+    fqdn: Optional[str] = None
     virtiofs_mounts: list[tuple[str, str]] = field(
         default_factory=lambda: list(VIRTIOFS_MOUNTS)
     )
@@ -654,6 +721,10 @@ def build_golden_settings(args, *, non_interactive: bool) -> GoldenSettings:
     base_image = choose_base_image(args, non_interactive=non_interactive)
     default_name = derive_golden_name(base_image)
 
+    # Resolve the user-data path up front so hostname/fqdn defaults can be
+    # read from it (the file is only read here, never written).
+    user_data = Path(args.user_data) if args.user_data else USER_DATA
+
     header("Golden image configuration")
     info(f"Base image: {C.bold(str(base_image))}")
 
@@ -712,6 +783,33 @@ def build_golden_settings(args, *, non_interactive: bool) -> GoldenSettings:
     info("SSH password auth will be: "
          f"{C.yellow('enabled') if ssh_pwauth else C.green('disabled (key-only)')}")
 
+    # ----- Hostname (fqdn auto-derived) -----
+    # Read the template's current hostname + fqdn suffix as defaults. The
+    # fqdn is always derived as '<hostname>.<suffix>' — there is no separate
+    # fqdn prompt. Only substituted when the file actually has these lines.
+    yaml_hostname, fqdn_suffix = (None, "local")
+    if user_data.exists():
+        yaml_hostname, fqdn_suffix = read_hostname_fqdn(user_data)
+
+    hostname: Optional[str] = None
+    fqdn: Optional[str] = None
+    if yaml_hostname is not None:
+        default_hostname = args.hostname or yaml_hostname
+        hostname = prompt(
+            "Hostname",
+            default_hostname,
+            non_interactive=non_interactive,
+        )
+        while not is_valid_vm_name(hostname):
+            warn("Invalid hostname. Use letters/digits/._- only, "
+                 "start alphanumeric, max 63 chars.")
+            hostname = prompt("Hostname", default_hostname)
+        fqdn = derive_fqdn(hostname, fqdn_suffix)
+        info(f"FQDN (auto-derived): {C.bold(fqdn)}")
+    elif args.hostname:
+        # No hostname line in the template, but one was passed explicitly.
+        warn("user-data has no 'hostname:' line; --hostname will be ignored.")
+
     return GoldenSettings(
         base_image=base_image,
         golden_name=golden_name,
@@ -719,9 +817,11 @@ def build_golden_settings(args, *, non_interactive: bool) -> GoldenSettings:
         memory_mb=memory,
         vcpus=vcpus,
         disk_gb=disk,
-        user_data=Path(args.user_data) if args.user_data else USER_DATA,
+        user_data=user_data,
         ssh_pwauth=ssh_pwauth,
         ssh_key_path=ssh_key_path,
+        hostname=hostname,
+        fqdn=fqdn,
     )
 
 
@@ -874,12 +974,15 @@ def action_create_golden(args, *, non_interactive: bool) -> None:
     info(f"SSH key    : {s.ssh_key_path}")
     info("Password   : "
          f"{'SSH password auth ENABLED' if s.ssh_pwauth else 'SSH password auth DISABLED (key-only)'}")
+    if s.hostname:
+        info(f"Hostname   : {s.hostname}  (fqdn: {s.fqdn})")
 
     # Read + validate the public key, then build a temporary patched
     # copy of the user-data. The original template is never modified.
     public_key = read_public_key(s.ssh_key_path)
     patched_user_data = prepare_user_data(
         s.user_data, ssh_pwauth=s.ssh_pwauth, public_key=public_key,
+        hostname=s.hostname, fqdn=s.fqdn,
     )
 
     try:
@@ -1098,6 +1201,11 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Path to the SSH PUBLIC key to inject into the "
                         "golden image (overrides DEFAULT_SSH_KEY / "
                         "$VM_SSH_KEY). Default: ~/.ssh/prod_server.pub")
+    p.add_argument("--hostname", metavar="NAME",
+                   help="Hostname for the golden image (default: read from "
+                        "user-data.yaml). The fqdn is auto-derived as "
+                        "<hostname>.<suffix>, reusing the suffix from the "
+                        "template's fqdn.")
     pwauth = p.add_mutually_exclusive_group()
     pwauth.add_argument("--ssh-pwauth", dest="ssh_pwauth",
                         action="store_true", default=None,
