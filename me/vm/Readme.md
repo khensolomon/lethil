@@ -67,6 +67,12 @@ The two substitutions:
    only controls whether `sshd` accepts passwords over the network; the
    account's `hashed_passwd` and `lock_passwd` are left **untouched**, so
    the password still works on the serial console as a break-glass fallback.
+3. **`hostname` / `fqdn`** — the golden build prompts for a hostname
+   (default read from `user-data.yaml`). The fqdn is **auto-derived** as
+   `<hostname>.<suffix>`, reusing the domain suffix already present in the
+   template's `fqdn` (e.g. `vm.local` → suffix `local`, so hostname `web01`
+   yields fqdn `web01.local`). There is no separate fqdn prompt. Override
+   the hostname non-interactively with `--hostname NAME`.
 
 Interactive runs prompt `Enable SSH password authentication? [y/N]`
 (defaults to **No** = key-only). Override non-interactively with flags:
@@ -110,6 +116,7 @@ sudo python create.py --yes --ssh-pwauth
 | `--disk / -d` | Disk size in GB |
 | `--user-data / -u` | Path to cloud-init `user-data.yaml` (overrides `$VM_USER_DATA`) |
 | `--ssh-key` | Path to the SSH **public** key to inject (overrides `$VM_SSH_KEY`; default `~/.ssh/prod_server.pub`) |
+| `--hostname` | Hostname for the golden image (default from `user-data.yaml`); fqdn auto-derived as `<hostname>.<suffix>` |
 | `--ssh-pwauth` | Enable SSH password authentication in the golden image |
 | `--no-ssh-pwauth` | Disable SSH password authentication — key-only (the default) |
 | `--yes / -y` | Non-interactive: accept all defaults, skip confirmations |
@@ -159,6 +166,10 @@ virsh domifaddr my-vm-01       # find its IP
   over the placeholder and flips `ssh_pwauth` at build time, all via a
   temporary patched copy so `user-data.yaml` on disk is never modified.
   `hashed_passwd` is preserved for break-glass console access.
+- **Hostname prompt with auto-derived fqdn** — prompts for a hostname
+  (default from `user-data.yaml`) and derives `<hostname>.<suffix>` for the
+  fqdn, reusing the suffix already in the template. Also patched in the
+  temporary copy only.
 - **Better output** — colored, clearly sectioned, and shows every libvirt
   command it runs (handy for learning + debugging).
 - **Full docstrings and inline comments** explaining the why, not just the what.
