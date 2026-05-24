@@ -16,7 +16,6 @@ The bootstrap is robotic. `setup.py` provisions the VM, creates the Cloudflare T
 
 ---
 
-
 ## Table of Contents
 
 1. [Prerequisites](#1-prerequisites)
@@ -244,12 +243,9 @@ Every admin subdomain (DNS record + tunnel ingress + optional Access app) is dec
 ```python
 admin_subdomains = {
     "ssh": {
-        "service": "ssh://localhost:22",
+        "service": "tcp://localhost:22",
         "protect_with_access_app": True,
         "app_name": f"SSH — {admin_domain}",
-    },
-    "npm": {
-        "service": "http://localhost:81",
     },
     # Add new internal proxies here, e.g.:
     # "grafana":   {"service": "http://localhost:3000"},
@@ -258,6 +254,8 @@ admin_subdomains = {
 ```
 
 To rename `ssh` to something else (e.g. `access`), just change the dict key — `setup.py` will create a DNS record, ingress rule, Access app, and Service Auth policy on the new hostname. The old Cloudflare resources at the previous hostname stay in place and need manual cleanup in the dashboard.
+
+SSH uses the `tcp://` scheme, not `ssh://`. Remotely managed tunnels — configured through the API, as this script does — route SSH as a raw TCP service; the `ssh://` scheme belongs to the older local-config-file model and is silently ignored. The operator-side connection still uses `cloudflared access tcp` (see Section 7).
 
 ### What the script does
 
@@ -275,7 +273,7 @@ To rename `ssh` to something else (e.g. `access`), just change the dict key — 
 | Landing nginx | Deploys an `nginx:alpine` container at `/opt/landing/` listening on port 80, serving `/opt/bucket/html` as a static site with SPA `try_files` fallback. This is the catch-all for any request the tunnel ingress doesn't route somewhere specific |
 | Cloudflare API | Validates token, verifies the supplied service token exists in this account |
 | Tunnel | Creates the named tunnel and returns its connection token |
-| Ingress | Pushes tunnel ingress routing rules for every entry in `admin_subdomains` (default: `ssh.<domain>` and `npm.<domain>`), every `--app-domain`, and a catch-all to `localhost:80` (the landing nginx) |
+| Ingress | Pushes tunnel ingress routing rules for every entry in `admin_subdomains` (default: `ssh.<domain>`), every `--app-domain`, and a catch-all to `localhost:80` (the landing nginx) |
 | DNS | Upserts proxied CNAMEs in each domain's zone, pointing at the tunnel |
 | Access app | For every `admin_subdomains` entry flagged `protect_with_access_app: True` (default: `ssh.<domain>` only), creates a self-hosted Access application and attaches a Service Auth policy referencing the supplied service token |
 
@@ -332,8 +330,6 @@ Setup logs are written to `/var/log/setup.log`.
 
 > `~/.config/rclone/rclone.conf` is owned by the user who invoked `sudo python3 setup.py` (resolved via `$SUDO_USER`), not root — so `rclone lsd r2:` works without sudo from the operator's shell.
 
-> **If you're upgrading from a previous version of this setup that used Nginx Proxy Manager:** the new layout uses `/opt/landing/` and `/opt/cloudflare-tunnel/` instead of `/opt/nginx-proxy-manager/`. Re-running `setup.py` creates the new directories but does **not** clean up the old NPM stack. To migrate, stop and remove NPM by hand: `cd /opt/nginx-proxy-manager && sudo docker compose down -v && sudo rm -rf /opt/nginx-proxy-manager`, then re-run `setup.py`. Otherwise both stacks will fight over port 80.
-
 ---
 
 ## 6. Manual Cloudflare steps still required
@@ -369,32 +365,30 @@ wget -q https://github.com/cloudflare/cloudflared/releases/download/2025.4.0/clo
 sudo dpkg -i --force-overwrite cloudflared-linux-amd64.deb
 ```
 
-Add to `~/.ssh/config` on the local machine:
-
-```
-Host ssh.<your-admin-domain>
-    ProxyCommand cloudflared access ssh --hostname %h
-    User root
-    IdentityFile ~/.ssh/prod_server
-```
-
-Test:
+Open a local listener that forwards a localhost port through the tunnel:
 
 ```bash
-ssh ssh.<your-admin-domain>
+cloudflared access tcp --hostname ssh.<your-admin-domain> --url localhost:2222 &
 ```
 
-For interactive (browser) login, Cloudflare opens a tab the first time. For service-token-based testing (matching what the deploy pipeline does), use:
+Then SSH to the local forward in another terminal:
 
 ```bash
-ssh -o ProxyCommand="cloudflared access ssh \
-    --hostname %h \
+ssh -p 2222 -i ~/.ssh/prod_server root@localhost
+```
+
+For interactive (browser) login, Cloudflare opens a tab the first time the listener starts. For service-token-based testing (matching what the deploy pipeline does), pass the token to the listener:
+
+```bash
+cloudflared access tcp \
+    --hostname ssh.<your-admin-domain> \
+    --url localhost:2222 \
     --service-token-id <YOUR_TOKEN_ID> \
-    --service-token-secret <YOUR_TOKEN_SECRET>" \
-    root@ssh.<your-admin-domain> -i ~/.ssh/prod_server
+    --service-token-secret <YOUR_TOKEN_SECRET> &
+ssh -p 2222 -i ~/.ssh/prod_server root@localhost
 ```
 
-If this connects without prompting for a browser login, the Service Auth policy created by `setup.py` is working correctly and the deploy pipeline will authenticate the same way.
+If this connects without prompting for a browser login, the Service Auth policy created by `setup.py` is working correctly and the deploy pipeline will authenticate the same way. Stop the listener with `kill %1` when done.
 
 ### 7.2 Close port 22
 
@@ -411,7 +405,7 @@ Port 22 is now closed. Future terminal access goes through the tunnel. The Digit
 
 ### 7.3 Customise the landing page
 
-Anything not matched by a specific tunnel ingress rule falls through the catch-all to `localhost:80`, where the landing-page nginx serves whatever is in `/opt/bucket/html/`. This is the lightweight nginx container at `/opt/landing/` — not Nginx Proxy Manager. There is no admin UI, no DB, no template injection points. The container does one thing: serve `/opt/bucket/html` as a static site.
+Anything not matched by a specific tunnel ingress rule falls through the catch-all to `localhost:80`, where the landing-page nginx serves whatever is in `/opt/bucket/html/`. This is the lightweight `nginx:alpine` container at `/opt/landing/`. There is no admin UI, no DB, no template injection points. The container does one thing: serve `/opt/bucket/html` as a static site.
 
 The repo's `apps/default/` is the source for that page. Edit files there, commit, then dispatch the `apps-deploy` workflow from GitHub Actions — it builds (if `apps/default/package.json` exists) and rsyncs to `/opt/bucket/html` on the server. That's the preferred update path: edit-in-repo → workflow → done.
 
@@ -444,9 +438,9 @@ cd /opt/landing && sudo docker compose up -d --force-recreate landing
 > - `https://<server-ip>/` — direct HTTPS won't reach here (no TLS on the host); Cloudflare's edge handles HTTPS for domains pointed at this server
 > - Any unknown-hostname request that reaches the tunnel — Cloudflare routes via the catch-all ingress rule to `localhost:80`
 >
-> Per-app domains (`myordbok.example.com`, `zaideih.example.com`) and admin domains (`ssh.<domain>`, `npm.<domain>`) bypass the landing page entirely — they match specific tunnel ingress rules that route to their app/SSH ports directly.
+> Per-app domains (`myordbok.example.com`, `zaideih.example.com`) and admin domains (`ssh.<domain>`) bypass the landing page entirely — they match specific tunnel ingress rules that route to their app/SSH ports directly.
 
-> **Why a vanilla nginx container and not NPM?** Earlier versions of this setup used Nginx Proxy Manager. With Cloudflare doing TLS at the edge and the tunnel doing host-to-app routing via `localhost:<port>`, NPM was doing nothing useful — except acting as a default-host server for the landing page, which it did poorly (its shipped `default.conf` includes a regex `assets.conf` that intercepts CSS/JS asset requests and 502s them). Replacing NPM with vanilla nginx made the landing-page concern trivial: one server block, one root, one try_files. See the comments in `setup.py`'s `setup_landing()` function for the full history.
+> **Why a vanilla nginx container?** The landing layer only serves static files — TLS terminates at the Cloudflare edge and host-to-app routing happens at the tunnel via `localhost:<port>`. So the container does one thing: serve `/opt/bucket/html` as a static site with an SPA `try_files` fallback. The config is deliberately minimal — one server block, one root, one try_files.
 
 ---
 
@@ -577,12 +571,14 @@ deploy: <description> [optional-tag]
 | `deploy: fix login bug [tunnel] [ssh]` | `[tunnel]` wins, `[ssh]` is suppressed |
 
 > `[tunnel]` and `[ssh]` are mutually exclusive. If both appear in the same commit, `[tunnel]` takes priority and `[ssh]` is ignored.
+>
+> Of these, only `[ssh]` is implemented today. The untagged self-hosted path and `[tunnel]` are planned — see [Section 11](#11-deployment-methods-explained). The selection logic above describes the intended end state.
 
 ### Example
 
 ```bash
 git add .
-git commit -m "deploy: update homepage layout [tunnel]"
+git commit -m "deploy: update homepage layout [ssh]"
 git push origin master
 ```
 
@@ -594,19 +590,19 @@ Repository → **Actions** tab → most recent run.
 
 ## 11. Deployment Methods Explained
 
-### Method 1 — Local VM (self-hosted runner)
+> The deploy methods below are driven by the **application repository's** workflow, not by lethil. lethil provisions the server; the app repo deploys to it. Of the three, only native SSH is implemented today — self-hosted and tunnel are planned.
 
-**When it runs:** automatically, whenever the self-hosted runner is detected as online and no `[tunnel]`/`[ssh]` tag is present.
+### Method 1 — Local VM (self-hosted runner) — *planned*
 
-**How:** the runner process on the production server executes the deploy locally. No SSH or network tunnelling involved.
+**Status:** not yet implemented. Runner registration and the self-hosted deploy path live in the application repository.
 
-**Best for:** day-to-day deployments.
+**Intended behaviour:** a self-hosted runner on the target executes the deploy locally, with no SSH or network tunnelling involved. Intended as a free, real target for testing production-ready apps.
 
-### Method 2 — Cloudflare Tunnel (`[tunnel]`)
+### Method 2 — Cloudflare Tunnel (`[tunnel]`) — *planned*
 
-**When:** `[tunnel]` in the commit message and `[ssh]` not present.
+**Status:** not yet implemented. Deferred as a later hardening step once the SSH path is proven in regular use.
 
-**How:** the GitHub-hosted runner installs `cloudflared` (currently pinned to `2025.4.0`), establishes an authenticated SSH session through the Cloudflare tunnel using the Service Token configured by `setup.py`, copies the compose file and `.env` over SCP, and executes the deploy. Port 22 stays closed.
+**Intended behaviour:** the GitHub-hosted runner opens a `cloudflared access tcp` listener authenticated by the Service Token configured by `setup.py`, SSHes to the forwarded local port, copies the compose file and `.env`, and runs the deploy. Port 22 stays closed. The server side is already wired up by `setup.py` (Access app + Service Auth policy on `ssh.<domain>`); only the workflow side is outstanding.
 
 **Best for:** remote servers behind closed firewalls.
 
@@ -697,17 +693,22 @@ Every build tags images with the commit SHA. To roll back:
 
 ### Via Cloudflare Tunnel SSH (primary remote method)
 
-Once the `~/.ssh/config` entry from [Section 7.3](#73-test-ssh-through-the-tunnel-before-closing-port-22) is in place:
+Open a listener forwarding a local port through the tunnel (see [Section 7.1](#71-test-ssh-through-the-tunnel-before-closing-port-22)), then SSH to it:
 
 ```bash
-ssh ssh.<your-admin-domain>
+cloudflared access tcp --hostname ssh.<your-admin-domain> --url localhost:2222 &
+ssh -p 2222 -i ~/.ssh/prod_server root@localhost
 ```
 
-If the config entry isn't there:
+For non-interactive access (no browser login), add the service token to the listener:
 
 ```bash
-ssh -o ProxyCommand="cloudflared access ssh --hostname %h" \
-    root@ssh.<your-admin-domain> -i ~/.ssh/prod_server
+cloudflared access tcp \
+    --hostname ssh.<your-admin-domain> \
+    --url localhost:2222 \
+    --service-token-id <YOUR_TOKEN_ID> \
+    --service-token-secret <YOUR_TOKEN_SECRET> &
+ssh -p 2222 -i ~/.ssh/prod_server root@localhost
 ```
 
 ### Via DigitalOcean Web Console (no network required)
@@ -948,7 +949,7 @@ The two listings should match. If the container is empty or shows different file
 
 **Port conflict?**
 
-If `docker logs landing` shows `bind() to 0.0.0.0:80 failed (98: Address already in use)`, something else is already listening on port 80. The usual suspect on an upgraded server is a leftover NPM container:
+If `docker logs landing` shows `bind() to 0.0.0.0:80 failed (98: Address already in use)`, something else is already listening on port 80. Find what:
 
 ```bash
 sudo lsof -i :80
@@ -961,4 +962,3 @@ If you see `nginx-proxy-manager` in the output, follow the upgrade-cleanup note 
 **SPA deep links return 404?**
 
 The server block uses `try_files $uri $uri/ /index.html =404;`. Deep links work as long as `/opt/bucket/html/index.html` exists. If it doesn't, deep links 404 because the fallback target doesn't exist. Drop a real `index.html` into the directory and reload the browser.
-

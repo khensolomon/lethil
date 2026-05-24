@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Docker Production Installation & Nginx Proxy Manager Setup (Robotic Edition)
+Docker Production Installation & Cloudflare Tunnel Setup (Robotic Edition)
 
 Usage:
     # Standard installation (no Cloudflare)
@@ -486,7 +486,7 @@ def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
 
     admin_subdomains is a dict keyed by subdomain name. Each value is a dict:
       {
-        "service": <tunnel ingress target, e.g. "ssh://localhost:22">,
+        "service": <tunnel ingress target, e.g. "tcp://localhost:22">,
         "protect_with_access_app": <optional bool — default False>,
         "app_name": <optional Access app display name>,
       }
@@ -908,14 +908,12 @@ def setup_docker_swarm(dry_run=False):
     because overlay networks require Swarm mode.
 
     Networks created:
-      gateway   — Shared overlay network. Originally created so NPM could
-                  reach each app stack's public-facing nginx; with NPM gone,
-                  the network is no longer strictly required for the
-                  tunnel-to-app path (the tunnel reaches apps via
-                  localhost:<port> directly). It's kept here because app
-                  stack deploys may declare it as an external network, and
-                  re-creating it on each deploy would be wasteful. Harmless
-                  if unused.
+      gateway   — Shared overlay network. Not required for the
+                  tunnel-to-app path: the tunnel reaches apps via
+                  localhost:<port> directly. Created here because app stack
+                  deploys may declare it as an external network, and
+                  creating it once is cheaper than re-creating it on each
+                  deploy. Harmless if unused.
     """
     print("Checking Docker Swarm...")
     if dry_run:
@@ -1019,17 +1017,10 @@ def setup_landing(force=False, dry_run=False):
     tunnel's catch-all ingress rule sends here (i.e. anything not matched by
     a more specific tunnel route).
 
-    Why vanilla nginx (and not NPM):
-      The previous version of this script used Nginx Proxy Manager. NPM was
-      doing nothing useful in this stack — TLS termination happens at the
-      Cloudflare edge, proxying happens at the tunnel via localhost ports —
-      so all that was left was the landing page. NPM's shipped default.conf
-      has a regex location for asset extensions (assets.conf) that intercepts
-      /*.css, /*.js etc. and proxies them upstream, which returned 502 for
-      static SPA assets. Replacing NPM with vanilla nginx makes the config
-      trivial: one server block, one root, one try_files. No fragility, no
-      bind-mount-over-someone-else's-template gymnastics, no risk of an NPM
-      upgrade silently changing something we depend on.
+    The config is deliberately minimal — one server block, one root, one
+    try_files. The landing layer only serves static files: TLS terminates
+    at the Cloudflare edge and proxying happens at the tunnel via localhost
+    ports, so nothing here needs to do more than hand back files.
 
     The container:
       - Binds 0.0.0.0:80 (so the tunnel can reach it on localhost:80, and
@@ -1268,12 +1259,16 @@ def main():
     #   "service" (required) — the tunnel ingress target. Anything the
     #     cloudflared --no-autoupdate run process can route to. Common
     #     schemes: 'http://localhost:<port>', 'https://localhost:<port>',
-    #     'ssh://localhost:22'. localhost works because cloudflared runs
-    #     with network_mode: host (see setup_cloudflare_tunnel).
+    #     'tcp://localhost:22'. SSH uses tcp:// (not ssh://): remotely
+    #     managed tunnels — configured via the API as this script does —
+    #     route SSH as a raw TCP service. The ssh:// scheme belongs to the
+    #     older local-config-file model and is silently ignored here.
+    #     localhost works because cloudflared runs with network_mode: host
+    #     (see setup_cloudflare_tunnel).
     #   "protect_with_access_app" (optional, default False) — when True,
     #     setup.py creates a Cloudflare Access application on this hostname
     #     and attaches a Service Auth policy referencing the supplied
-    #     service token. This is what makes 'cloudflared access ssh' from
+    #     service token. This is what lets 'cloudflared access tcp' from
     #     the GitHub Actions deploy pipeline authenticate without a human
     #     browser login. Required for SSH; meaningless for HTTP routes
     #     unless you also want them gated by the same service token.
@@ -1285,12 +1280,9 @@ def main():
     #   "portainer": {"service": "https://localhost:9443"},
     admin_subdomains = {
         "ssh": {
-            "service": "ssh://localhost:22",
+            "service": "tcp://localhost:22",
             "protect_with_access_app": True,
             "app_name": f"SSH — {admin_domain}",
-        },
-        "npm": {
-            "service": "http://localhost:81",
         },
     }
 
