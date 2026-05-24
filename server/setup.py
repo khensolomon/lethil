@@ -1284,6 +1284,33 @@ def main():
             "protect_with_access_app": True,
             "app_name": f"SSH — {admin_domain}",
         },
+        # Browser-rendered SSH terminal. This entry intentionally creates
+        # only the DNS record and tunnel ingress rule (ssh:// scheme, which
+        # the browser-render flow expects). It does NOT set
+        # protect_with_access_app, so setup.py creates no Access app, policy,
+        # or service-token wiring for it.
+        #
+        # The remaining setup is done once in the Cloudflare dashboard,
+        # deliberately kept out of setup.py: the short-lived-certificate
+        # method it relies on is labelled legacy ("not recommended for new
+        # deployments"), so automating sshd CA-trust edits against it would
+        # build server-modifying code on a moving target. The dashboard
+        # steps, one time:
+        #   1. Zero Trust → Access → Applications: create a self_hosted app
+        #      on terminal.<admin_domain>. Set Browser rendering to "SSH".
+        #   2. Add an Allow policy (Service Auth / Bypass are unsupported for
+        #      browser-rendered apps) with an email rule for the operator.
+        #   3. Zero Trust → Access → Service Auth → SSH: generate the
+        #      short-lived-cert CA for this app, copy its public key.
+        #   4. On the server: trust that CA in sshd_config
+        #      (TrustedUserCAKeys), ensuring the operator's email prefix
+        #      matches a Unix username, then reload ssh.
+        # The browser terminal needs these sshd KEX algorithms; add if
+        # absent: curve25519-sha256, curve25519-sha256@libssh.org,
+        # ecdh-sha2-nistp256/384/521.
+        "terminal": {
+            "service": "ssh://localhost:22",
+        },
     }
 
     # ══════════════════════════════════════════════════════════════

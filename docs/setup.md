@@ -16,6 +16,7 @@ The bootstrap is robotic. `setup.py` provisions the VM, creates the Cloudflare T
 
 ---
 
+
 ## Table of Contents
 
 1. [Prerequisites](#1-prerequisites)
@@ -247,6 +248,10 @@ admin_subdomains = {
         "protect_with_access_app": True,
         "app_name": f"SSH — {admin_domain}",
     },
+    # Browser-rendered SSH terminal — DNS + ingress only (see below).
+    "terminal": {
+        "service": "ssh://localhost:22",
+    },
     # Add new internal proxies here, e.g.:
     # "grafana":   {"service": "http://localhost:3000"},
     # "portainer": {"service": "https://localhost:9443"},
@@ -256,6 +261,19 @@ admin_subdomains = {
 To rename `ssh` to something else (e.g. `access`), just change the dict key — `setup.py` will create a DNS record, ingress rule, Access app, and Service Auth policy on the new hostname. The old Cloudflare resources at the previous hostname stay in place and need manual cleanup in the dashboard.
 
 SSH uses the `tcp://` scheme, not `ssh://`. Remotely managed tunnels — configured through the API, as this script does — route SSH as a raw TCP service; the `ssh://` scheme belongs to the older local-config-file model and is silently ignored. The operator-side connection still uses `cloudflared access tcp` (see Section 7).
+
+The `terminal` entry is different. It uses `ssh://` deliberately (the browser-render flow expects it) and omits `protect_with_access_app`, so `setup.py` creates only its DNS record and ingress rule — no Access app, policy, or service-token wiring. Everything else for the browser terminal is configured once in the Cloudflare dashboard, kept out of `setup.py` on purpose: the short-lived-certificate method it relies on is labelled legacy ("not recommended for new deployments"), so automating sshd CA-trust edits against it would put server-modifying code on a moving target.
+
+The one-time dashboard setup for `terminal.<admin_domain>`:
+
+| Step | Where | Action |
+|---|---|---|
+| Create app | Zero Trust → Access → Applications | Self-hosted app on `terminal.<admin_domain>`; set Browser rendering to SSH |
+| Add policy | The app's Policies tab | Allow policy with an email rule for the operator (Service Auth and Bypass are not supported for browser-rendered apps) |
+| Generate CA | Zero Trust → Access → Service Auth → SSH | Generate the short-lived-certificate CA for the app; copy its public key |
+| Trust the CA | The server | Add `TrustedUserCAKeys` for the copied key to `sshd_config`, then reload ssh |
+
+Two requirements that are easy to miss. The operator's login email prefix must match a Unix username on the server (for example, `jdoe@example.com` logs in as `jdoe`), or the certificate principal will not match. And the browser terminal needs these sshd key-exchange algorithms; add them if absent: `curve25519-sha256`, `curve25519-sha256@libssh.org`, `ecdh-sha2-nistp256`, `ecdh-sha2-nistp384`, `ecdh-sha2-nistp521`.
 
 ### What the script does
 
@@ -273,7 +291,7 @@ SSH uses the `tcp://` scheme, not `ssh://`. Remotely managed tunnels — configu
 | Landing nginx | Deploys an `nginx:alpine` container at `/opt/landing/` listening on port 80, serving `/opt/bucket/html` as a static site with SPA `try_files` fallback. This is the catch-all for any request the tunnel ingress doesn't route somewhere specific |
 | Cloudflare API | Validates token, verifies the supplied service token exists in this account |
 | Tunnel | Creates the named tunnel and returns its connection token |
-| Ingress | Pushes tunnel ingress routing rules for every entry in `admin_subdomains` (default: `ssh.<domain>`), every `--app-domain`, and a catch-all to `localhost:80` (the landing nginx) |
+| Ingress | Pushes tunnel ingress routing rules for every entry in `admin_subdomains` (default: `ssh.<domain>` and `terminal.<domain>`), every `--app-domain`, and a catch-all to `localhost:80` (the landing nginx) |
 | DNS | Upserts proxied CNAMEs in each domain's zone, pointing at the tunnel |
 | Access app | For every `admin_subdomains` entry flagged `protect_with_access_app: True` (default: `ssh.<domain>` only), creates a self-hosted Access application and attaches a Service Auth policy referencing the supplied service token |
 
