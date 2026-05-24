@@ -10,6 +10,7 @@ body {
 
 body {
   background-color: var(--background-color);
+  font-family: system-ui;
 }
 main {
   width: 100%;
