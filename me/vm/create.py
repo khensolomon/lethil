@@ -14,11 +14,11 @@ The workflow it supports:
        "ubuntu-25.10-server-cloudimg-amd64.img".
 
     2. Build a *golden image* from that base + cloud-init user-data.
-       The golden image is your reusable template — provisioned once,
+       The golden image is a reusable template — provisioned once,
        cloned many times.
 
-    3. Clone lightweight VMs from the golden image whenever you need
-       a fresh, ready-to-go Ubuntu machine.
+    3. Clone lightweight VMs from the golden image whenever
+       a fresh, ready-to-go Ubuntu machine is needed.
 
 -----------------------------------------------------------------
 USAGE
@@ -57,7 +57,7 @@ REQUIREMENTS
     * A cloud-init user-data file (see USER_DATA below)
     * The Ubuntu cloud image .img file in IMAGE_DIR
 
-You can download Ubuntu cloud images from:
+Ubuntu cloud images can be downloaded from:
     https://cloud-images.ubuntu.com/
 
 -----------------------------------------------------------------
@@ -71,6 +71,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -78,7 +79,7 @@ from typing import Optional
 # =====================================================================
 # CONFIGURATION
 # =====================================================================
-# Change these to match your environment.
+# Change these to match the local environment.
 # =====================================================================
 
 # Where libvirt stores its disk images on this host.
@@ -90,9 +91,9 @@ def _invoking_user_home() -> Path:
     Return the home directory of the user who *invoked* the script,
     even when running under sudo.
 
-    Under sudo, Path.home() returns /root, which is almost never what
-    we want for user-owned config files. SUDO_USER is set by sudo to
-    the original username, so we resolve that user's home instead.
+    Under sudo, Path.home() returns /root, which is almost never the
+    desired result for user-owned config files. SUDO_USER is set by sudo
+    to the original username, so that user's home is resolved instead.
     """
     sudo_user = os.environ.get("SUDO_USER")
     if sudo_user and sudo_user != "root":
@@ -119,6 +120,29 @@ USER_DATA: Path = Path(
 # auto-detection finds multiple candidates). Set to None to always
 # auto-detect / prompt.
 DEFAULT_BASE_IMAGE: Optional[str] = "ubuntu-26.04-server-cloudimg-amd64.img"
+
+# Default SSH PUBLIC key to inject into the golden image's
+# ssh-authorized-keys at build time. This replaces the placeholder in
+# user-data.yaml. Resolved against the invoking user's home even under
+# sudo. Override priority (highest first):
+#   1. --ssh-key CLI flag
+#   2. VM_SSH_KEY environment variable
+#   3. This default
+# NOTE: this must be the PUBLIC key (.pub), never the private key.
+DEFAULT_SSH_KEY: Path = Path(
+    os.environ.get("VM_SSH_KEY")
+    or _invoking_user_home() / ".ssh/prod_server.pub"
+)
+
+# Placeholder string in user-data.yaml that gets replaced with the real
+# public key contents at build time.
+SSH_KEY_PLACEHOLDER: str = "YOUR_SSH_PUBLIC_KEY_HERE"
+
+# Default for the "enable SSH password authentication?" prompt.
+# False = key-only SSH (recommended for unattended / robotic deploys).
+# The account password (hashed_passwd) is left untouched either way;
+# this only controls whether sshd accepts passwords over the network.
+DEFAULT_SSH_PWAUTH: bool = False
 
 # Default resources for the GOLDEN image.
 DEFAULT_GOLDEN_MEMORY_MB: int = 8192   # 8 GB RAM
@@ -200,7 +224,7 @@ def run_command(cmd: list[str], *, check: bool = True,
         )
     except FileNotFoundError:
         error(f"Command not found: {cmd[0]}")
-        error("Is it installed and on your PATH?")
+        error("Is it installed and on the PATH?")
         sys.exit(127)
     except subprocess.CalledProcessError as e:
         error(f"Command failed (exit {e.returncode}): {' '.join(cmd)}")
@@ -283,6 +307,148 @@ def confirm(question: str, *, default: bool = False,
     if not raw:
         return default
     return raw in ("y", "yes")
+
+
+# =====================================================================
+# SSH key + cloud-init user-data preparation
+# =====================================================================
+#
+# The golden image is provisioned from user-data.yaml. That file on disk
+# is never modified. Instead, at build time it is read, two in-memory
+# substitutions are applied, and a TEMPORARY patched copy is written and
+# fed to virt-install --cloud-init. The temp file is removed afterwards.
+#
+# The two substitutions:
+#   1. Replace the SSH_KEY_PLACEHOLDER with the real public key.
+#   2. Flip the `ssh_pwauth:` line to the chosen true/false value.
+#
+# Everything else (hashed_passwd, lock_passwd, etc.) is left byte-for-byte
+# untouched.
+
+# Common public-key prefixes. Used to sanity-check that the supplied file
+# is a public key and not, say, a private key by mistake.
+_PUBKEY_PREFIXES = (
+    "ssh-rsa", "ssh-ed25519", "ssh-dss",
+    "ecdsa-sha2-", "sk-ssh-ed25519@", "sk-ecdsa-sha2-",
+)
+
+
+def read_public_key(key_path: Path) -> str:
+    """
+    Read and validate an SSH PUBLIC key file.
+
+    Returns the single-line key string (stripped). Exits with a helpful
+    message if the file is missing, looks like a PRIVATE key, or doesn't
+    look like a public key at all.
+
+    Convenience: if the given path doesn't exist but `<path>.pub` does,
+    that file is used instead (so `--ssh-key ~/.ssh/prod_server` still works).
+    """
+    if not key_path.exists():
+        pub_sibling = key_path.with_suffix(key_path.suffix + ".pub") \
+            if key_path.suffix != ".pub" else key_path
+        alt = Path(str(key_path) + ".pub")
+        if alt.exists():
+            info(f"'{key_path}' not found; using '{alt}' instead.")
+            key_path = alt
+        else:
+            error(f"SSH public key not found: {key_path}")
+            error("Fix one of:")
+            error("  • Generate a key:  ssh-keygen -t ed25519 -f "
+                  f"{key_path.with_suffix('')}")
+            error("  • Pass a different path:  --ssh-key /path/to/key.pub")
+            error("  • Set the env var:        VM_SSH_KEY=/path/to/key.pub")
+            sys.exit(1)
+
+    try:
+        content = key_path.read_text(encoding="utf-8")
+    except OSError as e:
+        error(f"Cannot read SSH key '{key_path}': {e}")
+        sys.exit(1)
+
+    # Guard against someone pointing at a PRIVATE key.
+    if "PRIVATE KEY" in content:
+        error(f"'{key_path}' looks like a PRIVATE key — never inject that.")
+        error(f"The public key is probably:  {key_path}.pub")
+        sys.exit(1)
+
+    # A .pub file is a single line. Take the first non-empty line.
+    lines = [ln.strip() for ln in content.splitlines() if ln.strip()]
+    if not lines:
+        error(f"SSH key file is empty: {key_path}")
+        sys.exit(1)
+    key = lines[0]
+
+    if not key.startswith(_PUBKEY_PREFIXES):
+        warn(f"'{key_path}' doesn't start with a known public-key prefix "
+             f"({', '.join(_PUBKEY_PREFIXES[:3])}, ...).")
+        warn("Injecting it anyway — double-check it's a valid public key.")
+
+    return key
+
+
+# Matches an `ssh_pwauth:` line at the start of a line (any indent),
+# capturing the leading whitespace so it is preserved.
+_SSH_PWAUTH_RE = re.compile(
+    r"^(?P<indent>[ \t]*)ssh_pwauth\s*:\s*\S.*$",
+    re.MULTILINE,
+)
+
+
+def prepare_user_data(template_path: Path, *, ssh_pwauth: bool,
+                      public_key: str) -> Path:
+    """
+    Produce a temporary, patched copy of the cloud-init user-data.
+
+    Reads `template_path` (never writes to it), applies the SSH key and
+    ssh_pwauth substitutions in memory, writes the result to a NamedTemporary
+    file, and returns its Path. Caller is responsible for deleting it
+    (see action_create_golden's finally block).
+    """
+    text = template_path.read_text(encoding="utf-8")
+
+    # ----- 1. Inject the public key over the placeholder -----
+    if SSH_KEY_PLACEHOLDER in text:
+        # Replace the whole placeholder token. The surrounding YAML
+        # (e.g. "      - ssh-rsa YOUR_SSH_PUBLIC_KEY_HERE") becomes
+        # "      - <full public key>". Since .pub already contains the
+        # "ssh-rsa AAAA..." form, the entire "ssh-rsa PLACEHOLDER" token
+        # is replaced if present, otherwise just the placeholder.
+        combined = re.compile(
+            r"(ssh-(?:rsa|ed25519|dss)|ecdsa-sha2-\S+)?\s*"
+            + re.escape(SSH_KEY_PLACEHOLDER)
+        )
+        if combined.search(text):
+            text = combined.sub(public_key, text, count=1)
+        else:
+            text = text.replace(SSH_KEY_PLACEHOLDER, public_key, 1)
+    else:
+        warn(f"Placeholder '{SSH_KEY_PLACEHOLDER}' not found in "
+             f"{template_path.name}.")
+        warn("Assuming the key is already set in user-data — leaving keys "
+             "as-is.")
+
+    # ----- 2. Flip ssh_pwauth -----
+    new_value = "true" if ssh_pwauth else "false"
+    if _SSH_PWAUTH_RE.search(text):
+        text = _SSH_PWAUTH_RE.sub(
+            lambda m: f"{m.group('indent')}ssh_pwauth: {new_value}",
+            text, count=1,
+        )
+    else:
+        warn("No 'ssh_pwauth:' line found in user-data — cannot override it.")
+        warn(f"(Wanted ssh_pwauth: {new_value}.) Leaving file as-is.")
+
+    # ----- Write the temp copy -----
+    fd = tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8",
+        prefix="user-data-", suffix=".yaml", delete=False,
+    )
+    with fd:
+        fd.write(text)
+    tmp_path = Path(fd.name)
+    info(f"Patched cloud-init written to temp file: {tmp_path}")
+    return tmp_path
 
 
 # =====================================================================
@@ -396,6 +562,8 @@ class GoldenSettings:
     vcpus: int = DEFAULT_GOLDEN_VCPUS
     disk_gb: int = DEFAULT_GOLDEN_DISK_GB
     user_data: Path = USER_DATA
+    ssh_pwauth: bool = DEFAULT_SSH_PWAUTH
+    ssh_key_path: Path = DEFAULT_SSH_KEY
     virtiofs_mounts: list[tuple[str, str]] = field(
         default_factory=lambda: list(VIRTIOFS_MOUNTS)
     )
@@ -518,6 +686,32 @@ def build_golden_settings(args, *, non_interactive: bool) -> GoldenSettings:
         non_interactive=non_interactive,
     )
 
+    # ----- SSH public key path -----
+    default_key = Path(args.ssh_key) if args.ssh_key else DEFAULT_SSH_KEY
+    ssh_key_path = Path(prompt(
+        "SSH public key path",
+        str(default_key),
+        non_interactive=non_interactive,
+    )).expanduser()
+
+    # ----- SSH password authentication toggle -----
+    # Resolution priority:
+    #   1. Explicit --ssh-pwauth / --no-ssh-pwauth flag
+    #   2. Interactive prompt
+    #   3. DEFAULT_SSH_PWAUTH (also used under --yes when no flag given)
+    if args.ssh_pwauth is not None:
+        ssh_pwauth = args.ssh_pwauth
+    elif non_interactive:
+        ssh_pwauth = DEFAULT_SSH_PWAUTH
+    else:
+        # Default the prompt to DEFAULT_SSH_PWAUTH (False => key-only).
+        ssh_pwauth = confirm(
+            "Enable SSH password authentication?",
+            default=DEFAULT_SSH_PWAUTH,
+        )
+    info("SSH password auth will be: "
+         f"{C.yellow('enabled') if ssh_pwauth else C.green('disabled (key-only)')}")
+
     return GoldenSettings(
         base_image=base_image,
         golden_name=golden_name,
@@ -526,14 +720,16 @@ def build_golden_settings(args, *, non_interactive: bool) -> GoldenSettings:
         vcpus=vcpus,
         disk_gb=disk,
         user_data=Path(args.user_data) if args.user_data else USER_DATA,
+        ssh_pwauth=ssh_pwauth,
+        ssh_key_path=ssh_key_path,
     )
 
 
 def find_golden_domains() -> list[str]:
     """
     Return the names of all libvirt domains that look like golden
-    images. We use a naming convention (ending in '-golden') because
-    libvirt doesn't have any concept of "this is a template".
+    images. This relies on a naming convention (ending in '-golden')
+    because libvirt has no concept of "this is a template".
     """
     return [name for name, _state in list_domains() if name.endswith("-golden")]
 
@@ -674,31 +870,51 @@ def action_create_golden(args, *, non_interactive: bool) -> None:
     info(f"Base image : {s.base_image}")
     info(f"Golden disk: {s.golden_disk}")
     info(f"Resources  : {s.memory_mb} MB RAM, {s.vcpus} vCPUs, {s.disk_gb} GB disk")
-    info(f"User-data  : {s.user_data}")
+    info(f"User-data  : {s.user_data} (template — not modified)")
+    info(f"SSH key    : {s.ssh_key_path}")
+    info("Password   : "
+         f"{'SSH password auth ENABLED' if s.ssh_pwauth else 'SSH password auth DISABLED (key-only)'}")
 
-    cmd: list[str] = [
-        "virt-install",
-        "--name", s.golden_name,
-        "--memory", str(s.memory_mb),
-        "--vcpus", str(s.vcpus),
-        "--disk",
-        f"path={s.golden_disk},size={s.disk_gb},"
-        f"backing_store={s.base_image},format=qcow2,bus=virtio",
-        "--memorybacking", "source.type=memfd,access.mode=shared",
-        "--cloud-init", f"user-data={s.user_data}",
-        "--network", "network=default,model=virtio",
-        "--osinfo", "detect=on,require=off",
-        "--graphics", "none",
-        "--console", "pty,target_type=serial",
-        "--import",
-        "--noautoconsole",
-    ]
+    # Read + validate the public key, then build a temporary patched
+    # copy of the user-data. The original template is never modified.
+    public_key = read_public_key(s.ssh_key_path)
+    patched_user_data = prepare_user_data(
+        s.user_data, ssh_pwauth=s.ssh_pwauth, public_key=public_key,
+    )
 
-    # Inject virtiofs mounts.
-    for host_path, tag in s.virtiofs_mounts:
-        cmd += ["--filesystem", f"{host_path},{tag},driver.type=virtiofs"]
+    try:
+        cmd: list[str] = [
+            "virt-install",
+            "--name", s.golden_name,
+            "--memory", str(s.memory_mb),
+            "--vcpus", str(s.vcpus),
+            "--disk",
+            f"path={s.golden_disk},size={s.disk_gb},"
+            f"backing_store={s.base_image},format=qcow2,bus=virtio",
+            "--memorybacking", "source.type=memfd,access.mode=shared",
+            "--cloud-init", f"user-data={patched_user_data}",
+            "--network", "network=default,model=virtio",
+            "--osinfo", "detect=on,require=off",
+            "--graphics", "none",
+            "--console", "pty,target_type=serial",
+            "--import",
+            "--noautoconsole",
+        ]
 
-    run_command(cmd)
+        # Inject virtiofs mounts.
+        for host_path, tag in s.virtiofs_mounts:
+            cmd += ["--filesystem", f"{host_path},{tag},driver.type=virtiofs"]
+
+        run_command(cmd)
+    finally:
+        # virt-install copies the user-data into a seed image during the
+        # run above, so the temp file is no longer needed once it returns
+        # (success or failure). Remove it.
+        try:
+            patched_user_data.unlink()
+        except OSError:
+            warn(f"Could not remove temp file: {patched_user_data}")
+
     success(f"Golden image '{s.golden_name}' defined and started.")
     print()
     warn("The VM is now booting and running cloud-init INSIDE the guest.")
@@ -722,8 +938,8 @@ def action_create_golden(args, *, non_interactive: bool) -> None:
     if confirm("Attach to the serial console now to watch it boot?",
                default=True, non_interactive=non_interactive):
         info("Attaching... (press Ctrl+] to detach without stopping the VM)")
-        # subprocess.run, NOT run_command — we want streaming I/O and we
-        # don't want to bail out on the exit code of an interactive session.
+        # subprocess.run, NOT run_command — streaming I/O is needed here,
+        # and the exit code of an interactive session must not abort.
         subprocess.run(["virsh", "console", s.golden_name])
 
 
@@ -878,6 +1094,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--user-data", "-u", metavar="PATH",
                    help="Path to cloud-init user-data.yaml "
                         "(overrides USER_DATA / $VM_USER_DATA).")
+    p.add_argument("--ssh-key", metavar="PATH",
+                   help="Path to the SSH PUBLIC key to inject into the "
+                        "golden image (overrides DEFAULT_SSH_KEY / "
+                        "$VM_SSH_KEY). Default: ~/.ssh/prod_server.pub")
+    pwauth = p.add_mutually_exclusive_group()
+    pwauth.add_argument("--ssh-pwauth", dest="ssh_pwauth",
+                        action="store_true", default=None,
+                        help="Enable SSH password authentication in the "
+                             "golden image.")
+    pwauth.add_argument("--no-ssh-pwauth", dest="ssh_pwauth",
+                        action="store_false", default=None,
+                        help="Disable SSH password authentication (key-only). "
+                             "This is the default.")
     p.add_argument("--yes", "-y", action="store_true",
                    help="Non-interactive mode: accept all defaults, "
                         "skip confirmations.")
