@@ -17,10 +17,22 @@
 #   * Destination on the server is /opt/bucket/<name>/, except 'default'
 #     which goes to /opt/bucket/html (the landing-page mount).
 #
-# Methods supported in v1:  ssh
-# Methods scaffolded but not implemented yet:  self-hosted, tunnel
+# Methods:
+#   ssh          — rsync to the server over SSH, reached by IP/hostname.
+#   tunnel       — same rsync, but the transport is SSH-over-Cloudflare-
+#                  Tunnel (cloudflared access ssh) authenticated with the
+#                  Access service token. Lets the deploy run with port 22
+#                  closed. Targets ssh.<ADMIN_DOMAIN>, not SERVER_HOST.
+#   self-hosted  — the job runs ON the server (a registered self-hosted
+#                  runner), so the deploy is a local rsync with no network
+#                  hop. No SSH, no tunnel, no host resolution.
+#
+# ssh and tunnel share one job on a GitHub-hosted runner; they differ only
+# in how rsync reaches the box. self-hosted is a separate job because
+# runs-on is per-job — a self-hosted method has to actually execute on the
+# server, which a runner pinned to ubuntu-latest cannot do.
 
-name: apps-deploy
+name: App · Deploy
 
 on:
   workflow_dispatch:
@@ -35,8 +47,8 @@ on:
         type: choice
         options:
           - ssh
-          - self-hosted    # placeholder — not implemented
-          - tunnel         # placeholder — not implemented
+          - self-hosted
+          - tunnel
         default: ssh
       target_host:
         description: "Target host (IP or hostname). If empty, uses SERVER_HOST secret."
@@ -48,7 +60,11 @@ on:
         required: false
 
 jobs:
+  # ── ssh + tunnel ─────────────────────────────────────────────────────────
+  # Both reach a remote server and rsync to it; they differ only in the
+  # transport rsync uses. Runs on a GitHub-hosted runner.
   deploy:
+    if: github.event.inputs.method == 'ssh' || github.event.inputs.method == 'tunnel'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -86,21 +102,37 @@ jobs:
 
       - name: Resolve target host
         id: target
+        env:
+          METHOD: ${{ github.event.inputs.method }}
+          USER_HOST: ${{ github.event.inputs.target_host }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          ADMIN_DOMAIN: ${{ secrets.ADMIN_DOMAIN }}
         run: |
-          host="${{ github.event.inputs.target_host }}"
-          if [ -z "$host" ]; then
-            host="${{ secrets.SERVER_HOST }}"
-          fi
-          if [ -z "$host" ]; then
-            echo "::error::No target host. Provide via form input or SERVER_HOST secret."
-            exit 1
+          if [ "$METHOD" = "tunnel" ]; then
+            # The tunnel reaches the box by its public SSH hostname, not by
+            # IP — that is the point of keeping port 22 closed. The hostname
+            # is ssh.<admin-domain>, matching the 'ssh' admin subdomain that
+            # setup.py routes through the tunnel. target_host/SERVER_HOST do
+            # not apply here.
+            if [ -z "$ADMIN_DOMAIN" ]; then
+              echo "::error::method=tunnel needs the ADMIN_DOMAIN secret to derive ssh.<admin-domain>."
+              exit 1
+            fi
+            host="ssh.${ADMIN_DOMAIN}"
+          else
+            host="$USER_HOST"
+            [ -z "$host" ] && host="$SERVER_HOST"
+            if [ -z "$host" ]; then
+              echo "::error::No target host. Provide via form input or SERVER_HOST secret."
+              exit 1
+            fi
           fi
           echo "host=$host" >> "$GITHUB_OUTPUT"
 
       - name: Resolve target path
         id: path
         env:
-          USER_TARGET:    ${{ github.event.inputs.target_path }}
+          USER_TARGET: ${{ github.event.inputs.target_path }}
           DEFAULT_TARGET: ${{ steps.app.outputs.default_target }}
         run: |
           path="$USER_TARGET"
@@ -153,33 +185,84 @@ jobs:
             exit 1
           fi
 
-      # ── SSH method ───────────────────────────────────────────────────────
-      - name: Set up SSH (method=ssh)
-        if: github.event.inputs.method == 'ssh'
+      # ── Transport setup ──────────────────────────────────────────────────
+      # Both ssh and tunnel authenticate to sshd with the deploy key. They
+      # differ in how the TCP connection to sshd is made:
+      #   ssh    → directly to the host's port 22.
+      #   tunnel → through 'cloudflared access ssh' as a ProxyCommand, with
+      #            the Access service token authenticating to Cloudflare's
+      #            edge. sshd never sees the public internet.
+      # Each step writes a single SSH_OPTS string that the rsync and verify
+      # steps reuse, so those steps do not branch on method.
+      - name: Set up deploy key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
+
+      - name: Set up transport (method=ssh)
+        if: github.event.inputs.method == 'ssh'
+        run: |
           if [ -n "${{ secrets.SSH_KNOWN_HOSTS }}" ]; then
             echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
             chmod 600 ~/.ssh/known_hosts
           else
             echo "::warning::SSH_KNOWN_HOSTS not set; using StrictHostKeyChecking=accept-new"
           fi
+          echo "SSH_OPTS=-i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new" >> "$GITHUB_ENV"
 
-      - name: Rsync to server (method=ssh)
-        if: github.event.inputs.method == 'ssh'
+      - name: Set up transport (method=tunnel)
+        if: github.event.inputs.method == 'tunnel'
         env:
-          HOST:    ${{ steps.target.outputs.host }}
-          REMOTE:  ${{ steps.path.outputs.path }}
-          SOURCE:  ${{ steps.build.outputs.source_dir }}
+          TOKEN_ID: ${{ secrets.CF_SERVICE_TOKEN_ID }}
+          TOKEN_SECRET: ${{ secrets.CF_SERVICE_TOKEN_SECRET }}
+          HOST: ${{ steps.target.outputs.host }}
         run: |
-          ssh_opts="-i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new"
+          if [ -z "$TOKEN_ID" ] || [ -z "$TOKEN_SECRET" ]; then
+            echo "::error::method=tunnel needs CF_SERVICE_TOKEN_ID and CF_SERVICE_TOKEN_SECRET secrets."
+            echo "::error::These are the same Service Auth token setup.py attached to the SSH Access app."
+            exit 1
+          fi
 
+          # Install cloudflared from Cloudflare's published .deb. The tunnel
+          # transport cannot work without it on the runner.
+          arch="$(dpkg --print-architecture)"
+          url="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}.deb"
+          curl -fsSL -o /tmp/cloudflared.deb "$url"
+          sudo dpkg -i /tmp/cloudflared.deb
+
+          # The ProxyCommand carries the service token, so the WebSocket
+          # handshake to Cloudflare's edge is authorised non-interactively by
+          # the Service Auth policy. It is written into ~/.ssh/config keyed on
+          # the target host rather than threaded through SSH_OPTS — the
+          # command contains spaces, and putting it in SSH_OPTS would break
+          # when that string is word-split into the rsync -e argument. With
+          # it in the config, SSH_OPTS stays identical to the ssh method and
+          # the rsync/verify steps need no per-method branching.
+          # Host-key checking is accept-new: the box is only reachable through
+          # the authenticated tunnel, and a pinned known_hosts would need
+          # separate provisioning.
+          {
+            printf 'Host %s\n' "${HOST}"
+            printf '  ProxyCommand cloudflared access ssh --hostname %%h --service-token-id %s --service-token-secret %s\n' "${TOKEN_ID}" "${TOKEN_SECRET}"
+            printf '  StrictHostKeyChecking accept-new\n'
+          } > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+          echo "SSH_OPTS=-i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new" >> "$GITHUB_ENV"
+
+      # ── Deploy (ssh or tunnel) ─────────────────────────────────────────────
+      - name: Rsync to server
+        env:
+          HOST: ${{ steps.target.outputs.host }}
+          REMOTE: ${{ steps.path.outputs.path }}
+          SOURCE: ${{ steps.build.outputs.source_dir }}
+        run: |
+          # SSH_OPTS was set by the transport step for this method. For
+          # tunnel, the ProxyCommand lives in ~/.ssh/config keyed on HOST.
           # Make sure the destination directory exists on the server. The
           # landing nginx mount is read-only from the container's side,
           # but the host path is writable as root.
-          ssh $ssh_opts "root@${HOST}" "mkdir -p '${REMOTE}'"
+          ssh $SSH_OPTS "root@${HOST}" "mkdir -p '${REMOTE}'"
 
           # --delete: the deployed copy should be an exact mirror, so files
           #           removed from the repo get removed on the server.
@@ -193,33 +276,127 @@ jobs:
             --exclude='node_modules' \
             --exclude='package.json' \
             --exclude='package-lock.json' \
-            -e "ssh $ssh_opts" \
+            -e "ssh $SSH_OPTS" \
             "${SOURCE}/" "root@${HOST}:${REMOTE}/"
 
           # nginx serves these as a non-root container user. Make sure the
           # files are world-readable so the bind mount works.
-          ssh $ssh_opts "root@${HOST}" "chmod -R a+rX '${REMOTE}'"
+          ssh $SSH_OPTS "root@${HOST}" "chmod -R a+rX '${REMOTE}'"
 
-      - name: Verify deploy (method=ssh)
-        if: github.event.inputs.method == 'ssh'
+      - name: Verify deploy
         env:
-          HOST:   ${{ steps.target.outputs.host }}
+          HOST: ${{ steps.target.outputs.host }}
           REMOTE: ${{ steps.path.outputs.path }}
         run: |
-          ssh_opts="-i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new"
           echo "── Contents of ${REMOTE} after deploy ──"
-          ssh $ssh_opts "root@${HOST}" "ls -la '${REMOTE}'"
+          ssh $SSH_OPTS "root@${HOST}" "ls -la '${REMOTE}'"
 
-      # ── self-hosted method (placeholder) ─────────────────────────────────
-      - name: Not implemented — self-hosted
-        if: github.event.inputs.method == 'self-hosted'
-        run: |
-          echo "::error::method=self-hosted is not implemented yet."
-          exit 1
+  # ── self-hosted ──────────────────────────────────────────────────────────
+  # The runner is registered on the target server (setup.py's NEXT STEPS
+  # covers registration), so deploying is a local rsync from the checked-out
+  # repo to the local path. No SSH, no tunnel, no host resolution: the job is
+  # already on the box. The build logic is repeated here rather than shared
+  # via an artifact — it is a few steps, and artifact round-tripping between a
+  # hosted builder and the self-hosted runner would add more moving parts than
+  # it removes.
+  deploy-self-hosted:
+    if: github.event.inputs.method == 'self-hosted'
+    runs-on: [self-hosted]
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      # ── tunnel method (placeholder) ──────────────────────────────────────
-      - name: Not implemented — tunnel
-        if: github.event.inputs.method == 'tunnel'
+      - name: Validate app and resolve path
+        id: app
+        env:
+          APP: ${{ github.event.inputs.app }}
+          USER_TARGET: ${{ github.event.inputs.target_path }}
         run: |
-          echo "::error::method=tunnel is not implemented yet."
-          exit 1
+          case "$APP" in
+            ""|*/*|*..*|*\\*)
+              echo "::error::Invalid app name: '$APP'. Must be a plain directory name under apps/."
+              exit 1
+              ;;
+          esac
+          if [ ! -d "apps/$APP" ]; then
+            echo "::error::apps/$APP does not exist in this repo."
+            echo "::error::Add it (and list it in config.yml) before deploying."
+            exit 1
+          fi
+
+          if [ "$APP" = "default" ]; then
+            default_target="/opt/bucket/html"
+          else
+            default_target="/opt/bucket/$APP"
+          fi
+          path="$USER_TARGET"
+          [ -z "$path" ] && path="$default_target"
+          case "$path" in
+            /opt/*) ;;
+            *)
+              echo "::error::Target path must start with /opt/. Got: '$path'"
+              exit 1
+              ;;
+          esac
+          echo "name=$APP" >> "$GITHUB_OUTPUT"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+
+      - name: Detect build type
+        id: build
+        env:
+          APP: ${{ steps.app.outputs.name }}
+        run: |
+          if [ -f "apps/$APP/package.json" ]; then
+            echo "needs_build=true"  >> "$GITHUB_OUTPUT"
+            echo "source_dir=apps/$APP/dist" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_build=false" >> "$GITHUB_OUTPUT"
+            echo "source_dir=apps/$APP" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node (build apps only)
+        if: steps.build.outputs.needs_build == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build the app
+        if: steps.build.outputs.needs_build == 'true'
+        env:
+          APP: ${{ steps.app.outputs.name }}
+        run: |
+          cd "apps/$APP"
+          npm install
+          npm run build
+          if [ ! -d dist ]; then
+            echo "::error::npm run build did not produce a dist/ directory in apps/$APP."
+            echo "::error::The build script in package.json must output to dist/."
+            exit 1
+          fi
+
+      - name: Rsync locally
+        env:
+          REMOTE: ${{ steps.app.outputs.path }}
+          SOURCE: ${{ steps.build.outputs.source_dir }}
+        run: |
+          # The runner executes as a user that can write /opt via sudo. Same
+          # mirror semantics and excludes as the remote methods; the only
+          # difference is there is no -e transport — source and destination
+          # are on the same machine.
+          sudo mkdir -p "${REMOTE}"
+          sudo rsync -av --delete \
+            --exclude='README.md' \
+            --exclude='.gitignore' \
+            --exclude='dist' \
+            --exclude='node_modules' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            "${SOURCE}/" "${REMOTE}/"
+          sudo chmod -R a+rX "${REMOTE}"
+
+      - name: Verify deploy
+        env:
+          REMOTE: ${{ steps.app.outputs.path }}
+        run: |
+          echo "── Contents of ${REMOTE} after deploy ──"
+          ls -la "${REMOTE}"
