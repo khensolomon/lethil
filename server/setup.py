@@ -154,6 +154,19 @@ def parse_args():
                         help="Cloudflare Account ID for the R2 endpoint URL. Defaults to "
                              "--cf-account-id when robotic mode is in use.")
 
+    # ── SSH CA trust ────────────────────────────────────────────────────────
+    # Trust a Cloudflare Access short-lived SSH CA so cert-based SSH works.
+    # Either supply the key directly, or fetch it from the SSH Access app's
+    # CA in robotic mode. The CA is never generated here (fetch-only).
+    parser.add_argument('--ca-public-key', type=str,
+                        help="SSH CA public key line to trust (the 'ssh-... AAAA' "
+                             "string). Written to /etc/ssh/ca.pub and wired into "
+                             "sshd_config. Takes precedence over --add-ca-public-key.")
+    parser.add_argument('--add-ca-public-key', action='store_true',
+                        help="Fetch the SSH CA public key from the Access-protected "
+                             "SSH app and trust it. Robotic mode only. Aborts if no "
+                             "CA has been generated for the app in the dashboard.")
+
     return parser.parse_args()
 
 
@@ -469,9 +482,56 @@ def access_policy_ensure(api_token, account_id, app_id, service_token_uuid,
     return policy_id, True
 
 
+def cf_fetch_ssh_ca_public_key(api_token, account_id, app_id):
+    """
+    Fetch the short-lived SSH certificate CA public key bound to an Access
+    application. Returns the public key string (the 'ssh-rsa AAAA...' line a
+    server puts in /etc/ssh/ca.pub).
+
+    Per-application CA model: the CA is generated once in the dashboard
+    (Zero Trust → Access controls → Service credentials → SSH, Resource:
+    terminal, Certificate type: Application) against the SSH Access app, and
+    read back here by app_id. Fetch-only — same stance as the service token:
+    the CA is durable shared trust state. Every server that trusts it accepts
+    certs signed by it, so regenerating it would silently break SSH on
+    sibling servers. Generating is a deliberate dashboard action, never a
+    side effect of a setup.py run.
+
+    Aborts loudly if no CA has been generated yet, pointing at the exact
+    dashboard step rather than surfacing a raw HTTP error.
+    """
+    print(f"➜ Fetching SSH CA public key for Access app {app_id}...")
+    try:
+        result = cf_api_request(
+            f"/accounts/{account_id}/access/apps/{app_id}/ca", api_token
+        )
+    except urllib.error.HTTPError:
+        log.error(
+            "No SSH CA is bound to this Access application yet.\n"
+            "Generate it once in the Cloudflare dashboard:\n"
+            "  Zero Trust → Access controls → Service credentials → SSH\n"
+            "  → Add a certificate → Resource: terminal,\n"
+            "    Certificate type: Application → select the SSH app.\n"
+            "Then re-run with --add-ca-public-key. The CA is created once and "
+            "reused across rebuilds — this script never generates it."
+        )
+        sys.exit(1)
+
+    public_key = (result.get('result') or {}).get('public_key')
+    if not public_key:
+        log.error(
+            "Cloudflare returned no public_key for this Access app's CA. "
+            "Confirm a short-lived certificate CA (Certificate type: "
+            "Application) exists for the SSH app in the dashboard."
+        )
+        sys.exit(1)
+    print("✅ SSH CA public key fetched.")
+    return public_key
+
+
 def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
                         ingress_rules, admin_subdomains, app_domain_map,
-                        service_token_id, force=False):
+                        service_token_id, force=False, add_ca_public_key=False):
     """
     Full robotic Cloudflare setup:
       1. Validate API token
@@ -496,9 +556,11 @@ def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
     automatically. To rename an existing subdomain: change the key. DNS,
     ingress, Access app, and post-install summary all follow.
 
-    Returns: (tunnel_token, tunnel_id, access_app_id)
+    Returns: (tunnel_token, tunnel_id, access_app_id, ssh_ca_public_key)
       access_app_id is the ID of the *last* Access app created, or None if
       no admin_subdomains entry had protect_with_access_app=True.
+      ssh_ca_public_key is the SSH CA public key fetched from the Access-
+      protected SSH app (only when add_ca_public_key=True), else None.
     """
     print("\n🤖 Initiating Robotic Cloudflare Setup...")
     validate_cf_token(api_token)
@@ -579,6 +641,7 @@ def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
     # Cloudflare's edge fails with 'websocket: bad handshake' because there
     # is no policy to evaluate the service token against.
     access_app_id = None
+    ssh_ca_public_key = None
     for sub, spec in admin_subdomains.items():
         if not spec.get("protect_with_access_app"):
             continue
@@ -593,8 +656,16 @@ def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
         )
         access_app_id = app_id  # Returned to caller; last one wins if multiple
 
+        # The SSH CA is bound to the protected SSH app. With one protected
+        # entry (ssh) this is unambiguous; if more are added later, the last
+        # protected app's CA wins, matching access_app_id above.
+        if add_ca_public_key:
+            ssh_ca_public_key = cf_fetch_ssh_ca_public_key(
+                api_token, account_id, app_id,
+            )
+
     print("\n🤖 Robotic Cloudflare Setup Complete.")
-    return tunnel_token, tunnel_id, access_app_id
+    return tunnel_token, tunnel_id, access_app_id, ssh_ca_public_key
 
 
 # ─── System Setup ─────────────────────────────────────────────────────────────
@@ -659,6 +730,92 @@ def setup_security(dry_run=False):
     run_cmd(['dpkg-reconfigure', '-f', 'noninteractive', 'unattended-upgrades'],
             hide_output=True, dry_run=dry_run)
     print("✅ Security tooling installed.")
+
+
+def setup_ssh_ca(public_key, dry_run=False):
+    """
+    Trust an SSH CA public key for certificate-based auth: write it to
+    /etc/ssh/ca.pub and point sshd at it via TrustedUserCAKeys, ensuring
+    PubkeyAuthentication is on.
+
+    Idempotent and conflict-safe:
+      - ca.pub: append the key only if that exact line is absent.
+      - sshd_config: keyed on directive NAME, not the whole line. If the
+        directive is already set to the wanted value, leave it. If it is set
+        to a DIFFERENT value, abort loudly rather than append a second,
+        conflicting directive (sshd's last-wins would mask the operator's
+        intent silently).
+      - sshd is reloaded only when something actually changed.
+    """
+    if not public_key:
+        return
+    print("Trusting SSH CA public key...")
+
+    ca_path = Path('/etc/ssh/ca.pub')
+    sshd_config = Path('/etc/ssh/sshd_config')
+    wanted = {
+        'TrustedUserCAKeys': str(ca_path),
+        'PubkeyAuthentication': 'yes',
+    }
+    key_line = public_key.strip()
+
+    if dry_run:
+        print(f"[DRY-RUN] Would write {ca_path} and ensure in {sshd_config}: "
+              + ", ".join(f"{k} {v}" for k, v in wanted.items()))
+        return
+
+    # ── ca.pub ────────────────────────────────────────────────────────────
+    ca_path.parent.mkdir(parents=True, exist_ok=True)
+    existing_keys = ca_path.read_text().splitlines() if ca_path.exists() else []
+    ca_changed = key_line not in [l.strip() for l in existing_keys]
+    if ca_changed:
+        with open(ca_path, 'a') as f:
+            if existing_keys and not existing_keys[-1].endswith('\n'):
+                f.write('\n')
+            f.write(key_line + '\n')
+        print(f"✅ CA public key added to {ca_path}.")
+    else:
+        print(f"Skip: CA public key already present in {ca_path}.")
+    os.chmod(ca_path, 0o644)
+
+    # ── sshd_config ─────────────────────────────────────────────────────────
+    lines = sshd_config.read_text().splitlines() if sshd_config.exists() else []
+    config_changed = False
+    for directive, value in wanted.items():
+        # Match an active (uncommented) directive by name.
+        idx = None
+        current = None
+        for i, line in enumerate(lines):
+            m = re.match(rf'^\s*{directive}\s+(\S.*)$', line)
+            if m:
+                idx, current = i, m.group(1).strip()
+                break
+        if current is None:
+            lines.append(f"{directive} {value}")
+            config_changed = True
+            print(f"✅ {directive} {value} added to {sshd_config}.")
+        elif current == value:
+            print(f"Skip: {directive} already set to '{value}'.")
+        else:
+            log.error(
+                f"{directive} is already set to '{current}' in {sshd_config}, "
+                f"not '{value}'. Refusing to append a conflicting directive. "
+                f"Resolve the existing value by hand, then re-run."
+            )
+            sys.exit(1)
+
+    if config_changed:
+        sshd_config.write_text('\n'.join(lines) + '\n')
+
+    # Reload sshd only if either file changed. reload (not restart) keeps the
+    # current SSH session alive while picking up the new trust.
+    if ca_changed or config_changed:
+        run_cmd(['sshd', '-t'])  # validate before reload; aborts on bad config
+        run_cmd(['systemctl', 'reload', 'ssh'], ignore_errors=True)
+        run_cmd(['systemctl', 'reload', 'sshd'], ignore_errors=True)
+        print("✅ sshd reloaded — CA trust active.")
+    else:
+        print("Skip: SSH CA trust already in place; no reload needed.")
 
 
 def setup_firewall(dry_run=False):
@@ -1402,6 +1559,7 @@ def main():
     robotic_setup  = False
     tunnel_id      = None
     access_app_id  = None
+    ssh_ca_public_key = None
 
     if all(robotic_args):
         if args.dry_run:
@@ -1414,7 +1572,7 @@ def main():
             print(f"[DRY-RUN] Would upsert Access app for ssh.{admin_domain} and "
                   f"attach a Service Auth policy referencing the service token.")
         else:
-            token, tunnel_id, access_app_id = automate_cloudflare(
+            token, tunnel_id, access_app_id, ssh_ca_public_key = automate_cloudflare(
                 api_token         = args.cf_api_token,
                 account_id        = args.cf_account_id,
                 admin_domain      = admin_domain,
@@ -1424,12 +1582,15 @@ def main():
                 app_domain_map    = app_domain_map,
                 service_token_id  = args.cf_service_token_id,
                 force             = args.force,
+                add_ca_public_key = args.add_ca_public_key,
             )
             robotic_setup = True
 
     # ── System setup ───────────────────────────────────────────────────────────
     setup_swap(size=args.swap, force=args.force, dry_run=args.dry_run)
     setup_security(dry_run=args.dry_run)
+    # --ca-public-key (explicit) wins over the fetched key; either may be None.
+    setup_ssh_ca(args.ca_public_key or ssh_ca_public_key, dry_run=args.dry_run)
     setup_firewall(dry_run=args.dry_run)
     setup_directories(system_directories, dry_run=args.dry_run)
     # rclone install is unconditional; R2 remote is only configured if
