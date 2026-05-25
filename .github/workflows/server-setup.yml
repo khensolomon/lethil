@@ -11,7 +11,7 @@
 # Adding self-hosted/tunnel later means filling in their step blocks
 # below; nothing else moves.
 
-name: server-setup
+name: Server · Setup
 
 on:
   workflow_dispatch:
@@ -21,8 +21,8 @@ on:
         type: choice
         options:
           - ssh
-          - self-hosted    # placeholder — not implemented
-          - tunnel         # placeholder — not implemented
+          - self-hosted # placeholder — not implemented
+          - tunnel # placeholder — not implemented
         default: ssh
       target_host:
         description: "Target host (IP or hostname). If empty, uses SERVER_HOST secret."
@@ -86,16 +86,16 @@ jobs:
       - name: Run setup.py on server (method=ssh)
         if: github.event.inputs.method == 'ssh'
         env:
-          HOST:                    ${{ steps.target.outputs.host }}
-          CF_API_TOKEN:            ${{ secrets.CF_API_TOKEN }}
-          CF_ACCOUNT_ID:           ${{ secrets.CF_ACCOUNT_ID }}
-          CF_SERVICE_TOKEN_ID:     ${{ secrets.CF_SERVICE_TOKEN_ID }}
+          HOST: ${{ steps.target.outputs.host }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_SERVICE_TOKEN_ID: ${{ secrets.CF_SERVICE_TOKEN_ID }}
           CF_SERVICE_TOKEN_SECRET: ${{ secrets.CF_SERVICE_TOKEN_SECRET }}
-          R2_ACCESS_KEY_ID:        ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY:    ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          ADMIN_DOMAIN:            ${{ secrets.ADMIN_DOMAIN }}
-          TUNNEL_NAME:             ${{ secrets.TUNNEL_NAME }}
-          APP_DOMAINS:             ${{ secrets.APP_DOMAINS }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          ADMIN_DOMAIN: ${{ secrets.ADMIN_DOMAIN }}
+          TUNNEL_NAME: ${{ secrets.TUNNEL_NAME }}
+          APP_DOMAINS: ${{ secrets.APP_DOMAINS }}
         run: |
           ssh_opts="-i ~/.ssh/id_setup -o StrictHostKeyChecking=accept-new"
 
