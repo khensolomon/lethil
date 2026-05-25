@@ -482,36 +482,36 @@ def access_policy_ensure(api_token, account_id, app_id, service_token_uuid,
     return policy_id, True
 
 
-def cf_fetch_ssh_ca_public_key(api_token, account_id, app_id):
+def cf_fetch_ssh_ca_public_key(api_token, account_id):
     """
-    Fetch the short-lived SSH certificate CA public key bound to an Access
-    application. Returns the public key string (the 'ssh-rsa AAAA...' line a
+    Fetch the account-wide SSH CA public key (the 'ssh-rsa AAAA...' line a
     server puts in /etc/ssh/ca.pub).
 
-    Per-application CA model: the CA is generated once in the dashboard
-    (Zero Trust → Access controls → Service credentials → SSH, Resource:
-    terminal, Certificate type: Application) against the SSH Access app, and
-    read back here by app_id. Fetch-only — same stance as the service token:
-    the CA is durable shared trust state. Every server that trusts it accepts
-    certs signed by it, so regenerating it would silently break SSH on
-    sibling servers. Generating is a deliberate dashboard action, never a
-    side effect of a setup.py run.
+    This reads the Access for Infrastructure CA via the gateway_ca endpoint —
+    the account-level CA generated once in the dashboard at Zero Trust →
+    Access controls → Service credentials → SSH → Generate SSH CA. It is
+    account-wide, not bound to a specific Access app, so no app_id is needed.
 
-    Aborts loudly if no CA has been generated yet, pointing at the exact
-    dashboard step rather than surfacing a raw HTTP error.
+    Fetch-only — same stance as the service token: the CA is durable shared
+    trust state. Every server that trusts it accepts certs signed by it, so
+    regenerating it would silently break SSH on sibling servers. Generating
+    is a deliberate dashboard action, never a side effect of a setup.py run.
+
+    Aborts loudly if no CA has been generated yet, pointing at the dashboard
+    step rather than surfacing a raw HTTP error.
     """
-    print(f"➜ Fetching SSH CA public key for Access app {app_id}...")
+    print("➜ Fetching account SSH CA public key (gateway_ca)...")
     try:
         result = cf_api_request(
-            f"/accounts/{account_id}/access/apps/{app_id}/ca", api_token
+            f"/accounts/{account_id}/access/gateway_ca", api_token
         )
     except urllib.error.HTTPError:
         log.error(
-            "No SSH CA is bound to this Access application yet.\n"
+            "No account SSH CA exists yet (gateway_ca_not_found).\n"
             "Generate it once in the Cloudflare dashboard:\n"
             "  Zero Trust → Access controls → Service credentials → SSH\n"
-            "  → Add a certificate → Resource: terminal,\n"
-            "    Certificate type: Application → select the SSH app.\n"
+            "  → Add a certificate → under SSH with Access for Infrastructure,\n"
+            "    Generate SSH CA.\n"
             "Then re-run with --add-ca-public-key. The CA is created once and "
             "reused across rebuilds — this script never generates it."
         )
@@ -559,8 +559,8 @@ def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
     Returns: (tunnel_token, tunnel_id, access_app_id, ssh_ca_public_key)
       access_app_id is the ID of the *last* Access app created, or None if
       no admin_subdomains entry had protect_with_access_app=True.
-      ssh_ca_public_key is the SSH CA public key fetched from the Access-
-      protected SSH app (only when add_ca_public_key=True), else None.
+      ssh_ca_public_key is the account-wide SSH CA public key fetched via
+      gateway_ca (only when add_ca_public_key=True), else None.
     """
     print("\n🤖 Initiating Robotic Cloudflare Setup...")
     validate_cf_token(api_token)
@@ -656,13 +656,11 @@ def automate_cloudflare(api_token, account_id, admin_domain, tunnel_name,
         )
         access_app_id = app_id  # Returned to caller; last one wins if multiple
 
-        # The SSH CA is bound to the protected SSH app. With one protected
-        # entry (ssh) this is unambiguous; if more are added later, the last
-        # protected app's CA wins, matching access_app_id above.
-        if add_ca_public_key:
-            ssh_ca_public_key = cf_fetch_ssh_ca_public_key(
-                api_token, account_id, app_id,
-            )
+    # The SSH CA is account-wide (Access for Infrastructure / gateway_ca), so
+    # it is fetched once here rather than per app — and works even when no
+    # admin subdomain is Access-protected.
+    if add_ca_public_key:
+        ssh_ca_public_key = cf_fetch_ssh_ca_public_key(api_token, account_id)
 
     print("\n🤖 Robotic Cloudflare Setup Complete.")
     return tunnel_token, tunnel_id, access_app_id, ssh_ca_public_key
