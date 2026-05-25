@@ -18,14 +18,14 @@
 #     which goes to /opt/bucket/html (the landing-page mount).
 #
 # Methods:
-#   ssh          — rsync to the server over SSH, reached by IP/hostname.
-#   tunnel       — same rsync, but the transport is SSH-over-Cloudflare-
-#                  Tunnel (cloudflared access ssh) authenticated with the
-#                  Access service token. Lets the deploy run with port 22
-#                  closed. Targets ssh.<ADMIN_DOMAIN>, not SERVER_HOST.
-#   self-hosted  — the job runs ON the server (a registered self-hosted
-#                  runner), so the deploy is a local rsync with no network
-#                  hop. No SSH, no tunnel, no host resolution.
+#   ssh         — rsync to the server over SSH, reached by IP/hostname.
+#   tunnel      — same rsync, but the transport is SSH-over-Cloudflare-
+#                 Tunnel (cloudflared access ssh) authenticated with the
+#                 Access service token. Lets the deploy run with port 22
+#                 closed. Targets ssh.<ADMIN_DOMAIN>, not SERVER_HOST.
+#   self-hosted — the job runs ON the server (a registered self-hosted
+#                 runner), so the deploy is a local rsync with no network
+#                 hop. No SSH, no tunnel, no host resolution.
 #
 # ssh and tunnel share one job on a GitHub-hosted runner; they differ only
 # in how rsync reaches the box. self-hosted is a separate job because
@@ -129,6 +129,18 @@ jobs:
           fi
           echo "host=$host" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve target user
+        id: user
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          # The account rsync/ssh authenticate as on the server. Defaults to
+          # root (what setup.py provisions and the NEXT STEPS summary tests
+          # against); override by setting the SERVER_USER secret.
+          user="$SERVER_USER"
+          [ -z "$user" ] && user="root"
+          echo "user=$user" >> "$GITHUB_OUTPUT"
+
       - name: Resolve target path
         id: path
         env:
@@ -223,14 +235,12 @@ jobs:
             echo "::error::These are the same Service Auth token setup.py attached to the SSH Access app."
             exit 1
           fi
-
           # Install cloudflared from Cloudflare's published .deb. The tunnel
           # transport cannot work without it on the runner.
           arch="$(dpkg --print-architecture)"
           url="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}.deb"
           curl -fsSL -o /tmp/cloudflared.deb "$url"
           sudo dpkg -i /tmp/cloudflared.deb
-
           # The ProxyCommand carries the service token, so the WebSocket
           # handshake to Cloudflare's edge is authorised non-interactively by
           # the Service Auth policy. It is written into ~/.ssh/config keyed on
@@ -253,16 +263,18 @@ jobs:
       # ── Deploy (ssh or tunnel) ─────────────────────────────────────────────
       - name: Rsync to server
         env:
+          USER: ${{ steps.user.outputs.user }}
           HOST: ${{ steps.target.outputs.host }}
           REMOTE: ${{ steps.path.outputs.path }}
           SOURCE: ${{ steps.build.outputs.source_dir }}
         run: |
           # SSH_OPTS was set by the transport step for this method. For
           # tunnel, the ProxyCommand lives in ~/.ssh/config keyed on HOST.
+
           # Make sure the destination directory exists on the server. The
           # landing nginx mount is read-only from the container's side,
           # but the host path is writable as root.
-          ssh $SSH_OPTS "khensolomon@${HOST}" "mkdir -p '${REMOTE}'"
+          ssh $SSH_OPTS "${USER}@${HOST}" "mkdir -p '${REMOTE}'"
 
           # --delete: the deployed copy should be an exact mirror, so files
           #           removed from the repo get removed on the server.
@@ -277,19 +289,20 @@ jobs:
             --exclude='package.json' \
             --exclude='package-lock.json' \
             -e "ssh $SSH_OPTS" \
-            "${SOURCE}/" "khensolomon@${HOST}:${REMOTE}/"
+            "${SOURCE}/" "${USER}@${HOST}:${REMOTE}/"
 
           # nginx serves these as a non-root container user. Make sure the
           # files are world-readable so the bind mount works.
-          ssh $SSH_OPTS "khensolomon@${HOST}" "chmod -R a+rX '${REMOTE}'"
+          ssh $SSH_OPTS "${USER}@${HOST}" "chmod -R a+rX '${REMOTE}'"
 
       - name: Verify deploy
         env:
+          USER: ${{ steps.user.outputs.user }}
           HOST: ${{ steps.target.outputs.host }}
           REMOTE: ${{ steps.path.outputs.path }}
         run: |
           echo "── Contents of ${REMOTE} after deploy ──"
-          ssh $SSH_OPTS "khensolomon@${HOST}" "ls -la '${REMOTE}'"
+          ssh $SSH_OPTS "${USER}@${HOST}" "ls -la '${REMOTE}'"
 
   # ── self-hosted ──────────────────────────────────────────────────────────
   # The runner is registered on the target server (setup.py's NEXT STEPS
@@ -323,7 +336,6 @@ jobs:
             echo "::error::Add it (and list it in config.yml) before deploying."
             exit 1
           fi
-
           if [ "$APP" = "default" ]; then
             default_target="/opt/bucket/html"
           else
