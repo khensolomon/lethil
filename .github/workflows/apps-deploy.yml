@@ -262,7 +262,7 @@ jobs:
           # Make sure the destination directory exists on the server. The
           # landing nginx mount is read-only from the container's side,
           # but the host path is writable as root.
-          ssh $SSH_OPTS "root@${HOST}" "mkdir -p '${REMOTE}'"
+          ssh $SSH_OPTS "khensolomon@${HOST}" "mkdir -p '${REMOTE}'"
 
           # --delete: the deployed copy should be an exact mirror, so files
           #           removed from the repo get removed on the server.
@@ -277,11 +277,11 @@ jobs:
             --exclude='package.json' \
             --exclude='package-lock.json' \
             -e "ssh $SSH_OPTS" \
-            "${SOURCE}/" "root@${HOST}:${REMOTE}/"
+            "${SOURCE}/" "khensolomon@${HOST}:${REMOTE}/"
 
           # nginx serves these as a non-root container user. Make sure the
           # files are world-readable so the bind mount works.
-          ssh $SSH_OPTS "root@${HOST}" "chmod -R a+rX '${REMOTE}'"
+          ssh $SSH_OPTS "khensolomon@${HOST}" "chmod -R a+rX '${REMOTE}'"
 
       - name: Verify deploy
         env:
@@ -289,7 +289,7 @@ jobs:
           REMOTE: ${{ steps.path.outputs.path }}
         run: |
           echo "── Contents of ${REMOTE} after deploy ──"
-          ssh $SSH_OPTS "root@${HOST}" "ls -la '${REMOTE}'"
+          ssh $SSH_OPTS "khensolomon@${HOST}" "ls -la '${REMOTE}'"
 
   # ── self-hosted ──────────────────────────────────────────────────────────
   # The runner is registered on the target server (setup.py's NEXT STEPS
