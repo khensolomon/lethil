@@ -7,7 +7,7 @@ Each script must be independently runnable by hand — passing the right flags o
 ## What's here
 
 | Script | Purpose | Workflow |
-|---|---|---|
+| --- | --- | --- |
 | `setup.py` | Full server bootstrap — Docker, Swarm, Cloudflare Tunnel, landing nginx, firewall, rclone. Idempotent. | `.github/workflows/server-setup.yml` |
 
 ## Adding a script

@@ -1215,8 +1215,8 @@ def setup_cloudflare_tunnel(cf_token=None, force=False, dry_run=False):
 
 def setup_landing(force=False, dry_run=False):
     """
-    Deploy a vanilla nginx container at /opt/landing/ that serves
-    /opt/bucket/html on port 80. This is the catch-all landing page for any
+    Deploy a vanilla nginx container at /opt/infra/landing/ that serves
+    /opt/apps/html on port 80. This is the catch-all landing page for any
     request that reaches localhost:80 — including everything the Cloudflare
     tunnel's catch-all ingress rule sends here (i.e. anything not matched by
     a more specific tunnel route).
@@ -1229,7 +1229,7 @@ def setup_landing(force=False, dry_run=False):
     The container:
       - Binds 0.0.0.0:80 (so the tunnel can reach it on localhost:80, and
         also so the public IP can reach it directly if needed for debugging).
-      - Mounts /opt/bucket/html read-only as its document root. Drop files
+      - Mounts /opt/apps/html read-only as its document root. Drop files
         into that host directory to update the page; nginx serves from the
         bind mount on every request, no reload needed.
       - Mounts nginx.conf read-write — vanilla nginx doesn't mutate it, but
@@ -1240,7 +1240,7 @@ def setup_landing(force=False, dry_run=False):
         client-side-routed paths.
     """
     print("Setting up landing-page nginx...")
-    landing_dir = Path('/opt/landing')
+    landing_dir = Path('/opt/infra/landing')
 
     if dry_run:
         print(f"[DRY-RUN] Would create {landing_dir}, write nginx.conf + "
@@ -1254,7 +1254,7 @@ def setup_landing(force=False, dry_run=False):
     nginx_conf = conf_dir / 'nginx.conf'
     nginx_conf.write_text(
         '# Vanilla nginx server block for the catch-all landing page.\n'
-        '# Serves /opt/bucket/html (bind-mounted into the container at\n'
+        '# Serves /opt/apps/html (bind-mounted into the container at\n'
         '# /usr/share/nginx/html) with SPA fallback to /index.html.\n'
         '\n'
         'server {\n'
@@ -1295,7 +1295,7 @@ def setup_landing(force=False, dry_run=False):
         "    volumes:\n"
         "      # SPA files. ro so a typo in the SPA can't break nginx and\n"
         "      # a compromised nginx can't write back to the host.\n"
-        "      - /opt/bucket/html:/usr/share/nginx/html:ro\n"
+        "      - /opt/apps/html:/usr/share/nginx/html:ro\n"
         "      # The server block. NOT ro — vanilla nginx doesn't mutate\n"
         "      # this, but future image versions might (e.g. envsubst at\n"
         "      # startup). Cost of leaving writable is zero.\n"
@@ -1309,22 +1309,24 @@ def setup_landing(force=False, dry_run=False):
 
     compose_file.write_text(compose)
 
-    # Seed a placeholder index.html only if /opt/bucket/html is empty —
+    # Seed a placeholder index.html only if /opt/apps/html is empty —
     # never clobber operator-supplied content on re-runs.
-    html_dir = Path('/opt/bucket/html')
+    html_dir = Path('/opt/apps/html')
     if html_dir.exists() and not any(html_dir.iterdir()):
         placeholder = html_dir / 'index.html'
         placeholder.write_text(
-            "<!doctype html>\n"
-            "<html lang=\"en\">\n"
-            "<head><meta charset=\"utf-8\"><title>Not configured</title></head>\n"
-            "<body style=\"font-family:system-ui;max-width:40rem;margin:4rem auto;"
-            "padding:0 1rem;color:#333\">\n"
-            "<h1>Nothing here yet</h1>\n"
-            "<p>This server is online but no site is configured at this hostname. "
-            "Drop an <code>index.html</code> into <code>/opt/bucket/html</code> "
-            "to replace this page.</p>\n"
-            "</body></html>\n"
+            "<!doctype html>"
+            "<meta charset=utf-8>"
+            "<meta name=viewport content=\"width=device-width,initial-scale=1\">"
+            "<title>Holdup</title>"
+            "<style>"
+            "body{margin:0;height:100vh;display:grid;place-items:center;"
+            "background:#f1f1f1;font:300 2.2rem system-ui;text-align:center}"
+            "span{color:#d1d0d0}span:first-child{color:#bebebe}"
+            "p{margin:0;color:#8b8b8b;font-size:1.7rem}"
+            "</style>"
+            "<h1><span>ZOMI</span>.<span>developer</span></h1>"
+            "<p>reserved</p>\n"
         )
         print(f"✅ Seeded placeholder {placeholder}.")
 
@@ -1391,7 +1393,7 @@ def print_post_install_summary(robotic_setup=False, tunnel_id=None,
 
    Anything not matched by a specific tunnel ingress rule falls through
    the catch-all to localhost:80, where the landing-page nginx serves
-   /opt/bucket/html. Drop your SPA into that directory to replace the
+   /opt/apps/html. Drop your SPA into that directory to replace the
    placeholder.
 {service_auth_note}
    HTTP→HTTPS and WWW→root redirects must be configured in the
@@ -1399,13 +1401,13 @@ def print_post_install_summary(robotic_setup=False, tunnel_id=None,
 """)
     else:
         print("""
-   Landing-page nginx is running on :80, serving /opt/bucket/html.
+   Landing-page nginx is running on :80, serving /opt/apps/html.
    Test with:  curl -H "Host: nothing.invalid" http://localhost/
 """)
 
     print("""\
 NEXT STEPS
-  1. Drop your SPA build output into /opt/bucket/html/ to replace the
+  1. Drop your SPA build output into /opt/apps/html/ to replace the
      placeholder landing page. No restart needed — nginx reads from the
      bind mount on every request.
   2. Register the GitHub Actions self-hosted runner:
@@ -1439,7 +1441,7 @@ def main():
         {"path": "/opt/bucket/media", "owner": "current-user", "permissions": 0o755},
         # Document root for the landing-page nginx — bind-mounted read-only
         # into the container by setup_landing().
-        {"path": "/opt/bucket/html",  "owner": "current-user", "permissions": 0o755},
+        {"path": "/opt/apps/html",    "owner": "current-user", "permissions": 0o755},
         # Per-app deployment directories (deploy.yml writes compose + .env here)
         {"path": "/opt/myordbok",     "owner": "current-user", "permissions": 0o700},
         {"path": "/opt/zaideih",      "owner": "current-user", "permissions": 0o700},

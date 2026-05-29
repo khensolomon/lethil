@@ -284,12 +284,12 @@ Two requirements that are easy to miss. The operator's login email prefix must m
 | Swap | Allocates a 2 GB swap file at `/swapfile` (configurable) |
 | Security | Installs `fail2ban`, `unattended-upgrades`, `jq`, `python3-boto3` |
 | Firewall | Configures UFW: allows SSH, 80, 443 |
-| Directories | Creates `/opt/bucket`, `/opt/bucket/html`, `/opt/myordbok`, `/opt/zaideih`, `/opt/django/media`, `/opt/mysql/data` |
+| Directories | Creates `/opt/bucket`, `/opt/apps/html`, `/opt/myordbok`, `/opt/zaideih`, `/opt/django/media`, `/opt/mysql/data` |
 | rclone | Installs the rclone binary via the official installer; writes an R2 remote to `~/.config/rclone/rclone.conf` (600) if R2 credentials were supplied |
 | Docker CE | Installs Docker Engine + Compose plugin + Buildx; configures log rotation; adds the invoking user to the `docker` group so `docker` works without `sudo` (run `newgrp docker` in your shell after install to activate it without re-login) |
 | Docker Swarm | Initialises a single-node swarm; creates the `gateway` overlay network |
 | Cloudflare Tunnel | Deploys the cloudflared container as its own Docker Compose stack at `/opt/cloudflare-tunnel/` (network_mode: host so the tunnel reaches every service via `localhost:<port>`) |
-| Landing nginx | Deploys an `nginx:alpine` container at `/opt/landing/` listening on port 80, serving `/opt/bucket/html` as a static site with SPA `try_files` fallback. This is the catch-all for any request the tunnel ingress doesn't route somewhere specific |
+| Landing nginx | Deploys an `nginx:alpine` container at `/opt/infra/landing/` listening on port 80, serving `/opt/apps/html` as a static site with SPA `try_files` fallback. This is the catch-all for any request the tunnel ingress doesn't route somewhere specific |
 | Cloudflare API | Validates token, verifies the supplied service token exists in this account |
 | Tunnel | Creates the named tunnel and returns its connection token |
 | Ingress | Pushes tunnel ingress routing rules for every entry in `admin_subdomains` (default: `ssh.<domain>` and `terminal.<domain>`), every `--app-domain`, and a catch-all to `localhost:80` (the landing nginx) |
@@ -313,10 +313,11 @@ Setup logs are written to `/var/log/setup.log`.
 
 ```
 /opt/
-├── landing/                   # Vanilla nginx landing-page stack
-│   ├── docker-compose.yml     # nginx:alpine, port 80, mounts the two below
-│   └── conf/
-│       └── nginx.conf         # The server block (try_files, root, etc.)
+├── infra/
+│   └── landing/               # Vanilla nginx landing-page stack
+│       ├── docker-compose.yml # nginx:alpine, port 80, mounts the two below
+│       └── conf/
+│           └── nginx.conf     # The server block (try_files, root, etc.)
 │
 ├── cloudflare-tunnel/         # Cloudflare Tunnel as its own stack
 │   ├── docker-compose.yml     # cloudflared:latest, network_mode: host
@@ -330,10 +331,12 @@ Setup logs are written to `/var/log/setup.log`.
 │   ├── docker.production.yml
 │   └── .env
 │
+├── apps/
+│   └── html/                  # Landing page document root (mounted ro into landing nginx)
+│
 ├── bucket/                    # Shared persistent storage
 │   ├── storage/
-│   ├── media/
-│   └── html/                  # Landing page document root (mounted ro into landing nginx)
+│   └── media/
 │
 ├── django/
 │   └── media/                 # Django media file uploads
@@ -424,18 +427,18 @@ Port 22 is now closed. Future terminal access goes through the tunnel. The Digit
 
 ### 7.3 Customise the landing page
 
-Anything not matched by a specific tunnel ingress rule falls through the catch-all to `localhost:80`, where the landing-page nginx serves whatever is in `/opt/bucket/html/`. This is the lightweight `nginx:alpine` container at `/opt/landing/`. There is no admin UI, no DB, no template injection points. The container does one thing: serve `/opt/bucket/html` as a static site.
+Anything not matched by a specific tunnel ingress rule falls through the catch-all to `localhost:80`, where the landing-page nginx serves whatever is in `/opt/apps/html/`. This is the lightweight `nginx:alpine` container at `/opt/infra/landing/`. There is no admin UI, no DB, no template injection points. The container does one thing: serve `/opt/apps/html` as a static site.
 
-The repo's `apps/default/` is the source for that page. Edit files there, commit, then dispatch the `apps-deploy` workflow from GitHub Actions — it builds (if `apps/default/package.json` exists) and rsyncs to `/opt/bucket/html` on the server. That's the preferred update path: edit-in-repo → workflow → done.
+The repo's `apps/html/` is the source for that page. Edit files there, commit, then dispatch the `apps-deploy` workflow from GitHub Actions — it builds (if `apps/html/package.json` exists) and rsyncs to `/opt/apps/html` on the server. That's the preferred update path: edit-in-repo → workflow → done.
 
 For one-off changes without going through the repo:
 
 ```bash
 # Single file
-sudo cp my-landing.html /opt/bucket/html/index.html
+sudo cp my-landing.html /opt/apps/html/index.html
 
 # Or a whole SPA / static-site build output
-sudo rsync -av ./dist/ /opt/bucket/html/
+sudo rsync -av ./dist/ /opt/apps/html/
 ```
 
 But anything that doesn't come from the repo will be overwritten by the next `apps-deploy` run, so use sparingly.
@@ -446,10 +449,10 @@ No restart, no reload — nginx reads files from the bind mount on every request
 - Requests for client-side-routed SPA paths (e.g. `/about`, `/users/42`) don't match a file or directory, so they fall back to `/index.html` — the SPA shell — which then handles routing in the browser.
 - Genuinely missing paths with no SPA shell to fall back to return 404, not an infinite loop.
 
-To change the nginx server block itself (custom headers, gzip, additional locations), edit `/opt/landing/conf/nginx.conf` on the host and recreate the container:
+To change the nginx server block itself (custom headers, gzip, additional locations), edit `/opt/infra/landing/conf/nginx.conf` on the host and recreate the container:
 
 ```bash
-cd /opt/landing && sudo docker compose up -d --force-recreate landing
+cd /opt/infra/landing && sudo docker compose up -d --force-recreate landing
 ```
 
 > **What hits this landing page?** Three things:
@@ -459,7 +462,7 @@ cd /opt/landing && sudo docker compose up -d --force-recreate landing
 >
 > Per-app domains (`myordbok.example.com`, `zaideih.example.com`) and admin domains (`ssh.<domain>`) bypass the landing page entirely — they match specific tunnel ingress rules that route to their app/SSH ports directly.
 
-> **Why a vanilla nginx container?** The landing layer only serves static files — TLS terminates at the Cloudflare edge and host-to-app routing happens at the tunnel via `localhost:<port>`. So the container does one thing: serve `/opt/bucket/html` as a static site with an SPA `try_files` fallback. The config is deliberately minimal — one server block, one root, one try_files.
+> **Why a vanilla nginx container?** The landing layer only serves static files — TLS terminates at the Cloudflare edge and host-to-app routing happens at the tunnel via `localhost:<port>`. So the container does one thing: serve `/opt/apps/html` as a static site with an SPA `try_files` fallback. The config is deliberately minimal — one server block, one root, one try_files.
 
 ---
 
@@ -779,9 +782,9 @@ The Cloudflare-side operations are partly idempotent:
 | Service Auth policy | Reused if one already references this service token. |
 | Service token | Never created — it's an input, not an output. |
 | rclone config | Skipped if `~/.config/rclone/rclone.conf` already contains an `[r2]` section, unless `--force` is passed. |
-| `/opt/bucket/html/index.html` | Seeded only if `/opt/bucket/html` is empty. Existing content is never overwritten. |
+| `/opt/apps/html/index.html` | Seeded only if `/opt/apps/html` is empty. Existing content is never overwritten. |
 | Cloudflare Tunnel stack | `/opt/cloudflare-tunnel/.env` and `docker-compose.yml` are rewritten on every run. `--force` brings the container down first; otherwise `docker compose up -d` is a no-op if nothing changed. |
-| Landing nginx stack | `/opt/landing/conf/nginx.conf` and `docker-compose.yml` are rewritten on every run. The `landing` service is always force-recreated so a freshly written nginx.conf takes effect. |
+| Landing nginx stack | `/opt/infra/landing/conf/nginx.conf` and `docker-compose.yml` are rewritten on every run. The `landing` service is always force-recreated so a freshly written nginx.conf takes effect. |
 
 > **The service token is durable.** Its credentials are inputs to `setup.py`, stored in your password manager and reused across runs. There is no secret on the VM that gets lost on reinstall. Tearing down the VM and provisioning a fresh one with the same flags reattaches the same service token to a fresh Access policy on a fresh tunnel — your apps' GitHub secrets continue to work without rotation.
 
@@ -937,7 +940,7 @@ curl -sI http://<server-ip>/
 curl -sI -H "Host: nothing.invalid" http://<server-ip>/
 ```
 
-Both should return `200 OK` with `Server: nginx/...` and a `Content-Length` matching your `/opt/bucket/html/index.html` file size.
+Both should return `200 OK` with `Server: nginx/...` and a `Content-Length` matching your `/opt/apps/html/index.html` file size.
 
 **Container running?**
 
@@ -952,19 +955,19 @@ If it's not running, check the logs:
 docker logs --tail 50 landing
 ```
 
-The most common reason for the container failing to start is a syntax error in `/opt/landing/conf/nginx.conf`. `nginx -t` runs at startup and the error will be in the logs verbatim.
+The most common reason for the container failing to start is a syntax error in `/opt/infra/landing/conf/nginx.conf`. `nginx -t` runs at startup and the error will be in the logs verbatim.
 
 **Wrong files served (or empty 403 Forbidden)?**
 
 ```bash
 # What's on the host?
-ls -la /opt/bucket/html/
+ls -la /opt/apps/html/
 
 # What does the container see?
 docker exec landing ls -la /usr/share/nginx/html/
 ```
 
-The two listings should match. If the container is empty or shows different files, the bind mount didn't apply — `docker compose up -d --force-recreate landing` from `/opt/landing/` will rebuild with the mount.
+The two listings should match. If the container is empty or shows different files, the bind mount didn't apply — `docker compose up -d --force-recreate landing` from `/opt/infra/landing/` will rebuild with the mount.
 
 **Port conflict?**
 
@@ -980,4 +983,4 @@ If you see `nginx-proxy-manager` in the output, follow the upgrade-cleanup note 
 
 **SPA deep links return 404?**
 
-The server block uses `try_files $uri $uri/ /index.html =404;`. Deep links work as long as `/opt/bucket/html/index.html` exists. If it doesn't, deep links 404 because the fallback target doesn't exist. Drop a real `index.html` into the directory and reload the browser.
+The server block uses `try_files $uri $uri/ /index.html =404;`. Deep links work as long as `/opt/apps/html/index.html` exists. If it doesn't, deep links 404 because the fallback target doesn't exist. Drop a real `index.html` into the directory and reload the browser.

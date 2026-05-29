@@ -14,8 +14,8 @@
 #     server.
 #   * Otherwise, the workflow rsyncs apps/<name>/ directly (with the
 #     usual ignores: README, .gitignore, dist).
-#   * Destination on the server is /opt/bucket/<name>/, except 'default'
-#     which goes to /opt/bucket/html (the landing-page mount).
+#   * Destination on the server is /opt/apps/<name>/, except 'html'
+#     which goes to /opt/apps/html (the landing-page mount).
 #
 # Methods:
 #   ssh         — rsync to the server over SSH, reached by IP/hostname.
@@ -41,7 +41,7 @@ on:
         description: "Which app to deploy (must match a directory under apps/)"
         type: string
         required: true
-        default: default
+        default: html
       method:
         description: "How to reach the server"
         type: choice
@@ -90,15 +90,7 @@ jobs:
             exit 1
           fi
           echo "name=$APP" >> "$GITHUB_OUTPUT"
-          # The destination default depends on the app name. 'default'
-          # is the landing page and gets the special /opt/bucket/html
-          # path that the landing nginx serves from. Everything else
-          # goes to /opt/bucket/<name>/.
-          if [ "$APP" = "default" ]; then
-            echo "default_target=/opt/bucket/html" >> "$GITHUB_OUTPUT"
-          else
-            echo "default_target=/opt/bucket/$APP" >> "$GITHUB_OUTPUT"
-          fi
+          echo "default_target=/opt/apps/$APP" >> "$GITHUB_OUTPUT"
 
       - name: Resolve target host
         id: target
@@ -336,11 +328,7 @@ jobs:
             echo "::error::Add it (and list it in config.yml) before deploying."
             exit 1
           fi
-          if [ "$APP" = "default" ]; then
-            default_target="/opt/bucket/html"
-          else
-            default_target="/opt/bucket/$APP"
-          fi
+          default_target="/opt/apps/$APP"
           path="$USER_TARGET"
           [ -z "$path" ] && path="$default_target"
           case "$path" in
