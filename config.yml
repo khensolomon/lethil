@@ -10,6 +10,7 @@
 # Each name must match a directory under apps/.
 apps:
   - html
+  - swarm
 
 # Known server profiles. Used as a free-text suggestion for now; in the
 # future, may drive per-server config (default admin domain, tunnel name,
