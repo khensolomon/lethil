@@ -5,7 +5,7 @@ Static sites and SPAs that get deployed to a server. Each subdirectory is one ap
 ## What's here
 
 | App | Type | Server destination |
-|---|---|---|
+| --- | --- | --- |
 | `default/` | Static HTML/CSS/JS (no build step yet) | `/opt/bucket/html` — the catch-all landing page served by the landing nginx |
 
 ## Deploying an app
@@ -22,6 +22,7 @@ The workflow owns the build-and-deploy logic. It's the same shape for every app 
 4. Dispatch the deploy workflow. Done.
 
 If the app needs a build step:
+
 - Add a `package.json` (or whatever your toolchain uses).
 - The workflow auto-detects `package.json` and runs `npm install && npm run build`.
 - The build must produce a `dist/` directory inside the app. That's what gets rsynced.
