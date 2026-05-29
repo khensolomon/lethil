@@ -11,6 +11,7 @@ body {
 body {
   background-color: var(--background-color);
   font-family: system-ui;
+  user-select: none;
 }
 main {
   width: 100%;
