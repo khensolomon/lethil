@@ -1439,6 +1439,9 @@ def main():
         {"path": "/opt/bucket",       "owner": "current-user", "permissions": 0o755},
         {"path": "/opt/bucket/storage","owner": "current-user", "permissions": 0o755},
         {"path": "/opt/bucket/media", "owner": "current-user", "permissions": 0o755},
+        # Parent for all app deploy targets — must be owned by current-user
+        # so the deploy workflow can create /opt/apps/<any-app> freely.
+        {"path": "/opt/apps",         "owner": "current-user", "permissions": 0o755},
         # Document root for the landing-page nginx — bind-mounted read-only
         # into the container by setup_landing().
         {"path": "/opt/apps/html",    "owner": "current-user", "permissions": 0o755},
