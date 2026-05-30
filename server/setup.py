@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Docker Production Installation & Cloudflare Tunnel Setup (Robotic Edition)
+Version: v.26.05.30-3
 
 Usage:
     # Standard installation (no Cloudflare)
@@ -1191,7 +1192,11 @@ def setup_cloudflare_tunnel(cf_token=None, force=False, dry_run=False):
         "version: '3.8'\n"
         "services:\n"
         "  tunnel:\n"
-        "    image: cloudflare/cloudflared:latest\n"
+        # Pinned to a specific release — 'latest' can pull a breaking version
+        # on the next 'docker compose up'. Update this deliberately after
+        # reviewing the cloudflare/cloudflared changelog.
+        # Latest as of setup.py authoring: 2026.5.2
+        "    image: cloudflare/cloudflared:2026.5.2\n"
         "    container_name: cloudflare-tunnel\n"
         "    restart: unless-stopped\n"
         "    env_file: .env\n"
@@ -1209,7 +1214,10 @@ def setup_cloudflare_tunnel(cf_token=None, force=False, dry_run=False):
         run_cmd(['docker', 'compose', 'down'], cwd_path=tunnel_dir)
 
     compose_file.write_text(compose)
-    run_cmd(['docker', 'compose', 'up', '-d'], cwd_path=tunnel_dir)
+    # --force-recreate ensures a changed token or compose file is applied even
+    # when the container is already running — plain 'up -d' would leave a stale
+    # container in place if the image and name haven't changed.
+    run_cmd(['docker', 'compose', 'up', '-d', '--force-recreate'], cwd_path=tunnel_dir)
     print("✅ Cloudflare Tunnel is running.")
 
 
@@ -1227,8 +1235,12 @@ def setup_landing(force=False, dry_run=False):
     ports, so nothing here needs to do more than hand back files.
 
     The container:
-      - Binds 0.0.0.0:80 (so the tunnel can reach it on localhost:80, and
-        also so the public IP can reach it directly if needed for debugging).
+      - Runs with network_mode: host, same as the tunnel container, so
+        that `localhost:80` inside the tunnel's network namespace resolves
+        directly to this nginx process. A ports mapping won't work here
+        because the tunnel and nginx are in different bridge namespaces
+        otherwise — host mode is the only way both containers see the
+        same localhost.
       - Mounts /opt/apps/html read-only as its document root. Drop files
         into that host directory to update the page; nginx serves from the
         bind mount on every request, no reload needed.
@@ -1290,16 +1302,15 @@ def setup_landing(force=False, dry_run=False):
         "    image: nginx:alpine\n"
         "    container_name: landing\n"
         "    restart: unless-stopped\n"
-        "    ports:\n"
-        "      - '80:80'\n"
+        "    network_mode: host\n"
         "    volumes:\n"
         "      # SPA files. ro so a typo in the SPA can't break nginx and\n"
         "      # a compromised nginx can't write back to the host.\n"
         "      - /opt/apps/html:/usr/share/nginx/html:ro\n"
-        "      # The server block. NOT ro — vanilla nginx doesn't mutate\n"
-        "      # this, but future image versions might (e.g. envsubst at\n"
-        "      # startup). Cost of leaving writable is zero.\n"
-        "      - ./conf/nginx.conf:/etc/nginx/conf.d/default.conf\n"
+        "      # The server block. ro — nginx doesn't mutate its conf at\n"
+        "      # runtime, and with network_mode: host a writable mount gives\n"
+        "      # a compromised process direct write access to the host fs.\n"
+        "      - ./conf/nginx.conf:/etc/nginx/conf.d/default.conf:ro\n"
     )
 
     compose_file = landing_dir / 'docker-compose.yml'
@@ -1329,6 +1340,26 @@ def setup_landing(force=False, dry_run=False):
             "<p>reserved</p>\n"
         )
         print(f"✅ Seeded placeholder {placeholder}.")
+
+    # Guard against a foreign process holding port 80 — network_mode: host
+    # means the container binds directly; Docker won't detect the conflict
+    # until the container tries to start, producing a cryptic error. We check
+    # first so the message is actionable.
+    port_check = subprocess.run(
+        ['ss', '-tlnp', 'sport', '= :80'],
+        capture_output=True, text=True
+    )
+    # ss output has a header line; any extra line means something is listening.
+    listeners = [l for l in port_check.stdout.splitlines() if 'LISTEN' in l]
+    # Allow our own landing container — it will be replaced by --force-recreate.
+    foreign = [l for l in listeners if 'landing' not in l]
+    if foreign:
+        log.error(
+            "Port 80 is already in use by a foreign process:\n"
+            + "\n".join(f"  {l}" for l in foreign) +
+            "\nStop it first, or this container will fail to bind."
+        )
+        sys.exit(1)
 
     # --force-recreate on the landing service so a re-run with config
     # changes applies them. The landing stack only has one service so the
@@ -1660,8 +1691,8 @@ def main():
     )
     setup_docker(force=args.force, dry_run=args.dry_run)
     setup_docker_swarm(dry_run=args.dry_run)
-    setup_cloudflare_tunnel(cf_token=token, force=args.force, dry_run=args.dry_run)
     setup_landing(force=args.force, dry_run=args.dry_run)
+    setup_cloudflare_tunnel(cf_token=token, force=args.force, dry_run=args.dry_run)
 
     # Build the app_domains dict for the summary (include resolved targets)
     summary_app_domains = {
