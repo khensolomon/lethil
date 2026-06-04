@@ -6,9 +6,9 @@
 # Any value can be overridden by an environment variable of the same name.
 
 # === Cloudflare R2 (required) ===
-R2_ACCOUNT_ID=your_cloudflare_account_id_here
+CF_ACCOUNT_ID=your_cloudflare_account_id_here
 R2_ACCESS_KEY_ID=your_r2_access_key_id_here
-R2_SECRET_ACCESS_KEY=your_r2_secret_access_key_here
+R2_ACCESS_SECRET=your_r2_secret_access_key_here
 R2_ENDPOINT=https://your_cloudflare_account_id_here.r2.cloudflarestorage.com
 R2_BUCKET=storage
 

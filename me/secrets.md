@@ -32,7 +32,7 @@ DB_HOST=localhost
 
 # ZONE 3 — Deployment secrets (pushed individually)
 SERVER_HOSTNAME=ssh.admin.com
-SERVER_USER=root
+SERVER_USERNAME=root
 SSH_PRIVATE_KEY_PATH=~/.ssh/prod_server
 VM_RUNNER_STATUS_PAT=github_pat_xxxx
 CF_SERVICE_TOKEN_ID=xxxx.access
@@ -47,12 +47,12 @@ What the script does with each zone:
 |------|-----------|---------------------|
 | Zone 1 (everything above the boundary) | All lines concatenated, pushed as one bundle | `ENV_BASE` |
 | Zone 2 (right after boundary, before deploy keys) | Ignored — your local dev overrides | — |
-| Zone 3 (the recognised deploy keys) | Each pushed as its own GitHub secret | `SERVER_HOSTNAME`, `SERVER_USER`, etc. |
+| Zone 3 (the recognised deploy keys) | Each pushed as its own GitHub secret | `SERVER_HOSTNAME`, `SERVER_USERNAME`, etc. |
 
 Only specific keys in Zone 3 are pushed. The recognised set is:
 
 - `SERVER_HOSTNAME`
-- `SERVER_USER`
+- `SERVER_USERNAME`
 - `VM_RUNNER_STATUS_PAT`
 - `CF_SERVICE_TOKEN_ID`
 - `CF_SERVICE_TOKEN_SECRET`

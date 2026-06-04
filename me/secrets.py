@@ -20,7 +20,7 @@ HOW THE .env IS STRUCTURED
 
   # ZONE 3 — Deployment secrets (pushed individually as GitHub Actions secrets)
   SERVER_HOSTNAME=ssh.admin.com
-  SERVER_USER=root
+  SERVER_USERNAME=root
   SSH_PRIVATE_KEY_PATH=~/.ssh/prod_server
   VM_RUNNER_STATUS_PAT=github_pat_xxxx
   CF_SERVICE_TOKEN_ID=xxxx.access
@@ -93,7 +93,7 @@ from pathlib import Path
 # Keys found in Zone 3 pushed as individual GitHub Actions secrets
 DEPLOY_KEYS = {
     "SERVER_HOSTNAME",
-    "SERVER_USER",
+    "SERVER_USERNAME",
     "VM_RUNNER_STATUS_PAT",
     "CF_SERVICE_TOKEN_ID",
     "CF_SERVICE_TOKEN_SECRET",
@@ -975,7 +975,7 @@ def cmd_init(args, git_root: Path, env_path: Path) -> None:
 
     scaffold = {}
     scaffold["SERVER_HOSTNAME"]      = prompt("SERVER_HOSTNAME")
-    scaffold["SERVER_USER"]          = prompt("SERVER_USER", "root")
+    scaffold["SERVER_USERNAME"]          = prompt("SERVER_USERNAME", "root")
     scaffold[SSH_KEY_PATH_KEY]       = prompt(SSH_KEY_PATH_KEY, "~/.ssh/prod_server")
     scaffold["VM_RUNNER_STATUS_PAT"] = prompt("VM_RUNNER_STATUS_PAT", mask=True)
     scaffold["CF_SERVICE_TOKEN_ID"]  = prompt("CF_SERVICE_TOKEN_ID")

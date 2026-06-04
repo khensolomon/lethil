@@ -25,7 +25,7 @@ on:
           - tunnel # placeholder — not implemented
         default: ssh
       target_host:
-        description: "Target host (IP or hostname). If empty, uses SERVER_HOST secret."
+        description: "Target host (IP or hostname). If empty, uses SERVER_HOSTNAME secret."
         type: string
         required: false
       force:
@@ -49,10 +49,10 @@ jobs:
         run: |
           host="${{ github.event.inputs.target_host }}"
           if [ -z "$host" ]; then
-            host="${{ secrets.SERVER_HOST }}"
+            host="${{ secrets.SERVER_HOSTNAME }}"
           fi
           if [ -z "$host" ]; then
-            echo "::error::No target host. Provide via form input or SERVER_HOST secret."
+            echo "::error::No target host. Provide via form input or SERVER_HOSTNAME secret."
             exit 1
           fi
           echo "host=$host" >> "$GITHUB_OUTPUT"
@@ -92,7 +92,7 @@ jobs:
           CF_SERVICE_TOKEN_ID: ${{ secrets.CF_SERVICE_TOKEN_ID }}
           CF_SERVICE_TOKEN_SECRET: ${{ secrets.CF_SERVICE_TOKEN_SECRET }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCESS_SECRET: ${{ secrets.R2_ACCESS_SECRET }}
           ADMIN_DOMAIN: ${{ secrets.ADMIN_DOMAIN }}
           TUNNEL_NAME: ${{ secrets.TUNNEL_NAME }}
           APP_DOMAINS: ${{ secrets.APP_DOMAINS }}
@@ -109,8 +109,8 @@ jobs:
 
           # Optional R2 args — only pass them if both halves are set.
           r2_args=""
-          if [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ]; then
-            r2_args="--r2-access-key-id '$R2_ACCESS_KEY_ID' --r2-secret-access-key '$R2_SECRET_ACCESS_KEY'"
+          if [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_ACCESS_SECRET" ]; then
+            r2_args="--r2-access-key-id '$R2_ACCESS_KEY_ID' --r2-secret-access-key '$R2_ACCESS_SECRET'"
           fi
 
           ssh $ssh_opts "root@${HOST}" \

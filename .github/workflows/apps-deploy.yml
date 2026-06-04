@@ -22,7 +22,7 @@
 #   tunnel      — same rsync, but the transport is SSH-over-Cloudflare-
 #                 Tunnel (cloudflared access ssh) authenticated with the
 #                 Access service token. Lets the deploy run with port 22
-#                 closed. Targets ssh.<ADMIN_DOMAIN>, not SERVER_HOST.
+#                 closed. Targets ssh.<ADMIN_DOMAIN>, not SERVER_HOSTNAME.
 #   self-hosted — the job runs ON the server (a registered self-hosted
 #                 runner), so the deploy is a local rsync with no network
 #                 hop. No SSH, no tunnel, no host resolution.
@@ -51,7 +51,7 @@ on:
           - tunnel
         default: ssh
       target_host:
-        description: "Target host (IP or hostname). If empty, uses SERVER_HOST secret."
+        description: "Target host (IP or hostname). If empty, uses SERVER_HOSTNAME secret."
         type: string
         required: false
       target_path:
@@ -97,14 +97,14 @@ jobs:
         env:
           METHOD: ${{ github.event.inputs.method }}
           USER_HOST: ${{ github.event.inputs.target_host }}
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_HOSTNAME: ${{ secrets.SERVER_HOSTNAME }}
           ADMIN_DOMAIN: ${{ secrets.ADMIN_DOMAIN }}
         run: |
           if [ "$METHOD" = "tunnel" ]; then
             # The tunnel reaches the box by its public SSH hostname, not by
             # IP — that is the point of keeping port 22 closed. The hostname
             # is ssh.<admin-domain>, matching the 'ssh' admin subdomain that
-            # setup.py routes through the tunnel. target_host/SERVER_HOST do
+            # setup.py routes through the tunnel. target_host/SERVER_HOSTNAME do
             # not apply here.
             if [ -z "$ADMIN_DOMAIN" ]; then
               echo "::error::method=tunnel needs the ADMIN_DOMAIN secret to derive ssh.<admin-domain>."
@@ -113,9 +113,9 @@ jobs:
             host="ssh.${ADMIN_DOMAIN}"
           else
             host="$USER_HOST"
-            [ -z "$host" ] && host="$SERVER_HOST"
+            [ -z "$host" ] && host="$SERVER_HOSTNAME"
             if [ -z "$host" ]; then
-              echo "::error::No target host. Provide via form input or SERVER_HOST secret."
+              echo "::error::No target host. Provide via form input or SERVER_HOSTNAME secret."
               exit 1
             fi
           fi
@@ -124,12 +124,12 @@ jobs:
       - name: Resolve target user
         id: user
         env:
-          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
         run: |
           # The account rsync/ssh authenticate as on the server. Defaults to
           # root (what setup.py provisions and the NEXT STEPS summary tests
-          # against); override by setting the SERVER_USER secret.
-          user="$SERVER_USER"
+          # against); override by setting the SERVER_USERNAME secret.
+          user="$SERVER_USERNAME"
           [ -z "$user" ] && user="root"
           echo "user=$user" >> "$GITHUB_OUTPUT"
 

@@ -131,7 +131,7 @@ Production server bootstrap
   CF_SERVICE_TOKEN_ID       xxxx.access
   CF_SERVICE_TOKEN_SECRET   yyyy
   R2_ACCESS_KEY_ID          aaaa...
-  R2_SECRET_ACCESS_KEY      bbbb...
+  R2_ACCESS_SECRET      bbbb...
 ```
 
 ---
@@ -544,7 +544,7 @@ secrets.py --push                 # ship to GitHub
 | `ENV_FILE_CONTENT` | Zone 1 of app `.env` | All deploy paths |
 | `SSH_PRIVATE_KEY` | File pointed to by `SSH_PRIVATE_KEY_PATH` in `.env` | `deploy_via_tunnel`, `deploy_via_ssh` |
 | `SERVER_HOSTNAME` | `.env` Zone 3 — usually `ssh.<your-admin-domain>` | `deploy_via_tunnel`, `deploy_via_ssh` |
-| `SERVER_USER` | `.env` Zone 3 | `deploy_via_tunnel`, `deploy_via_ssh` |
+| `SERVER_USERNAME` | `.env` Zone 3 | `deploy_via_tunnel`, `deploy_via_ssh` |
 | `VM_RUNNER_STATUS_PAT` | `.env` Zone 3 — fine-grained PAT, Actions read-only | `check_local_vm_runner` |
 | `CF_SERVICE_TOKEN_ID` | `.env` Zone 3 | `deploy_via_tunnel` |
 | `CF_SERVICE_TOKEN_SECRET` | `.env` Zone 3 | `deploy_via_tunnel` |

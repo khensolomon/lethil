@@ -114,8 +114,8 @@ class Config:
         """Read r2.conf (KEY=VALUE format), apply env var overrides."""
         if not path.is_file():
             die(f"Config file not found: {path}\n"
-                f"Create it with R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, "
-                f"R2_SECRET_ACCESS_KEY, R2_ENDPOINT, R2_BUCKET")
+                f"Create it with CF_ACCOUNT_ID, R2_ACCESS_KEY_ID, "
+                f"R2_ACCESS_SECRET, R2_ENDPOINT, R2_BUCKET")
 
         # Permission check — config holds secrets, must not be world-readable.
         mode = path.stat().st_mode & 0o777
@@ -138,16 +138,16 @@ class Config:
         def get(key: str, default: str | None = None) -> str | None:
             return os.environ.get(key) or values.get(key) or default
 
-        required = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID",
-                    "R2_SECRET_ACCESS_KEY", "R2_ENDPOINT", "R2_BUCKET"]
+        required = ["CF_ACCOUNT_ID", "R2_ACCESS_KEY_ID",
+                    "R2_ACCESS_SECRET", "R2_ENDPOINT", "R2_BUCKET"]
         missing = [k for k in required if not get(k)]
         if missing:
             die(f"Missing required config keys: {', '.join(missing)}")
 
         return cls(
-            account_id=get("R2_ACCOUNT_ID") or "",
+            account_id=get("CF_ACCOUNT_ID") or "",
             access_key_id=get("R2_ACCESS_KEY_ID") or "",
-            secret_access_key=get("R2_SECRET_ACCESS_KEY") or "",
+            secret_access_key=get("R2_ACCESS_SECRET") or "",
             endpoint=get("R2_ENDPOINT") or "",
             bucket=get("R2_BUCKET") or "",
             retention_keep=int(get("RETENTION_KEEP", "7") or "7"),
