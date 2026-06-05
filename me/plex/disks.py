@@ -2,12 +2,12 @@
 """
 Plex media pool setup (MergerFS) — hardened, dry-run-first.
 
-    ./setup_plex_disks.py            # DRY RUN: prints every action, changes nothing
-    ./setup_plex_disks.py --apply    # actually do it
+    ./disks.py            # DRY RUN: prints every action, changes nothing
+    ./disks.py --apply    # actually do it
 
 Run as your NORMAL user (it self-sudoes per command). Do NOT run with `sudo`.
 
-This is a port of setup_plex_disks.sh. All mutating actions are still real shell
+This is a port of disks.sh. All mutating actions are still real shell
 commands (apt/mount/chown/tee/ln); Python just gives us structure, argument
 parsing, idempotency checks and a readable dry-run transcript.
 """
@@ -177,6 +177,14 @@ def main() -> int:
 
     # 4. fstab — idempotent
     header("4. /etc/fstab")
+    # The MergerFS (FUSE) line must NOT carry `nofail`: mount passes it to the
+    # FUSE helper, which rejects it ("fuse: unknown option `nofail'"). For boot
+    # safety/ordering we instead use x-systemd.requires= per branch (consumed by
+    # systemd, never passed to FUSE), so the pool mounts AFTER its disks.
+    def unit_for(path: str) -> str:
+        return path.strip("/").replace("/", "-") + ".mount"
+
+    pool_requires = ",".join(f"x-systemd.requires={unit_for(b)}" for b in POOL_BRANCHES)
     fstab_lines = [
         f"UUID={UUID_EXFAT_MEDIA} {MNT_EXFAT} exfat "
         f"uid={uid},gid={gid},dmask=022,fmask=133,nofail 0 0",
@@ -184,7 +192,7 @@ def main() -> int:
         f"UUID={UUID_D3TB2} {MNT_D3TB2} ext4 defaults,nofail 0 2",
         f"{':'.join(POOL_BRANCHES)} {POOL} mergerfs "
         f"defaults,allow_other,use_ino,category.create=mfs,"
-        f"minfreespace=20G,nofail,fsname=mergerfsPool 0 0",
+        f"minfreespace=20G,fsname=mergerfsPool,{pool_requires} 0 0",
     ]
 
     missing = []
@@ -200,6 +208,18 @@ def main() -> int:
         run(["sudo", "cp", "/etc/fstab", f"/etc/fstab.bak.{ts()}"])
         for line in missing:
             append_fstab(line)
+
+    # Self-heal: a previous run may have written ',nofail' onto the FUSE line.
+    try:
+        if any("mergerfs" in ln and "nofail" in ln
+               for ln in Path("/etc/fstab").read_text().splitlines()):
+            print("  repairing: removing invalid ',nofail' from the mergerfs line")
+            run(["sudo", "sed", "-i", "/mergerfsPool/ s/,nofail//", "/etc/fstab"])
+    except FileNotFoundError:
+        pass
+
+    # systemd caches fstab via a generator; reload so `mount -a` and boot agree.
+    run(["sudo", "systemctl", "daemon-reload"])
     print()
 
     # 5. release desktop auto-mounts
