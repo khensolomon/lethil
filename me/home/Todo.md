@@ -2,13 +2,14 @@
 
 ```bash
 cd ~/
-curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/plex/disks.py
-python3 disks.py
-curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/plex/transmission.py
-python3 transmission.py
-
-# curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/plex/setup.py
+curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/home/setup.py
 # python3 setup.py
+curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/home/disks.py
+# python3 disks.py
+curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/home/plex.py
+# python3 plex.py
+curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/home/transmission.py
+# sudo python3 transmission.py --apply
 ```
 
 ## SSH

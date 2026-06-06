@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """transmission.py — interactive setup & configuration for transmission-daemon.
 
-version: 26.06.06-6
+version: 26.06.06-7
 
 changes:
+  26.06.06-7  removed -i; --apply now always prompts for each value (Enter =
+              default) before committing — no more silent apply-from-DEFAULTS.
+              Bare run is still a non-interactive preview.
   26.06.06-6  download-dir now uses a SHARED GROUP (setgid on it + its parent)
               instead of being chowned to the daemon, so Plex/other services
               keep access and rotating dated folders inherit it automatically;
@@ -50,8 +53,7 @@ features:
 usage:
   sudo ./transmission.py            # PREVIEW (dry-run) using the DEFAULTS below
   sudo ./transmission.py --dry-run  # same as above (explicit)
-  sudo ./transmission.py --apply    # actually make the changes
-  sudo ./transmission.py -i --apply # prompt for each value, then commit
+  sudo ./transmission.py --apply    # prompt for each value (Enter = default), then commit
   sudo ./transmission.py --debug    # show full tracebacks instead of clean errors
 
 To change configuration, edit the DEFAULTS block at the top of this file.
@@ -783,16 +785,16 @@ def main():
         description="Set up / configure transmission-daemon safely "
                     "(dry-run by default).")
     ap.add_argument("--apply", action="store_true",
-                    help="actually make changes (default is a dry-run preview)")
-    ap.add_argument("-i", "--interactive", action="store_true",
-                    help="prompt for each value instead of using DEFAULTS")
+                    help="prompt for each value (Enter = default), then commit")
     ap.add_argument("--dry-run", action="store_true",
                     help="explicit dry-run (this is already the default)")
     ap.add_argument("--debug", action="store_true",
                     help="show full tracebacks on error (for development)")
     args = ap.parse_args()
-    INTERACTIVE = args.interactive
     dry = not args.apply
+    # Applying always walks the prompts (Enter accepts the DEFAULT); the bare
+    # preview run stays non-interactive. No more silent apply-from-DEFAULTS.
+    INTERACTIVE = args.apply
 
     require_root()
     if dry:
