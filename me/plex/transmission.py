@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """transmission.py — interactive setup & configuration for transmission-daemon.
 
-version: 26.06.06-5
+version: 26.06.06-6
 
 changes:
+  26.06.06-6  download-dir now uses a SHARED GROUP (setgid on it + its parent)
+              instead of being chowned to the daemon, so Plex/other services
+              keep access and rotating dated folders inherit it automatically;
+              media_group default (None = adopt parent's group, or pin e.g.
+              "plex"). Added AppArmor rule management: discovers the profile
+              file + local include (names vary), writes an idempotent managed
+              block of rwk rules for the data dirs, and reloads. AppArmor +
+              group setup happen before the daemon starts so it comes up ready.
   26.06.06-5  enable the daemon on boot (systemctl enable), not just start it.
   26.06.06-4  default seeding policy is now stop-at-completion (ratio 0.0).
               Added ufw rule management: opens the RPC + peer ports when ufw is
@@ -31,8 +39,11 @@ features:
   - Merges into the existing config; timestamped backup before each write.
   - RPC user/password + LAN whitelist (auto /24) so the web UI is reachable at
     http://<host-ip>:<port> instead of localhost only.
-  - download / incomplete / watch dirs, with ownership/permissions fixed so the
-    daemon user can use them even when they live under your home directory.
+  - download / incomplete / watch dirs. The download dir is set up for SHARED
+    access (daemon joins a media group + setgid, files not chowned to the
+    daemon) so services like Plex keep access and dated folders inherit perms.
+  - AppArmor: discovers the daemon's profile + local include and adds rwk rules
+    for the data dirs, so it isn't blocked by confinement (no-op if absent).
   - Seeding policy: ratio limit AND idle limit (whichever trips first).
   - Optional up/down speed caps and peer port.
 
@@ -82,6 +93,12 @@ DEFAULTS = {
     # False -> keep ingested .torrent files, renamed to *.torrent.added.
     # True  -> delete them after adding.
     "trash_original_torrent_files": False,
+    # Shared group for the download dir so other services (e.g. Plex) keep
+    # access: the daemon JOINS this group rather than OWNING the files, and the
+    # download dir + its parent get setgid so future dated folders inherit it.
+    # None -> auto-adopt the group the download dir's parent already uses.
+    # Or pin it, e.g. "plex".
+    "media_group": None,
 
     # --- seeding ---
     # ratio 0.0 with ratio_enabled True => stop seeding the instant a download
@@ -101,6 +118,10 @@ DEFAULTS = {
     "peer_port": 51413,
     # open the RPC + peer ports in ufw (only acts if ufw is installed & active)
     "manage_ufw": True,
+    # add AppArmor rules for the data dirs (only acts if a confining
+    # transmission-daemon profile is present); writes to the profile's
+    # local/ include so package upgrades don't clobber it.
+    "manage_apparmor": True,
 
     # umask is the DECIMAL of the octal umask: 2 == 002 (group-writable),
     # 18 == 022. 002 lets users in the daemon group manage downloads.
@@ -400,6 +421,75 @@ def ensure_dir(path, daemon_uid, daemon_gid, inv, dry):
             info(f"WARN could not set perms on {comp}: {e}")
 
 
+def _resolve_media_group(path, configured):
+    """The group the daemon should JOIN to share the download dir. Either the
+    pinned media_group, or the group the dir's parent already uses (e.g. plex)."""
+    if configured:
+        return configured
+    parent = os.path.dirname(path.rstrip("/"))
+    try:
+        return grp.getgrgid(os.stat(parent).st_gid).gr_name
+    except (OSError, KeyError):
+        return None
+
+
+def provision_download_dir(path, daemon_name, inv, configured_group, dry):
+    """Set up the download dir for SHARED access (e.g. transmission + Plex):
+    add the daemon to a shared group, set group+setgid+group-writable on the
+    dir AND its parent (so future dated folders inherit it), and DO NOT chown
+    files to the daemon (which would lock other services out)."""
+    group = _resolve_media_group(path, configured_group)
+    parent = os.path.dirname(path.rstrip("/"))
+
+    if not group:
+        info(f"download-dir: no shared group found; owning it with the daemon "
+             f"instead (other services may lose access).")
+        if not dry:
+            ensure_dir(path, *daemon_ids_for_fallback(), inv, dry=False)
+        return
+
+    try:
+        gent = grp.getgrnam(group)
+    except KeyError:
+        info(f"download-dir: group '{group}' does not exist; skipping shared "
+             f"setup. Create it or set media_group to an existing group.")
+        return
+    gid = gent.gr_gid
+    owner_uid = inv["uid"] if inv else os.stat(parent).st_uid \
+        if os.path.isdir(parent) else 0
+
+    if dry:
+        info(f"would add '{daemon_name}' to group '{group}'")
+        info(f"would create {path} as group '{group}', setgid, group-writable")
+        info(f"would set setgid + group '{group}' on parent {parent} "
+             f"(so future dated folders inherit it)")
+        return
+
+    if daemon_name not in gent.gr_mem and group != daemon_name:
+        run(["usermod", "-aG", group, daemon_name], check=False)
+        info(f"added '{daemon_name}' to group '{group}'")
+
+    os.makedirs(path, exist_ok=True)
+    for d_ in (parent, path):
+        if not os.path.isdir(d_):
+            continue
+        try:
+            os.chown(d_, owner_uid, gid)
+            # 2775 = setgid + rwxrwxr-x: group-writable, group inherited by children
+            os.chmod(d_, 0o2775)
+        except PermissionError as e:
+            info(f"WARN could not set perms on {d_}: {e}")
+    info(f"download-dir ready: {path} (group '{group}', setgid)")
+
+
+def daemon_ids_for_fallback():
+    try:
+        ent = pwd.getpwnam(DEFAULT_DAEMON_USER)
+        return ent.pw_uid, ent.pw_gid
+    except KeyError:
+        return 0, 0
+
+
 def traversal_note(path, daemon_name, daemon_gid, inv):
     """The daemon must be able to traverse (x) every ancestor down to a
     home-based dir. Home dirs are often 0750 on modern Ubuntu, which blocks it.
@@ -474,7 +564,7 @@ def gather(inv):
     section("Directories")
     dl = expand_path(ask("Download directory", d["download_dir"]), inv)
     changes["download-dir"] = dl
-    dirs.append(dl)
+    dirs.append(("download", dl))
 
     if ask_bool("Enable watch directory (auto-add dropped .torrent files)?",
                 d["watch_enabled"]):
@@ -482,7 +572,7 @@ def gather(inv):
         changes["watch-dir"] = w
         changes["watch-dir-enabled"] = True
         changes["trash-original-torrent-files"] = d["trash_original_torrent_files"]
-        dirs.append(w)
+        dirs.append(("watch", w))
     else:
         changes["watch-dir-enabled"] = False
 
@@ -490,7 +580,7 @@ def gather(inv):
         ic = expand_path(ask("Incomplete directory", d["incomplete_dir"]), inv)
         changes["incomplete-dir"] = ic
         changes["incomplete-dir-enabled"] = True
-        dirs.append(ic)
+        dirs.append(("incomplete", ic))
     else:
         changes["incomplete-dir-enabled"] = False
 
@@ -523,8 +613,14 @@ def gather(inv):
     changes["peer-port"] = ask_int("Peer (incoming) port", d["peer_port"])
 
     changes["umask"] = d["umask"]
-    opts = {"manage_ufw": ask_bool(
-        "Open the RPC + peer ports in ufw (if active)?", d["manage_ufw"])}
+    opts = {
+        "manage_ufw": ask_bool(
+            "Open the RPC + peer ports in ufw (if active)?", d["manage_ufw"]),
+        "manage_apparmor": ask_bool(
+            "Add AppArmor rules for the data dirs (if confined)?",
+            d["manage_apparmor"]),
+        "media_group": d["media_group"],
+    }
     return changes, dirs, opts
 
 
@@ -536,7 +632,8 @@ def summarize(changes, dirs, settings_path, owner_name, inv,
     for k in sorted(changes):
         v = "******" if k == "rpc-password" else changes[k]
         info(f"{k} = {v}")
-    for dpath in dirs:
+    for role, dpath in dirs:
+        info(f"{role}-dir = {dpath}")
         traversal_note(dpath, daemon_name, daemon_gid, inv)
 
 
@@ -582,6 +679,101 @@ def configure_firewall(rpc_port, peer_port, want, dry):
 
 
 # ---------------------------------------------------------------------------
+# AppArmor — the deb package confines the daemon to an allowlist of paths.
+# Custom data dirs must be added or the daemon gets "Permission denied (13)"
+# even when Unix perms are correct. Names vary across versions (profile file
+# vs profile name vs local-include name), so DISCOVER them, never hardcode.
+# ---------------------------------------------------------------------------
+
+APPARMOR_DIR = "/etc/apparmor.d"
+AA_PROFILE = "transmission-daemon"
+AA_BEGIN = "# >>> transmission.py managed (do not edit between markers) >>>"
+AA_END = "# <<< transmission.py managed <<<"
+
+
+def find_apparmor_profile_file():
+    """The FILE under /etc/apparmor.d that defines the transmission-daemon
+    profile (may be named 'transmission', 'usr.bin.transmission-daemon', ...)."""
+    if not os.path.isdir(APPARMOR_DIR):
+        return None
+    for name in sorted(os.listdir(APPARMOR_DIR)):
+        fp = os.path.join(APPARMOR_DIR, name)
+        if not os.path.isfile(fp):
+            continue
+        try:
+            text = open(fp, errors="replace").read()
+        except OSError:
+            continue
+        if re.search(rf'profile\s+{re.escape(AA_PROFILE)}\b', text) \
+                or "/usr/bin/transmission-daemon" in text:
+            return fp
+    return None
+
+
+def find_local_include(profile_file):
+    """The <local/NAME> the daemon profile includes; prefer the daemon-specific
+    one over the shared 'transmission' include."""
+    text = open(profile_file, errors="replace").read()
+    names = re.findall(r'include if exists <local/([\w.-]+)>', text)
+    names += re.findall(r'#include\s+<local/([\w.-]+)>', text)
+    if not names:
+        return None
+    if AA_PROFILE in names:
+        return AA_PROFILE
+    return names[0]
+
+
+def _aa_rules_for(dirs):
+    """rwk rules for each dir. For the download dir we allow its PARENT tree so
+    rotating dated folders (260605 -> 260705) keep working without re-editing."""
+    seen, lines = set(), []
+    for role, path in dirs:
+        target = os.path.dirname(path.rstrip("/")) if role == "download" else path
+        for rule in (f"{target}/ rw,", f"{target}/** rwk,"):
+            if rule not in seen:
+                seen.add(rule)
+                lines.append(rule)
+    return lines
+
+
+def configure_apparmor(dirs, want, dry):
+    if not want:
+        return
+    if not shutil.which("apparmor_parser") or not os.path.isdir(APPARMOR_DIR):
+        info("AppArmor not present; skipping profile rules.")
+        return
+    profile_file = find_apparmor_profile_file()
+    if not profile_file:
+        info("no transmission-daemon AppArmor profile found; skipping.")
+        return
+    local_name = find_local_include(profile_file) or AA_PROFILE
+    local_file = os.path.join(APPARMOR_DIR, "local", local_name)
+    rules = _aa_rules_for(dirs)
+    block = AA_BEGIN + "\n" + "\n".join(rules) + "\n" + AA_END + "\n"
+
+    if dry:
+        info(f"would write to {local_file}:")
+        for r in rules:
+            info(f"    {r}")
+        info(f"would reload: apparmor_parser -r {profile_file}")
+        return
+
+    os.makedirs(os.path.dirname(local_file), exist_ok=True)
+    existing = ""
+    if os.path.exists(local_file):
+        existing = open(local_file).read()
+    # replace any prior managed block so re-runs don't duplicate
+    cleaned = re.sub(re.escape(AA_BEGIN) + r".*?" + re.escape(AA_END) + r"\n?",
+                     "", existing, flags=re.S).rstrip("\n")
+    new = (cleaned + "\n\n" if cleaned else "") + block
+    with open(local_file, "w") as fh:
+        fh.write(new)
+    info(f"wrote AppArmor rules -> {local_file}")
+    run(["apparmor_parser", "-r", profile_file], check=False)
+    info(f"reloaded AppArmor profile: {profile_file}")
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
@@ -624,10 +816,15 @@ def main():
 
     if dry:
         section("Dry run — planned filesystem actions")
-        for dpath in dirs:
-            ensure_dir(dpath, uid, gid, inv, dry=True)
+        for role, dpath in dirs:
+            if role == "download":
+                provision_download_dir(dpath, owner_name, inv,
+                                       opts["media_group"], dry=True)
+            else:
+                ensure_dir(dpath, uid, gid, inv, dry=True)
         maybe_add_user_to_group(owner_name, dry=True)
         enable_daemon(dry=True)
+        configure_apparmor(dirs, opts["manage_apparmor"], dry=True)
         configure_firewall(changes["rpc-port"], changes["peer-port"],
                            opts["manage_ufw"], dry=True)
         print("\nRe-run with --apply to perform these changes.")
@@ -643,13 +840,18 @@ def main():
 
         backup_settings(settings_path)
         write_settings(settings_path, merged, uid, gid)
-        for dpath in dirs:
-            ensure_dir(dpath, uid, gid, inv, dry=False)
+        for role, dpath in dirs:
+            if role == "download":
+                provision_download_dir(dpath, owner_name, inv,
+                                       opts["media_group"], dry=False)
+            else:
+                ensure_dir(dpath, uid, gid, inv, dry=False)
         maybe_add_user_to_group(owner_name, dry=False)
         enable_daemon(dry=False)
-        start_daemon()
+        configure_apparmor(dirs, opts["manage_apparmor"], dry=False)
         configure_firewall(changes["rpc-port"], changes["peer-port"],
                            opts["manage_ufw"], dry=False)
+        start_daemon()  # last, so it comes up under the updated group + profile
     except BaseException:
         # never leave the daemon down because of an error or Ctrl-C mid-apply
         if was_active and not daemon_active():
