@@ -1,183 +1,340 @@
 #!/usr/bin/env python3
 """
-Fetch
-version: 26.06.06-7
-Feature: 
-  - Downloads files from a list of URLs using only built-in libraries.
-  - Follows redirects and extracts true filenames from headers or final URLs.
-  - Prevents filename collisions within the same session by appending counters.
-  - Verifies file integrity via SHA256 hashes before writing to disk (optional).
-  - Supports interactive prompts OR fully automated command-line execution.
-Usage: 
-  python3 fetch.py [suspicious link removed] [--default] [--yes]
+Fetch — a small, dependency-free file downloader.
 
-Bootstrap (Save & Launch):
-  python3 -c "import urllib.request, os; url='https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py'; d=urllib.request.urlopen(url).read(); open('fetch.py', 'wb').write(d); os.chmod('fetch.py', 0o755); os.system('./fetch.py')"
+version: 26.06.06-10
 
-Bootstrap (Ghost / In-Memory):
-  python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py').read().decode('utf-8'))"
+What it does
+------------
+  * Streams downloads in fixed-size blocks, so memory stays flat regardless of
+    file size (safe for large files on slow or flaky links).
+  * Retries automatically with exponential backoff on transient network errors.
+  * Follows redirects and derives a sensible filename (Content-Disposition first,
+    then the final redirected URL path).
+  * Avoids filename collisions within a single run (foo.py -> foo_1.py).
+  * Writes atomically: data lands in a ".part" temp file and is only renamed into
+    place once the download (and optional hash check) succeeds. A failed download
+    never leaves a truncated file behind.
+  * Verifies integrity via SHA-256 against either an inline EXPECTED_HASHES map or
+    a trust-on-first-use lockfile (fetch.lock.json).
+  * Runs interactively (prompts) or fully unattended (for CI / cron).
+
+Usage
+-----
+  python3 fetch.py [URL ...] [options]
+
+  # Download the built-in default set, unattended, into ./bin:
+  python3 fetch.py --default --yes --output-dir ./bin
+
+  # Download specific URLs and record their hashes to the lockfile:
+  python3 fetch.py https://example.com/a.py https://example.com/b.py
+
+Self-bootstrap one-liners
+-------------------------
+  Download script only:
+    python3 -c "import urllib.request; open('fetch.py','wb').write(urllib.request.urlopen('https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py').read())"
+
+  Save & launch:
+    python3 -c "import urllib.request,os; u='https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py'; d=urllib.request.urlopen(u).read(); open('fetch.py','wb').write(d); os.chmod('fetch.py',0o755); os.system('./fetch.py')"
+
+  Ghost / in-memory (executes remote code without touching disk — only run code you trust):
+    python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py').read().decode('utf-8'))"
 """
 
+import argparse
+import hashlib
+import json
 import os
 import sys
-import argparse
-import urllib.request
-import urllib.parse
+import time
 import urllib.error
-import hashlib
+import urllib.parse
+import urllib.request
 
-# Define the default list of URLs
+__version__ = "26.06.06-10"
+
+# Built-in download set. Treated as read-only; copy before mutating.
 DEFAULT_URLS = [
     "https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/setup.py",
     "https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/disks.py",
     "https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/plex.py",
-    "https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/transmission.py"
+    "https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/transmission.py",
 ]
 
+# Optional hard-pinned hashes: {filename_or_url: "sha256hex"}.
+# Anything listed here MUST match or the download is rejected.
 EXPECTED_HASHES = {}
 
+USER_AGENT = "fetch.py/" + __version__
+BLOCK_SIZE = 64 * 1024  # 64 KiB; larger than 8 KiB for noticeably better throughput.
+
+
+# --------------------------------------------------------------------------- #
+# Helpers
+# --------------------------------------------------------------------------- #
+def human_size(num_bytes):
+    """Return a compact, human-readable size string for a byte count."""
+    size = float(num_bytes)
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if size < 1024 or unit == "TiB":
+            return f"{size:.1f} {unit}" if unit != "B" else f"{int(size)} {unit}"
+        size /= 1024
+
+
 def get_unique_filename(base_name, seen_set):
-    """Ensures filenames do not collide within the same session."""
+    """Return a name not already in ``seen_set``, appending _1, _2, ... if needed."""
     if base_name not in seen_set:
         seen_set.add(base_name)
         return base_name
-    
     name, ext = os.path.splitext(base_name)
     counter = 1
     while f"{name}_{counter}{ext}" in seen_set:
         counter += 1
-        
     new_name = f"{name}_{counter}{ext}"
     seen_set.add(new_name)
     return new_name
 
+
+def filename_from_response(response, fallback_url):
+    """Derive a filename from response headers, then the (possibly redirected) URL.
+
+    GitHub raw and many static hosts send no Content-Disposition, so we fall back
+    to the last path segment of the final URL, with any query string stripped.
+    """
+    name = response.headers.get_filename()
+    if not name:
+        final_url = response.geturl() or fallback_url
+        path = urllib.parse.urlparse(final_url).path
+        name = os.path.basename(path)
+    return name or "downloaded.out"
+
+
+def load_lockfile(path):
+    """Load the {url: sha256} trust-on-first-use lockfile, or {} if absent/invalid."""
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError) as exc:
+        print(f"Warning: could not read lockfile {path}: {exc}")
+        return {}
+
+
+def save_lockfile(path, lock):
+    """Persist the lockfile, sorted for stable diffs."""
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(dict(sorted(lock.items())), f, indent=2)
+            f.write("\n")
+    except OSError as exc:
+        print(f"Warning: could not write lockfile {path}: {exc}")
+
+
+# --------------------------------------------------------------------------- #
+# Core download
+# --------------------------------------------------------------------------- #
+def download_file(url, dest_path, retries, timeout):
+    """Stream ``url`` to ``dest_path`` atomically, with retry/backoff.
+
+    Returns a tuple ``(ok, resolved_name, sha256_hex, n_bytes)``. On failure,
+    ``ok`` is False and any partial ".part" file is removed. The destination is
+    only created/replaced once the body has been fully and successfully written.
+    """
+    part_path = dest_path + ".part"
+    headers = {"User-Agent": USER_AGENT}
+
+    for attempt in range(1, retries + 1):
+        sha = hashlib.sha256()
+        total = 0
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                resolved = filename_from_response(response, url)
+                declared = response.headers.get("Content-Length")
+                with open(part_path, "wb") as f:
+                    while True:
+                        chunk = response.read(BLOCK_SIZE)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        sha.update(chunk)
+                        total += len(chunk)
+
+            # Sanity check: if the server told us a size, make sure we got it all.
+            if declared is not None and total != int(declared):
+                raise IOError(
+                    f"size mismatch: got {total} bytes, expected {declared}"
+                )
+
+            os.replace(part_path, dest_path)  # atomic on same filesystem
+            return True, resolved, sha.hexdigest(), total
+
+        except (urllib.error.URLError, OSError, ValueError) as exc:
+            if os.path.exists(part_path):
+                try:
+                    os.remove(part_path)
+                except OSError:
+                    pass
+            print(f"  Attempt {attempt}/{retries} failed: {exc}")
+            if attempt < retries:
+                time.sleep(min(2 ** attempt, 30))  # 2s, 4s, 8s ... capped at 30s
+
+    return False, None, None, 0
+
+
+def verify_hash(name, url, actual, expected_hashes, lock, use_lock):
+    """Check ``actual`` against pins and TOFU lock. Returns (ok, message)."""
+    pinned = expected_hashes.get(name) or expected_hashes.get(url)
+    if pinned:
+        if actual.lower() != pinned.lower():
+            return False, f"HASH MISMATCH (pinned)\n    expected {pinned}\n    actual   {actual}"
+        return True, "hash verified against EXPECTED_HASHES"
+
+    if use_lock:
+        known = lock.get(url)
+        if known is None:
+            lock[url] = actual  # trust on first use
+            return True, f"hash recorded (first use): {actual[:16]}…"
+        if known.lower() != actual.lower():
+            return (
+                False,
+                "HASH MISMATCH (lockfile changed since last fetch)\n"
+                f"    locked {known}\n    actual {actual}\n"
+                "    Delete the lockfile entry to accept the new content.",
+            )
+        return True, "hash matches lockfile"
+
+    return True, f"sha256 {actual[:16]}…"
+
+
+# --------------------------------------------------------------------------- #
+# Orchestration
+# --------------------------------------------------------------------------- #
 def gather_urls():
-    """Prompts to manage the URL list interactively."""
+    """Interactively collect URLs, one per line, until a blank line is entered."""
+    print("Enter URLs to download (one per line; blank line to finish):")
     urls = []
-    
-    print("--- Fetch ---")
-    print("Default URLs:")
-    for u in DEFAULT_URLS:
-        print(f"  - {u}")
-    print("-" * 30)
-    
-    print("\nOptions:")
-    print("1. Use default list (additional URLs can be appended later)")
-    print("2. Completely override the default list")
-    
     while True:
-        choice = input("Select an option [1 or 2]: ").strip()
-        if choice in ['1', '2']:
+        try:
+            line = input("  url> ").strip()
+        except EOFError:
             break
-        print("Invalid choice. Enter 1 or 2.")
-
-    if choice == '1':
-        urls.extend(DEFAULT_URLS)
-        print("\nDefault list loaded.")
-    else:
-        print("\nDefault list overridden. Starting fresh.")
-
-    # Loop to add custom URLs
-    while True:
-        add_more = input("\nEnter a URL to add (or press Enter to proceed): ").strip()
-        if not add_more:
+        if not line:
             break
-        urls.append(add_more)
-        print(f"Added: {add_more}")
-
+        urls.append(line)
     return urls
 
-def download_and_process(urls, interactive=True):
-    """Downloads files, verifies integrity, handles collisions, and sets permissions."""
-    if not urls:
-        print("No URLs to download. Exiting.")
-        return []
 
-    print("\n--- Starting Fetch ---")
-    
-    req_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-    downloaded_files = set()
-    successful_downloads = []
+def download_and_process(urls, args):
+    seen = set()
+    lock_path = os.path.join(args.output_dir, args.lock_name)
+    lock = load_lockfile(lock_path) if args.lock else {}
+    results = []
+
+    os.makedirs(args.output_dir, exist_ok=True)
 
     for url in urls:
         print(f"\nFetching: {url}")
-        
-        try:
-            req = urllib.request.Request(url, headers=req_headers)
-            with urllib.request.urlopen(req, timeout=10) as response:
-                
-                filename = response.info().get_filename()
-                if not filename:
-                    parsed_url = urllib.parse.urlparse(response.url)
-                    filename = os.path.basename(parsed_url.path)
-                if not filename:
-                    filename = "downloaded_file.out"
-                
-                filename = get_unique_filename(filename, downloaded_files)
-                print(f"Target Filename: {filename}")
-                
-                file_data = response.read()
-                
-                if url in EXPECTED_HASHES:
-                    actual_hash = hashlib.sha256(file_data).hexdigest()
-                    if actual_hash != EXPECTED_HASHES[url]:
-                        print(f"SECURITY WARNING: Hash mismatch for '{filename}'.")
-                        print("Skipping file write and execution.")
-                        continue
+        # Provisional name only used for collision reservation; the authoritative
+        # name comes back from the response (handles redirects/Content-Disposition).
+        provisional = os.path.basename(urllib.parse.urlparse(url).path) or "downloaded.out"
+        reserved = get_unique_filename(provisional, seen)
+        dest_path = os.path.join(args.output_dir, reserved)
 
-                with open(filename, 'wb') as out_file:
-                    out_file.write(file_data)
-            
-            print(f"Success: Saved as '{filename}'")
-            successful_downloads.append(filename)
-            
-            # Determine execution permissions based on interactive flag
-            if interactive:
-                exec_prompt = input(f"Make '{filename}' executable? [Y/n]: ").strip().lower()
-                make_exec = exec_prompt in ['', 'y', 'yes']
-            else:
-                make_exec = True # Auto-approve in non-interactive mode
-            
-            if make_exec:
-                current_permissions = os.stat(filename).st_mode
-                os.chmod(filename, current_permissions | 0o111)
-                print(f"Permissions updated: '{filename}' is now executable.")
-            else:
-                print(f"Skipped execution permissions for '{filename}'.")
-                
-        except urllib.error.URLError as e:
-            print(f"Error downloading {url}: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred processing {url}: {e}")
+        ok, resolved, sha, nbytes = download_file(
+            url, dest_path, retries=args.retries, timeout=args.timeout
+        )
+        if not ok:
+            print(f"  Failed after {args.retries} attempts.")
+            results.append((url, None, False))
+            continue
 
-    return successful_downloads
+        verified, msg = verify_hash(
+            reserved, url, sha, EXPECTED_HASHES, lock, args.lock
+        )
+        print(f"  Saved '{dest_path}' ({human_size(nbytes)}) — {msg}")
+        if not verified:
+            print(f"  REJECTED: {msg}")
+            try:
+                os.remove(dest_path)
+            except OSError:
+                pass
+            results.append((url, None, False))
+            continue
+
+        # Decide on the executable bit.
+        if args.no_exec:
+            make_exec = False
+        elif args.exec or args.yes:
+            make_exec = True
+        else:
+            make_exec = input(f"  Make '{reserved}' executable? [Y/n]: ").strip().lower() in ("", "y", "yes")
+
+        if make_exec:
+            os.chmod(dest_path, os.stat(dest_path).st_mode | 0o111)
+            print(f"  '{reserved}' is now executable.")
+
+        results.append((url, dest_path, True))
+
+    if args.lock:
+        save_lockfile(lock_path, lock)
+
+    succeeded = [r for r in results if r[2]]
+    print(f"\nDone: {len(succeeded)}/{len(results)} succeeded.")
+    return [r[1] for r in succeeded]
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="fetch.py",
+        description="Fetch and process scripts/files over HTTP(S).",
+    )
+    parser.add_argument("urls", nargs="*", help="Specific URLs to download.")
+    parser.add_argument("-d", "--default", action="store_true",
+                        help="Include the built-in DEFAULT_URLS set.")
+    parser.add_argument("-y", "--yes", action="store_true",
+                        help="Non-interactive: assume yes to all prompts.")
+    parser.add_argument("--exec", action="store_true",
+                        help="Always set the executable bit on downloads.")
+    parser.add_argument("--no-exec", action="store_true",
+                        help="Never set the executable bit (overrides --exec/--yes).")
+    parser.add_argument("-o", "--output-dir", default=".",
+                        help="Directory to save files into (default: current dir).")
+    parser.add_argument("--retries", type=int, default=3,
+                        help="Retry attempts per file (default: 3).")
+    parser.add_argument("--timeout", type=float, default=15.0,
+                        help="Per-request timeout in seconds (default: 15).")
+    parser.add_argument("--lock", action="store_true", default=True,
+                        help="Use the trust-on-first-use hash lockfile (default: on).")
+    parser.add_argument("--no-lock", dest="lock", action="store_false",
+                        help="Disable the hash lockfile.")
+    parser.add_argument("--lock-name", default="fetch.lock.json",
+                        help="Lockfile name within the output dir.")
+    parser.add_argument("--version", action="version",
+                        version=f"%(prog)s {__version__}")
+    return parser
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
+
+    urls = list(DEFAULT_URLS) if args.default else []   # copy, never alias
+    urls.extend(args.urls)
+    if not urls:
+        urls = gather_urls()
+    if not urls:
+        print("No URLs provided. Try: python3 fetch.py --default  (or --help)")
+        return 1
+
+    download_and_process(urls, args)
+    return 0
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fetch and process scripts.", add_help=False)
-    parser.add_argument('urls', nargs='*', help="Specific URLs to download")
-    parser.add_argument('-d', '--default', action='store_true', help="Include default URLs")
-    parser.add_argument('-y', '--yes', action='store_true', help="Skip prompts and auto-confirm permissions")
-    parser.add_argument('-h', '--help', action='help', help="Show this help message and exit")
-    
-    args = parser.parse_args()
-
     try:
-        target_urls = []
-        
-        # Determine URL list based on CLI arguments
-        if args.urls or args.default:
-            if args.default:
-                target_urls.extend(DEFAULT_URLS)
-            target_urls.extend(args.urls)
-        else:
-            # Fall back to interactive mode if no arguments provided
-            target_urls = gather_urls()
-
-        # Run process. If --yes is passed or arguments were provided, assume non-interactive
-        is_interactive = not args.yes and not (args.urls or args.default)
-        
-        download_and_process(target_urls, interactive=is_interactive)
-        print("\nAll tasks completed successfully.")
-        
+        sys.exit(main())
     except KeyboardInterrupt:
-        print("\n\nProcess interrupted. Exiting.")
+        print("\nInterrupted.")
+        sys.exit(130)
