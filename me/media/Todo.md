@@ -10,6 +10,8 @@ curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/m
 # python3 plex.py
 curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/transmission.py
 # sudo python3 transmission.py --apply
+
+python ~/dev/lethil/me/fetch.py
 ```
 
 ## SSH
