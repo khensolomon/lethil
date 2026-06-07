@@ -2,7 +2,7 @@
 """
 Fetch — a small, dependency-free file downloader.
 
-version: 26.06.06-10
+version: 26.06.07-2
 
 What it does
 ------------
@@ -31,14 +31,37 @@ Usage
 
 Self-bootstrap one-liners
 -------------------------
-  Download script only:
-    python3 -c "import urllib.request; open('fetch.py','wb').write(urllib.request.urlopen('https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py').read())"
+  Set the source URL once, then run any snippet below. The URL appears a single
+  time; each command receives it (and any extra arguments) on the command line.
 
-  Save & launch:
-    python3 -c "import urllib.request,os; u='https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py'; d=urllib.request.urlopen(u).read(); open('fetch.py','wb').write(d); os.chmod('fetch.py',0o755); os.system('./fetch.py')"
+    RAW=https://raw.githubusercontent.com/khensolomon/lethil/master/me/fetch.py
 
-  Ghost / in-memory (executes remote code without touching disk — only run code you trust):
-    python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py').read().decode('utf-8'))"
+  1) Download only
+       python3 -c "import sys,urllib.request as r;r.urlretrieve(u:=sys.argv[1],u.split('/')[-1])" "$RAW"
+
+  2) Save & launch
+       python3 -c "import sys,os,urllib.request as r;r.urlretrieve(u:=sys.argv[1],f:=u.split('/')[-1]);os.system('python3 '+f)" "$RAW"
+     Forward extra args to the saved script (replaces the process via os.execv):
+       python3 -c "import os,sys,urllib.request as r;r.urlretrieve(u:=sys.argv[1],f:=u.split('/')[-1]);os.execv(sys.executable,[sys.executable,f,*sys.argv[2:]])" "$RAW" --default --yes -o ./bin
+
+  3) Ghost / in-memory  (runs remote code unverified — use a trusted source only)
+       python3 -c "import sys,urllib.request as r;exec(r.urlopen(sys.argv[1]).read())" "$RAW"
+     Pass arguments to the in-memory script (rewrites sys.argv first):
+       python3 -c "import sys,urllib.request as r;c=r.urlopen(u:=sys.argv[1]).read();sys.argv=[u.split('/')[-1],*sys.argv[2:]];exec(c)" "$RAW" --default --yes
+
+  Without a shell variable (download only, URL inline):
+       python3 -c "import urllib.request as r,os,sys;u=sys.argv[1];r.urlretrieve(u,os.path.basename(u))" https://raw.githubusercontent.com/khensolomon/lethil/master/me/fetch.py
+
+  Reference notes
+    - os.path.basename(u) and u.split('/')[-1] both yield the filename for these
+      raw URLs; basename is the safer choice for paths with trailing slashes.
+    - Save & launch: os.system spawns the script as a child process; the os.execv
+      form replaces the current process, forwards sys.argv[2:], and returns the
+      script's own exit code.
+    - Ghost without the sys.argv rewrite leaves argv as ['-c', URL, ...], so an
+      in-memory run reads the URL as its own first argument; the rewrite form
+      restores argv to [filename, *extra] so flags parse as they do on disk.
+    - Ghost mode performs no hash check before execution; review or pin the source.
 """
 
 import argparse
@@ -51,7 +74,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-__version__ = "26.06.06-10"
+__version__ = "26.06.07-2"
 
 # Built-in download set. Treated as read-only; copy before mutating.
 DEFAULT_URLS = [
