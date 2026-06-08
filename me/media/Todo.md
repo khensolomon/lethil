@@ -2,13 +2,13 @@
 
 ```bash
 cd ~/
-curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/setup.py
+curl -O https://raw.githubusercontent.com/khensolomon/lethil/master/me/media/setup.py
 # python3 setup.py
-curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/disks.py
+curl -O https://raw.githubusercontent.com/khensolomon/lethil/master/me/media/disks.py
 # python3 disks.py
-curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/plex.py
+curl -O https://raw.githubusercontent.com/khensolomon/lethil/master/me/media/plex.py
 # python3 plex.py
-curl -O https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/transmission.py
+curl -O https://raw.githubusercontent.com/khensolomon/lethil/master/me/media/transmission.py
 # sudo python3 transmission.py --apply
 
 python ~/dev/lethil/me/fetch.py

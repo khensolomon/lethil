@@ -29,14 +29,22 @@ These act on the local environment: creating VMs, building ISOs, helping with lo
 ### Self-bootstrap one-liners
 
 ```bash
-# Download script only:
-python3 -c "import urllib.request; open('fetch.py','wb').write(urllib.request.urlopen('https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py').read())"
 
-# Save & launch:
-python3 -c "import urllib.request,os; u='https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py'; d=urllib.request.urlopen(u).read(); open('fetch.py','wb').write(d); os.chmod('fetch.py',0o755); os.system('./fetch.py')"
+# 1. Download only:
+python3 -c "import sys,urllib.request as r;r.urlretrieve(u:=sys.argv[1],u.split('/')[-1])" https://raw.githubusercontent.com/khensolomon/lethil/master/me/fetch.py
 
-# Ghost / in-memory (executes remote code without touching disk — only run code you trust):
-python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/fetch.py').read().decode('utf-8'))"
+# 2. Save & launch:
+python3 -c "import sys,os,urllib.request as r;r.urlretrieve(u:=sys.argv[1],f:=u.split('/')[-1]);os.system('python3 '+f)" https://raw.githubusercontent.com/khensolomon/lethil/master/me/fetch.py
+# Save & launch — forwards argv[2:] to the saved file:
+python3 -c "import os,sys,urllib.request as r;r.urlretrieve(u:=sys.argv[1],f:=u.split('/')[-1]);os.execv(sys.executable,[sys.executable,f,*sys.argv[2:]])" https://raw.githubusercontent.com/khensolomon/lethil/master/me/fetch.py --default --yes --output-dir ./bin
+
+# 3. Ghost / in-memory (runs trusted code only):
+python3 -c "import sys,urllib.request as r;exec(r.urlopen(sys.argv[1]).read())" https://raw.githubusercontent.com/khensolomon/lethil/master/me/fetch.py
+# Ghost / in-memory — rewrites sys.argv, then exec:
+python3 -c "import sys,urllib.request as r;c=r.urlopen(u:=sys.argv[1]).read();sys.argv=[u.split('/')[-1],*sys.argv[2:]];exec(c)" https://raw.githubusercontent.com/khensolomon/lethil/master/me/fetch.py https://example.com/a.py https://example.com/b.py
+
+
+
 ```
 
 ### Symlink to /usr/local/bin (Recommended for single scripts)

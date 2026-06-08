@@ -78,10 +78,10 @@ __version__ = "26.06.07-2"
 
 # Built-in download set. Treated as read-only; copy before mutating.
 DEFAULT_URLS = [
-    "https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/setup.py",
-    "https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/disks.py",
-    "https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/plex.py",
-    "https://raw.githubusercontent.com/khensolomon/lethil/refs/heads/master/me/media/transmission.py",
+    "https://raw.githubusercontent.com/khensolomon/lethil/master/me/media/setup.py",
+    "https://raw.githubusercontent.com/khensolomon/lethil/master/me/media/disks.py",
+    "https://raw.githubusercontent.com/khensolomon/lethil/master/me/media/plex.py",
+    "https://raw.githubusercontent.com/khensolomon/lethil/master/me/media/transmission.py",
 ]
 
 # Optional hard-pinned hashes: {filename_or_url: "sha256hex"}.
