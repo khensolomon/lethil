@@ -5,7 +5,7 @@ Personal infrastructure toolkit. Everything in one repo: server bootstrap script
 ## What's here
 
 | Path | What it is | Where it runs |
-|---|---|---|
+| --- | --- | --- |
 | `server/` | Scripts that run on a remote server (bootstrap, backup, restart, etc.). The `setup.py` is the main one. | Server |
 | `apps/` | Source for static sites / SPAs that get deployed to a server. Each subdirectory is one app. | Deployed to server |
 | `me/` | Scripts for the operator's machine — VM creation, ISO building, local-dev helpers. | Operator's machine |
