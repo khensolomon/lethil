@@ -7,7 +7,6 @@ These act on the local environment: creating VMs, building ISOs, helping with lo
 - [fetch.py][fetch] — Fetch - a small, dependency-free file downloader.
 - [netplan_static.py][netplan_static]  — Netplan Static Address Helper
 - [setup.py][setup] — Docker Production Installation & Nginx Proxy Manager Setup
-- [create.py][secrets] — Project-Aware GitHub Secrets Manager
 - VM
   - [vm/create.py][vm] — create a local libvirt VM for testing
   - `user-data.yaml`
@@ -71,7 +70,6 @@ GitHub Actions runners are remote machines. They can't reach the local libvirt s
 [fetch]: fetch.py "Fetch"
 [netplan_static]: netplan_static.py "Netplan Static Address Helper"
 [setup]: setup.py "Setup"
-[secrets]: secrets.py "Project-Aware GitHub Secrets Manager"
 
 [vm]: vm/create.py "Ubuntu Cloud VM Manager"
 [iso_build]: iso/build.py "isobuilder"
