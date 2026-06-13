@@ -65,28 +65,10 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-# ── SECTION MAP ───────────────────────────────────────────────────────────────
-# constants & keys       ~  65
-# abort helper           ~  95
-# gh CLI wrappers        ~ 105
-# git root detection     ~ 195
-# .env parser            ~ 210
-# backup system          ~ 365
-# display helpers        ~ 440
-# partial key matching   ~ 480
-# cmd_overview           ~ 505
-# cmd_check              ~ 555
-# cmd_env_preview        ~ 610
-# cmd_status             ~ 625
-# cmd_diff               ~ 645
-# cmd_list               ~ 700
-# cmd_restore            ~ 710
-# cmd_init               ~ 745
-# cmd_rotate             ~ 830
-# cmd_push               ~ 900
-# parse_args             ~ 985
-# main                   ~ 1020
-# entry point            ~ 1110
+# ── SECTION MAP (search the banner comments below to jump) ────────────────────
+# CONSTANTS · ABORT HELPER · GH CLI WRAPPERS · GIT ROOT DETECTION · .env PARSER
+# BACKUP SYSTEM · DISPLAY HELPERS · PARTIAL KEY MATCHING · COMMANDS · ARGUMENT
+# PARSING · MAIN · ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -174,9 +156,10 @@ def abort(reason: str, hint: str = "") -> None:
     """Print a clear error message and exit. Execution never continues."""
     print(f"\n  ABORT: {reason}")
     if hint:
-        # Indent every line of the hint consistently
-        for line in hint.splitlines():
-            print(f"  Hint : {line}" if line == hint.splitlines()[0] else f"         {line}")
+        # Indent every line consistently. Position-based so identical hint
+        # lines never confuse the first-line check.
+        for i, line in enumerate(hint.splitlines()):
+            print(f"  Hint : {line}" if i == 0 else f"         {line}")
     print()
     sys.exit(1)
 
@@ -339,7 +322,9 @@ def _clean_line(line: str) -> str | None:
     Process one raw .env line:
       - Strip leading whitespace
       - Skip blank lines and full comment lines
-      - Strip inline comments (quote-aware — # inside quotes is preserved)
+      - Strip inline comments (quote-aware, and only when the '#' is preceded
+        by whitespace — so values such as BRAND=#0a0a0a or a password
+        containing '#' are preserved)
       - Normalise KEY = VALUE → KEY=VALUE around the first =
     Returns the cleaned string, or None if the line should be skipped.
     """
@@ -347,23 +332,25 @@ def _clean_line(line: str) -> str | None:
     if not line or line.startswith("#"):
         return None
 
-    out      = ""
+    out      = []
     in_quote = ""
+    prev     = ""
     for ch in line:
         if in_quote:
-            out += ch
+            out.append(ch)
             if ch == in_quote:
                 in_quote = ""
+        elif ch in ('"', "'"):
+            in_quote = ch
+            out.append(ch)
+        elif ch == "#" and prev.isspace():
+            # Inline comment: only when whitespace separates it from the value.
+            break
         else:
-            if ch in ('"', "'"):
-                in_quote = ch
-                out += ch
-            elif ch == "#":
-                break
-            else:
-                out += ch
+            out.append(ch)
+        prev = ch
 
-    out = out.rstrip()
+    out = "".join(out).rstrip()
 
     idx = out.find("=")
     if idx > 0:
@@ -635,7 +622,11 @@ def preview_value(key: str, value: str) -> str:
     if is_sensitive(key) or len(lines) > 1:
         if len(lines) > 1:
             return f"[{len(lines)} lines]"
-        masked = value[:6] + "*" * min(len(value) - 6, 20)
+        # Short secrets must not be shown in full; longer ones reveal a few
+        # leading chars only.
+        if len(value) <= 8:
+            return f"{'*' * len(value)}  ({len(value)} chars)"
+        masked = value[:4] + "*" * min(len(value) - 4, 20)
         return f"{masked}  ({len(value)} chars)"
     return value if len(value) <= 60 else value[:57] + "..."
 
@@ -872,11 +863,12 @@ def cmd_status(repo: str, env_data: dict) -> None:
 
 
 def cmd_diff(env_path: Path, backup_dir: Path) -> None:
-    """Show which Zone 1 keys changed between the last backup and now."""
+    """Show which keys changed between the last backup and the current .env."""
     header("DIFF — current .env vs last backup")
     print()
     print("  Note: --diff compares local backups, not GitHub.")
-    print("        GitHub secrets are write-only and cannot be read back.\n")
+    print("        GitHub secrets are write-only and cannot be read back.")
+    print("        Values are never shown — only per-key status.\n")
 
     backups = list_backups(backup_dir)
     if not backups:
@@ -894,39 +886,34 @@ def cmd_diff(env_path: Path, backup_dir: Path) -> None:
     ).strftime("%Y-%m-%d %H:%M:%S")
     print(f"  Comparing against: {latest_backup.name}  ({mtime})\n")
 
-    current  = parse_env_file(env_path)["bundle"]
-    previous = {}
-    try:
-        prev_text = latest_backup.read_text(encoding="utf-8")
-    except (PermissionError, OSError) as e:
-        abort(f"Cannot read backup file: {latest_backup}", str(e))
+    current  = parse_env_file(env_path)
+    previous = parse_env_file(latest_backup)
 
-    for line in prev_text.splitlines():
-        cleaned = _clean_line(line.rstrip())
-        if cleaned and "=" in cleaned:
-            k, _, v = cleaned.partition("=")
-            previous[k.strip()] = v.strip()
+    rows    = []
+    changed = 0
+    for zone in ("bundle", "individual"):
+        cur = current[zone]
+        prv = previous[zone]
+        for key in sorted(set(cur) | set(prv)):
+            in_cur = key in cur
+            in_prv = key in prv
+            if in_cur and not in_prv:
+                status = "ADDED"
+                changed += 1
+            elif in_prv and not in_cur:
+                status = "REMOVED"
+                changed += 1
+            elif cur.get(key) != prv.get(key):
+                status = "CHANGED"
+                changed += 1
+            else:
+                status = "same"
+            rows.append((key, zone, status))
 
-    all_keys = sorted(set(current) | set(previous))
-    rows     = []
-    changed  = 0
-
-    for key in all_keys:
-        cur = current.get(key)
-        prv = previous.get(key)
-        if cur is None:
-            rows.append((key, "—", "present", "REMOVED"))
-            changed += 1
-        elif prv is None:
-            rows.append((key, "present", "—", "ADDED"))
-            changed += 1
-        elif cur != prv:
-            rows.append((key, "changed", "was different", "CHANGED"))
-            changed += 1
-        else:
-            rows.append((key, "same", "same", ""))
-
-    print_table(rows, ("KEY", "CURRENT", "BACKUP", "STATUS"))
+    if rows:
+        print_table(rows, ("KEY", "ZONE", "STATUS"))
+    else:
+        print("  (no keys in either snapshot)\n")
 
     if changed:
         print(f"  {changed} key(s) changed since last backup.\n")
@@ -1089,13 +1076,13 @@ def cmd_rotate(repo: str, env_path: Path, backup_dir: Path) -> None:
         )
 
     env_data = parse_env_file(env_path)
-    zone    = env_data["individual"]
+    zone     = env_data["individual"]
     cur_path = zone.get(SSH_KEY_PATH_KEY)
 
     if not cur_path:
         abort(
-            f"{SSH_KEY_PATH_KEY} not set in .env Zone 3.",
-            "Add it below '# NOTE: development' or run --init."
+            f"{SSH_KEY_PATH_KEY} not set in the '#@ individual' zone of .env.",
+            "Add it under '#@ individual', or run:  python3 secrets.py --init"
         )
 
     cur_resolved = Path(cur_path).expanduser()
@@ -1270,9 +1257,9 @@ def parse_args():
     mode.add_argument("--push",       action="store_true", help="Push secrets to GitHub.")
     mode.add_argument("--status",     action="store_true", help="Compare local vs GitHub secrets.")
     mode.add_argument("--diff",       action="store_true", help="Show changes since last backup.")
-    mode.add_argument("--env-preview",action="store_true", help="Show cleaned Zone 1 (ENV_BASE).")
+    mode.add_argument("--env-preview",action="store_true", help="Show cleaned bundle zone (ENV_BASE).")
     mode.add_argument("--list",       action="store_true", help="List secret names on GitHub.")
-    mode.add_argument("--init",       action="store_true", help="Scaffold deployment section in .env.")
+    mode.add_argument("--init",       action="store_true", help="Ensure the zone markers exist in .env.")
     mode.add_argument("--restore",    action="store_true", help="Restore .env from a backup.")
     mode.add_argument("--rotate",     action="store_true", help="Guided SSH key rotation.")
     mode.add_argument("--check",      action="store_true", help="Verify gh, git, .env structure.")
