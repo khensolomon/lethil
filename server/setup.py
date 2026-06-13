@@ -1467,22 +1467,30 @@ def main():
 
     system_directories = [
         # Shared persistent storage used by both apps
-        {"path": "/opt/bucket",       "owner": "current-user", "permissions": 0o755},
-        {"path": "/opt/bucket/storage","owner": "current-user", "permissions": 0o755},
-        {"path": "/opt/bucket/media", "owner": "current-user", "permissions": 0o755},
+        {"path": "/opt/bucket",         "owner": "current-user", "permissions": 0o755},
+        {"path": "/opt/bucket/storage", "owner": "current-user", "permissions": 0o755},
+        {"path": "/opt/bucket/media",   "owner": "current-user", "permissions": 0o755},
         # Parent for all app deploy targets — must be owned by current-user
         # so the deploy workflow can create /opt/apps/<any-app> freely.
-        {"path": "/opt/apps",         "owner": "current-user", "permissions": 0o755},
+        {"path": "/opt/apps",           "owner": "current-user", "permissions": 0o755},
         # Document root for the landing-page nginx — bind-mounted read-only
         # into the container by setup_landing().
-        {"path": "/opt/apps/html",    "owner": "current-user", "permissions": 0o755},
+        {"path": "/opt/apps/html",      "owner": "current-user", "permissions": 0o755},
+
         # Per-app deployment directories (deploy.yml writes compose + .env here)
-        {"path": "/opt/myordbok",     "owner": "current-user", "permissions": 0o700},
-        {"path": "/opt/zaideih",      "owner": "current-user", "permissions": 0o700},
+        # myordbok
+        {"path": "/opt/myordbok",       "owner": "current-user", "permissions": 0o700},
+        #  MySQL data — uid 999 is the mysql user inside the container
+        {"path": "/opt/myordbok/mysql", "owner": "999",          "permissions": 0o700},
         # Django media uploads
-        {"path": "/opt/django/media", "owner": "current-user", "permissions": 0o755},
-        # MySQL data — uid 999 is the mysql user inside the container
-        {"path": "/opt/mysql/data",   "owner": "999",          "permissions": 0o755},
+        {"path": "/opt/myordbok/media", "owner": "current-user", "permissions": 0o755},
+
+        # zaideih
+        {"path": "/opt/zaideih",        "owner": "current-user", "permissions": 0o700},
+        #  MySQL data — uid 999 is the mysql user inside the container
+        {"path": "/opt/zaideih/mysql",  "owner": "999",          "permissions": 0o700},
+        # Django media uploads
+        {"path": "/opt/zaideih/media",  "owner": "current-user", "permissions": 0o755},
     ]
 
     # ── Admin subdomains ──────────────────────────────────────────────────────

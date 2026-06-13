@@ -173,10 +173,10 @@ jobs:
 
       - name: "[Self-Hosted] Build merged .env from secrets and variables"
         id: env_build
-        uses: khensolomon/lethil/.github/actions/build-env@main   # bump to @v1 when you tag
+        uses: khensolomon/lethil/.github/actions/build-env@master # bump to @v1 when you tag
         with:
-          env_base:      ${{ secrets.ENV_BASE }}
-          var_base:      ${{ vars.VAR_BASE }}
+          env_base: ${{ secrets.ENV_BASE }}
+          var_base: ${{ vars.VAR_BASE }}
           env_overrides: ${{ secrets.ENV_OVERRIDES }}
 
       # Place .env at /opt/<app>/.env for consistency with Tunnel/SSH deploy
@@ -384,10 +384,10 @@ jobs:
 
       - name: "[Tunnel] Build merged .env from secrets and variables"
         id: env_build
-        uses: khensolomon/lethil/.github/actions/build-env@main   # bump to @v1 when you tag
+        uses: khensolomon/lethil/.github/actions/build-env@master # bump to @v1 when you tag
         with:
-          env_base:      ${{ secrets.ENV_BASE }}
-          var_base:      ${{ vars.VAR_BASE }}
+          env_base: ${{ secrets.ENV_BASE }}
+          var_base: ${{ vars.VAR_BASE }}
           env_overrides: ${{ secrets.ENV_OVERRIDES }}
 
       - name: "[Tunnel] Ship files via SCP over tunnel"
@@ -527,10 +527,10 @@ jobs:
 
       - name: "[SSH] Build merged .env from secrets and variables"
         id: env_build
-        uses: khensolomon/lethil/.github/actions/build-env@main   # bump to @v1 when you tag
+        uses: khensolomon/lethil/.github/actions/build-env@master # bump to @v1 when you tag
         with:
-          env_base:      ${{ secrets.ENV_BASE }}
-          var_base:      ${{ vars.VAR_BASE }}
+          env_base: ${{ secrets.ENV_BASE }}
+          var_base: ${{ vars.VAR_BASE }}
           env_overrides: ${{ secrets.ENV_OVERRIDES }}
 
       - name: "[SSH] Ship files via native SCP"
@@ -688,10 +688,10 @@ jobs:
 
       - name: "[DryRun-SH] Build merged .env (no deploy)"
         id: env_build
-        uses: khensolomon/lethil/.github/actions/build-env@main   # bump to @v1 when you tag
+        uses: khensolomon/lethil/.github/actions/build-env@master # bump to @v1 when you tag
         with:
-          env_base:      ${{ secrets.ENV_BASE }}
-          var_base:      ${{ vars.VAR_BASE }}
+          env_base: ${{ secrets.ENV_BASE }}
+          var_base: ${{ vars.VAR_BASE }}
           env_overrides: ${{ secrets.ENV_OVERRIDES }}
 
       - name: "[DryRun-SH] Write dry-run summary"
@@ -737,10 +737,10 @@ jobs:
 
       - name: "[DryRun-Tu] Build merged .env (no deploy)"
         id: env_build
-        uses: khensolomon/lethil/.github/actions/build-env@main   # bump to @v1 when you tag
+        uses: khensolomon/lethil/.github/actions/build-env@master # bump to @v1 when you tag
         with:
-          env_base:      ${{ secrets.ENV_BASE }}
-          var_base:      ${{ vars.VAR_BASE }}
+          env_base: ${{ secrets.ENV_BASE }}
+          var_base: ${{ vars.VAR_BASE }}
           env_overrides: ${{ secrets.ENV_OVERRIDES }}
 
       - name: "[DryRun-Tu] Write dry-run summary"
@@ -786,10 +786,10 @@ jobs:
 
       - name: "[DryRun-SSH] Build merged .env (no deploy)"
         id: env_build
-        uses: khensolomon/lethil/.github/actions/build-env@main   # bump to @v1 when you tag
+        uses: khensolomon/lethil/.github/actions/build-env@master # bump to @v1 when you tag
         with:
-          env_base:      ${{ secrets.ENV_BASE }}
-          var_base:      ${{ vars.VAR_BASE }}
+          env_base: ${{ secrets.ENV_BASE }}
+          var_base: ${{ vars.VAR_BASE }}
           env_overrides: ${{ secrets.ENV_OVERRIDES }}
 
       - name: "[DryRun-SSH] Write dry-run summary"
