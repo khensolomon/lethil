@@ -1,0 +1,47 @@
+name: Reusable Clean Containers
+
+# ============================================================================
+# REUSABLE WORKFLOW — lives in khensolomon/lethil.
+# The per-repo bit (which GHCR packages to prune) comes in as a JSON string
+# and is expanded into the matrix with fromJSON().
+# ============================================================================
+
+on:
+  workflow_call:
+    inputs:
+      packages:
+        description: 'JSON array of package names, e.g. ["zaideih/nginx","zaideih/django"]'
+        type: string
+        required: true
+      owner:
+        description: "Package owner. Defaults to the calling repo's owner."
+        type: string
+        required: false
+        default: ""
+      min_versions_to_keep:
+        description: "How many recent versions to keep per package."
+        type: number
+        required: false
+        default: 5
+      delete_only_untagged:
+        description: "Only delete untagged/broken images (safer)."
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: ${{ fromJSON(inputs.packages) }}
+    steps:
+      - name: Delete old versions for ${{ matrix.package }}
+        uses: actions/delete-package-versions@v5
+        with:
+          owner: ${{ inputs.owner != '' && inputs.owner || github.repository_owner }}
+          package-name: ${{ matrix.package }}
+          package-type: 'container'
+          min-versions-to-keep: ${{ inputs.min_versions_to_keep }}
+          delete-only-untagged-versions: ${{ inputs.delete_only_untagged }}
+          token: ${{ secrets.DELETE_PACKAGES_TOKEN }}

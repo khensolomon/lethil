@@ -1,0 +1,157 @@
+name: Reusable Bulk Delete Container Versions
+
+# ============================================================================
+# REUSABLE WORKFLOW — lives in khensolomon/lethil.
+# Same sweep/keep logic as before; the package list is now an input and the
+# owner defaults to the calling repo's owner. The slash-in-package-name
+# URL-encoding (jq @uri) is preserved.
+# ============================================================================
+
+on:
+  workflow_call:
+    inputs:
+      packages:
+        description: 'JSON array of full GHCR package names, e.g. ["zaideih/django","zaideih/nginx"]'
+        type: string
+        required: true
+      owner:
+        description: "Package owner. Defaults to the calling repo's owner."
+        type: string
+        required: false
+        default: ""
+      min_versions_to_keep:
+        description: "How many recent versions to keep per package."
+        type: string
+        required: false
+        default: "5"
+      max_sweeps:
+        description: "Max delete sweeps per package (each sweep removes up to 100 versions)."
+        type: string
+        required: false
+        default: "3"
+      delete_only_untagged:
+        description: "Only delete untagged/broken images (safer)."
+        type: boolean
+        required: false
+        default: false
+      dry_run:
+        description: "Dry run — count versions, delete nothing."
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(inputs.packages) }}
+    env:
+      OWNER: ${{ inputs.owner != '' && inputs.owner || github.repository_owner }}
+    steps:
+      - name: Fetch versions for ${{ matrix.package }}
+        env:
+          GH_TOKEN: ${{ secrets.DELETE_PACKAGES_TOKEN }}
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          # URL-encode the slash in the package name
+          ENCODED=$(echo -n "$PACKAGE" | jq -sRr @uri)
+          echo "ENCODED=$ENCODED" >> $GITHUB_ENV
+
+          gh api "/user/packages/container/$ENCODED/versions?per_page=100" \
+            --paginate 2>/dev/null \
+            | jq -s 'if length == 0 then [] else add end' > versions.json
+
+          total=$(jq 'length' versions.json)
+          tagged=$(jq '[.[] | select(.metadata.container.tags | length > 0)] | length' versions.json)
+          untagged=$(jq '[.[] | select(.metadata.container.tags | length == 0)] | length' versions.json)
+
+          echo "BEFORE: $PACKAGE has $total versions ($tagged tagged, $untagged untagged)"
+          echo "BEFORE_COUNT=$total" >> $GITHUB_ENV
+
+          {
+            echo "### 📦 ${{ matrix.package }} — before"
+            echo "- Total versions: **$total**"
+            echo "- Tagged: $tagged"
+            echo "- Untagged: $untagged"
+            echo "- Will keep newest: ${{ inputs.min_versions_to_keep }}"
+            echo "- Max deletable this run: up to $(( ${{ inputs.max_sweeps }} * 100 ))"
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Delete old versions for ${{ matrix.package }}
+        if: ${{ !inputs.dry_run && env.BEFORE_COUNT != '0' }}
+        env:
+          GH_TOKEN: ${{ secrets.DELETE_PACKAGES_TOKEN }}
+          MAX_SWEEPS: ${{ inputs.max_sweeps }}
+          MIN_KEEP: ${{ inputs.min_versions_to_keep }}
+          PACKAGE: ${{ matrix.package }}
+          UNTAGGED_ONLY: ${{ inputs.delete_only_untagged }}
+        run: |
+          set +e
+          total_deleted=0
+
+          for i in $(seq 1 $MAX_SWEEPS); do
+            echo "::group::Sweep $i for $PACKAGE"
+
+            gh api "/user/packages/container/$ENCODED/versions?per_page=100" \
+              --paginate 2>/dev/null \
+              | jq -s 'if length == 0 then [] else add end' > current.json
+
+            remaining=$(jq 'length' current.json)
+            echo "Versions remaining: $remaining"
+
+            if [ "$remaining" -le "$MIN_KEEP" ]; then
+              echo "Nothing left to delete (remaining=$remaining ≤ keep=$MIN_KEEP)."
+              echo "::endgroup::"
+              break
+            fi
+
+            if [ "$UNTAGGED_ONLY" = "true" ]; then
+              filter='[.[] | select(.metadata.container.tags | length == 0)]'
+            else
+              filter='.'
+            fi
+
+            ids=$(jq -r "$filter | .[${MIN_KEEP}:] | .[:100] | .[].id" current.json)
+            count=$(echo "$ids" | grep -c . || true)
+            echo "Deleting $count versions in this sweep..."
+
+            deleted=0
+            failed=0
+            for id in $ids; do
+              if gh api -X DELETE \
+                  "/user/packages/container/$ENCODED/versions/$id" \
+                  --silent 2>/dev/null; then
+                deleted=$((deleted + 1))
+              else
+                failed=$((failed + 1))
+              fi
+            done
+            total_deleted=$((total_deleted + deleted))
+            echo "Sweep $i: deleted=$deleted, failed=$failed"
+            echo "::endgroup::"
+
+            if [ "$deleted" -eq 0 ]; then
+              echo "No deletions this sweep, stopping early."
+              break
+            fi
+          done
+
+          echo "TOTAL_DELETED=$total_deleted" >> $GITHUB_ENV
+
+      - name: Report final state for ${{ matrix.package }}
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.DELETE_PACKAGES_TOKEN }}
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          gh api "/user/packages/container/$ENCODED/versions?per_page=100" \
+            --paginate 2>/dev/null \
+            | jq -s 'if length == 0 then [] else add end' > after.json
+          after=$(jq 'length' after.json)
+          {
+            echo "### ✅ ${{ matrix.package }} — after"
+            echo "- Remaining: **$after**"
+            echo "- Deleted this run: **${TOTAL_DELETED:-0}**"
+          } >> $GITHUB_STEP_SUMMARY
