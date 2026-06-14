@@ -346,6 +346,11 @@ jobs:
           wget -q https://github.com/cloudflare/cloudflared/releases/download/${{ inputs.cloudflared_version }}/cloudflared-linux-amd64.deb
           sudo dpkg -i --force-overwrite cloudflared-linux-amd64.deb
 
+      - name: "[Tunnel] cloudflared version"
+        run: |
+          which -a cloudflared
+          cloudflared --version
+
       - name: "[Tunnel] Configure SSH via Cloudflare proxy"
         run: |
           mkdir -p ~/.ssh
