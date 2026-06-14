@@ -230,8 +230,8 @@ jobs:
           # Install cloudflared from Cloudflare's published .deb. The tunnel
           # transport cannot work without it on the runner.
           arch="$(dpkg --print-architecture)"
-          url="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}.deb"
-          curl -fsSL -o /tmp/cloudflared.deb "$url"
+          curl -fsSL -o /tmp/cloudflared.deb \
+            "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}.deb"
           sudo dpkg -i /tmp/cloudflared.deb
           cloudflared --version
           # The ProxyCommand carries the service token, so the WebSocket
