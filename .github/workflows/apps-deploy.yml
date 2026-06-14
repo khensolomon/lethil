@@ -233,6 +233,7 @@ jobs:
           url="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}.deb"
           curl -fsSL -o /tmp/cloudflared.deb "$url"
           sudo dpkg -i /tmp/cloudflared.deb
+          cloudflared --version
           # The ProxyCommand carries the service token, so the WebSocket
           # handshake to Cloudflare's edge is authorised non-interactively by
           # the Service Auth policy. It is written into ~/.ssh/config keyed on
