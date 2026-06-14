@@ -374,6 +374,15 @@ jobs:
           EOF
           chmod 600 ~/.ssh/config
 
+      - name: "[Tunnel] Check token shape"
+        env:
+          CF_SERVICE_TOKEN_ID: ${{ secrets.CF_SERVICE_TOKEN_ID }}
+          CF_SERVICE_TOKEN_SECRET: ${{ secrets.CF_SERVICE_TOKEN_SECRET }}
+        run: |
+          echo "id length:     ${#CF_SERVICE_TOKEN_ID}"
+          echo "ends .access:  $([[ "$CF_SERVICE_TOKEN_ID" == *.access ]] && echo yes || echo no)"
+          echo "secret length: ${#CF_SERVICE_TOKEN_SECRET}"
+
       - name: "[Tunnel] Debug cloudflared access"
         run: |
           cloudflared access ssh \
