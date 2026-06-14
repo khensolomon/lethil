@@ -1,4 +1,4 @@
-name: Reusable Clean Containers
+name: Reusable - Clean Containers
 
 # ============================================================================
 # REUSABLE WORKFLOW — lives in khensolomon/lethil.
@@ -41,7 +41,7 @@ jobs:
         with:
           owner: ${{ inputs.owner != '' && inputs.owner || github.repository_owner }}
           package-name: ${{ matrix.package }}
-          package-type: 'container'
+          package-type: "container"
           min-versions-to-keep: ${{ inputs.min_versions_to_keep }}
           delete-only-untagged-versions: ${{ inputs.delete_only_untagged }}
           token: ${{ secrets.DELETE_PACKAGES_TOKEN }}
