@@ -340,15 +340,22 @@ jobs:
           path: /usr/local/bin/cloudflared
           key: cloudflared-${{ inputs.cloudflared_version }}
 
-      - name: "[Tunnel] Install cloudflared (cache miss only)"
-        if: steps.cache-cloudflared.outputs.cache-hit != 'true'
-        run: |
-          wget -q https://github.com/cloudflare/cloudflared/releases/download/${{ inputs.cloudflared_version }}/cloudflared-linux-amd64.deb
-          sudo dpkg -i --force-overwrite cloudflared-linux-amd64.deb
+      # - name: "[Tunnel] Install cloudflared (cache miss only)"
+      #   if: steps.cache-cloudflared.outputs.cache-hit != 'true'
+      #   run: |
+      #     wget -q https://github.com/cloudflare/cloudflared/releases/download/${{ inputs.cloudflared_version }}/cloudflared-linux-amd64.deb
+      #     sudo dpkg -i --force-overwrite cloudflared-linux-amd64.deb
 
-      - name: "[Tunnel] cloudflared version"
+      # - name: "[Tunnel] cloudflared version"
+      #   run: |
+      #     which -a cloudflared
+      #     cloudflared --version
+      - name: "[Tunnel] Install cloudflared (latest)"
         run: |
-          which -a cloudflared
+          arch="$(dpkg --print-architecture)"
+          curl -fsSL -o /tmp/cloudflared.deb \
+            "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}.deb"
+          sudo dpkg -i /tmp/cloudflared.deb
           cloudflared --version
 
       - name: "[Tunnel] Configure SSH via Cloudflare proxy"
