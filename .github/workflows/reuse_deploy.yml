@@ -403,6 +403,20 @@ jobs:
           var_base: ${{ vars.VAR_BASE }}
           env_overrides: ${{ secrets.ENV_OVERRIDES }}
 
+      - name: "[Tunnel] Diagnose"
+        env:
+          CF_SERVICE_TOKEN_ID: ${{ secrets.CF_SERVICE_TOKEN_ID }}
+          CF_SERVICE_TOKEN_SECRET: ${{ secrets.CF_SERVICE_TOKEN_SECRET }}
+          HOSTV: ${{ vars.SERVER_HOSTNAME }}
+          HOSTS: ${{ secrets.SERVER_HOSTNAME }}
+        run: |
+          which -a cloudflared || true
+          cloudflared --version 2>/dev/null || "$HOME/.local/bin/cloudflared" --version || true
+          echo "id len:        ${#CF_SERVICE_TOKEN_ID}  ends .access: $([[ "$CF_SERVICE_TOKEN_ID" == *.access ]] && echo yes || echo no)"
+          echo "secret len:    ${#CF_SERVICE_TOKEN_SECRET}"
+          echo "host (var):    ${HOSTV:-<empty>}"
+          echo "host (secret): len ${#HOSTS}"
+
       - name: "[Tunnel] Ship files via SCP over tunnel"
         run: |
           ssh -F ~/.ssh/config prod-server "mkdir -p /opt/${{ inputs.app }}"
