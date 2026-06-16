@@ -378,42 +378,6 @@ jobs:
           EOF
           chmod 600 ~/.ssh/config
 
-      - name: "[Tunnel] Diagnose handshake (on failure)"
-        if: failure()
-        env:
-          CF_SERVICE_TOKEN_ID: ${{ secrets.CF_SERVICE_TOKEN_ID }}
-          CF_SERVICE_TOKEN_SECRET: ${{ secrets.CF_SERVICE_TOKEN_SECRET }}
-          HOST: ${{ vars.SERVER_HOSTNAME || secrets.SERVER_HOSTNAME }}
-        run: |
-          echo "===============  TUNNEL HANDSHAKE DIAGNOSTICS  ==============="
-          echo "--- cloudflared binary actually used ---"
-          which -a cloudflared || true
-          ( cloudflared --version || "$HOME/.local/bin/cloudflared" --version ) 2>/dev/null \
-            || echo "cloudflared not found"
-
-          echo "--- inputs (lengths only, no secret values) ---"
-          echo "host:           [${HOST}]"
-          echo "token id len:   ${#CF_SERVICE_TOKEN_ID}  ends .access: $([[ "$CF_SERVICE_TOKEN_ID" == *.access ]] && echo yes || echo NO)"
-          echo "token sec len:  ${#CF_SERVICE_TOKEN_SECRET}"
-
-          echo "--- Access decision for this token (the real handshake gate) ---"
-          code=$(curl -sS --max-time 15 -o /tmp/b -D /tmp/h -w '%{http_code}' "https://${HOST}/" \
-            -H "CF-Access-Client-Id: ${CF_SERVICE_TOKEN_ID}" \
-            -H "CF-Access-Client-Secret: ${CF_SERVICE_TOKEN_SECRET}") || code=000
-          echo "HTTP status:        ${code}"
-          echo "cf-ray:             $(grep -i '^cf-ray:'            /tmp/h | tr -d '\r' | awk '{print $2}')"
-          echo "cf-access-domain:   $(grep -i '^cf-access-domain:' /tmp/h | tr -d '\r' | awk '{print $2}')"
-          grep -ioE 'error code: *[0-9]{3,4}' /tmp/b | head -1 || true
-
-          echo "--- interpretation ---"
-          case "$code" in
-            403) echo ">> Access DENIED this token. Its UUID is not in the ssh app's Service Auth policy (after a rotation, re-attach the token), or the id/secret don't match. FIX IS ON CLOUDFLARE, not the server." ;;
-            530|1033|1016|502) echo ">> Access PASSED; failure is downstream. Check cloudflared on the server and the ingress route to ssh://localhost:22." ;;
-            000) echo ">> Could not reach the edge. Check that HOST resolves and is proxied (orange cloud)." ;;
-            *)   echo ">> Unexpected status ${code}; inspect /tmp/h." ;;
-          esac
-          echo "============================================================="
-
       - name: "[Tunnel] Debug cloudflared access"
         run: |
           cloudflared access ssh \
@@ -452,6 +416,42 @@ jobs:
           # (so the SCP action can read it), but on the server it holds real
           # secrets and must be 0600.
           ssh -F ~/.ssh/config prod-server "chmod 600 /opt/${{ inputs.app }}/.env"
+
+      - name: "[Tunnel] Diagnose handshake (on failure)"
+        if: failure()
+        env:
+          CF_SERVICE_TOKEN_ID: ${{ secrets.CF_SERVICE_TOKEN_ID }}
+          CF_SERVICE_TOKEN_SECRET: ${{ secrets.CF_SERVICE_TOKEN_SECRET }}
+          HOST: ${{ vars.SERVER_HOSTNAME || secrets.SERVER_HOSTNAME }}
+        run: |
+          echo "===============  TUNNEL HANDSHAKE DIAGNOSTICS  ==============="
+          echo "--- cloudflared binary actually used ---"
+          which -a cloudflared || true
+          ( cloudflared --version || "$HOME/.local/bin/cloudflared" --version ) 2>/dev/null \
+            || echo "cloudflared not found"
+
+          echo "--- inputs (lengths only, no secret values) ---"
+          echo "host:           [${HOST}]"
+          echo "token id len:   ${#CF_SERVICE_TOKEN_ID}  ends .access: $([[ "$CF_SERVICE_TOKEN_ID" == *.access ]] && echo yes || echo NO)"
+          echo "token sec len:  ${#CF_SERVICE_TOKEN_SECRET}"
+
+          echo "--- Access decision for this token (the real handshake gate) ---"
+          code=$(curl -sS --max-time 15 -o /tmp/b -D /tmp/h -w '%{http_code}' "https://${HOST}/" \
+            -H "CF-Access-Client-Id: ${CF_SERVICE_TOKEN_ID}" \
+            -H "CF-Access-Client-Secret: ${CF_SERVICE_TOKEN_SECRET}") || code=000
+          echo "HTTP status:        ${code}"
+          echo "cf-ray:             $(grep -i '^cf-ray:'            /tmp/h | tr -d '\r' | awk '{print $2}')"
+          echo "cf-access-domain:   $(grep -i '^cf-access-domain:' /tmp/h | tr -d '\r' | awk '{print $2}')"
+          grep -ioE 'error code: *[0-9]{3,4}' /tmp/b | head -1 || true
+
+          echo "--- interpretation ---"
+          case "$code" in
+            403) echo ">> Access DENIED this token. Its UUID is not in the ssh app's Service Auth policy (after a rotation, re-attach the token), or the id/secret don't match. FIX IS ON CLOUDFLARE, not the server." ;;
+            530|1033|1016|502) echo ">> Access PASSED; failure is downstream. Check cloudflared on the server and the ingress route to ssh://localhost:22." ;;
+            000) echo ">> Could not reach the edge. Check that HOST resolves and is proxied (orange cloud)." ;;
+            *)   echo ">> Unexpected status ${code}; inspect /tmp/h." ;;
+          esac
+          echo "============================================================="
 
       - name: "[Tunnel] Execute remote deployment over tunnel"
         run: |
