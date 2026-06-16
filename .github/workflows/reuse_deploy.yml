@@ -442,7 +442,13 @@ jobs:
           echo "HTTP status:        ${code}"
           echo "cf-ray:             $(grep -i '^cf-ray:'            /tmp/h | tr -d '\r' | awk '{print $2}')"
           echo "cf-access-domain:   $(grep -i '^cf-access-domain:' /tmp/h | tr -d '\r' | awk '{print $2}')"
+          echo "cf-mitigated:       $(grep -i '^cf-mitigated:' /tmp/h | tr -d '\r' | awk '{print $2}')"
+          echo "server:             $(grep -i '^server:'       /tmp/h | tr -d '\r' | awk '{print $2}')"
+          echo "--- body signature ---"
+          sed -n '1,12p' /tmp/b
+
           grep -ioE 'error code: *[0-9]{3,4}' /tmp/b | head -1 || true
+
 
           echo "--- interpretation ---"
           case "$code" in
@@ -451,6 +457,8 @@ jobs:
             000) echo ">> Could not reach the edge. Check that HOST resolves and is proxied (orange cloud)." ;;
             *)   echo ">> Unexpected status ${code}; inspect /tmp/h." ;;
           esac
+
+
 
           echo "host is the tunnel host? $([[ "$HOST" == "ssh.lethil.me" ]] && echo yes || echo 'NO  <-- this is the bug')"
           echo "============================================================="
