@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Swarm DB Manager - v.26.06.18-2
+Swarm DB Manager - v.26.06.18-4
 
 Description:
   Zero-dependency MySQL backup and restore engine for Docker Swarm stacks.
@@ -16,26 +16,25 @@ Layout (defaults):
   Rolling pointer: latest.sql.gz -> newest dump (relative symlink)
 
 Recognised .env keys:
-  DB_NAME        Database to back up. When set, the dump is scoped to this one
-                 database (mysqldump --databases <name>, self-contained on
-                 restore). When absent, the whole instance is dumped
-                 (--all-databases).
-  DB_ROOT_PWD    Root password. Preferred credential for dump/restore so the
-                 operation works regardless of per-database grants.
-                 Aliases: DB_ROOT_PASSWORD, MYSQL_ROOT_PASSWORD.
-  DB_PWD         Application password. Used as a fallback when no root password
-                 is present. Aliases: DB_PASSWORD, MYSQL_PASSWORD.
-  DB_USER        Login used only when falling back to DB_PWD. Default: root.
-                 Alias: MYSQL_USER.
-  DB_SERVICE_NAME  Full Swarm service name of the database (e.g. zaideih_db),
-                 used to locate the container. Alias: MYSQL_SERVICE_NAME.
-                 Falls back to DB_HOST only if DB_HOST equals the full service
-                 name (a short overlay alias such as 'db' will not match).
-  DB_HOST, DB_PORT  Not required: dump/restore run inside the container against
-                 localhost, so host and port are unused (DB_HOST is consulted
-                 only as the service-name fallback above).
+  DB_NAME        Database to back up. When DB_NAME, DB_USER and DB_PWD are all
+                 present the dump is scoped to this single database and runs as
+                 the application user (the common one-database-per-stack case).
+  DB_USER, DB_PWD  Application login. Preferred backup identity, since it has a
+                 real password and rights on its own database. Aliases for the
+                 password: DB_PASSWORD, MYSQL_PASSWORD; for the user: MYSQL_USER.
+  DB_ROOT_PWD    Root password. Used only as a fallback when an application
+                 login is not available, or for a whole-instance dump when
+                 DB_NAME is unset. Aliases: DB_ROOT_PASSWORD, MYSQL_ROOT_PASSWORD.
+                 Note: the official MySQL image leaves root password-less when
+                 started with MYSQL_ALLOW_EMPTY_PASSWORD=yes, in which case
+                 DB_ROOT_PWD will not authenticate -- use the application login.
   BACKUP_DIR     Overrides the storage root. Final path stays <root>/<app>/mysql.
   BACKUP_RETENTION_DAYS  Days to keep timestamped dumps. Default: 7.
+
+  DB_HOST, DB_PORT and a service name are NOT required. dump/restore run inside
+  the container against localhost, so host and port are unused; the database
+  service is assumed to be <app>_db (a compose `db:` service deploys as
+  <stack>_db). Set DB_SERVICE_NAME only to override that assumption.
 
 Resolution:
   An <app> argument is matched strictly: an existing directory that contains a
@@ -45,9 +44,9 @@ Resolution:
 
 Container lookup:
   The target container is found on the local node via the Swarm service label
-  (com.docker.swarm.service.name). `docker exec` only reaches local containers,
-  so a service scheduled on another node is reported clearly instead of failing
-  later with a confusing error.
+  (com.docker.swarm.service.name), defaulting the service name to <app>_db.
+  `docker exec` only reaches local containers, so a service scheduled on
+  another node is reported clearly instead of failing later.
 
 Safety:
   - A plan is printed before every action; nothing runs until confirmed.
@@ -77,13 +76,14 @@ from datetime import datetime
 from pathlib import Path
 
 # --- DEFAULTS ---
-APP_BASE_DIRS   = ["/opt"]                      # where <app> directories live (each holds a .env)
-STORAGE_BASE    = "/opt/bucket/storage"         # root of per-app backup storage
-DB_SUBDIR       = "mysql"                        # dumps live under <storage>/<app>/<subdir>/
-LATEST_NAME     = "latest.sql.gz"               # relative symlink to the newest dump
-RETENTION_DAYS  = 7                              # default; overridable via .env BACKUP_RETENTION_DAYS
-MIN_VALID_BYTES = 100                            # dumps smaller than this are treated as failures
-SWARM_LABEL     = "com.docker.swarm.service.name"
+APP_BASE_DIRS     = ["/opt"]                    # where <app> directories live (each holds a .env)
+STORAGE_BASE      = "/opt/bucket/storage"       # root of per-app backup storage
+DB_SUBDIR         = "mysql"                      # dumps live under <storage>/<app>/<subdir>/
+DB_SERVICE_SUFFIX = "db"                         # compose service name; full Swarm name is <app>_<suffix>
+LATEST_NAME       = "latest.sql.gz"             # relative symlink to the newest dump
+RETENTION_DAYS    = 7                            # default; overridable via .env BACKUP_RETENTION_DAYS
+MIN_VALID_BYTES   = 100                          # dumps smaller than this are treated as failures
+SWARM_LABEL       = "com.docker.swarm.service.name"
 
 
 # --- HELPERS ---
@@ -182,9 +182,9 @@ def list_backups(backup_dir):
 
 def find_local_container(service_name):
     """
-    Returns the local container ID for a Swarm service, or "" if none is running
-    on this node. Uses the service label because `docker exec` only reaches
-    containers on the local node, unlike `docker service ps` task IDs.
+    Returns the local container ID for a Swarm service, or "" if none runs on
+    this node. Uses the service label because `docker exec` only reaches local
+    containers, unlike `docker service ps` task IDs.
     """
     cmd = (
         "docker ps -q "
@@ -196,19 +196,19 @@ def find_local_container(service_name):
     return out.stdout.strip()
 
 
-def read_db_settings(env_vars, require_retention=False):
+def read_db_settings(env_vars, app_name, require_retention=False):
     """
-    Resolves credentials, target service, and dump scope from parsed .env values.
+    Resolves backup identity, target service, and dump scope from .env values.
 
-    Credential choice: the root password (DB_ROOT_PWD) is preferred so that a
-    full-instance dump and any restore succeed regardless of per-database
-    grants. The application password (DB_PWD) is used only as a fallback.
+    Identity: the application login (DB_USER/DB_PWD) is preferred and scoped to
+    its own DB_NAME -- it has a real password and rights on that database, and
+    does not depend on root, which the MySQL image may leave password-less.
+    Root (DB_ROOT_PWD) is used only when an application login is unavailable, or
+    for a whole-instance dump when DB_NAME is unset.
 
-    Scope: when DB_NAME is set the dump is restricted to that single database;
-    otherwise the whole instance is dumped.
+    Service: defaults to <app>_db; DB_SERVICE_NAME overrides if set.
     """
     name = env_vars.get("DB_NAME")
-
     app_user = env_vars.get("DB_USER") or env_vars.get("MYSQL_USER")
     app_pwd  = (env_vars.get("DB_PWD")
                 or env_vars.get("DB_PASSWORD")
@@ -217,20 +217,32 @@ def read_db_settings(env_vars, require_retention=False):
                 or env_vars.get("DB_ROOT_PASSWORD")
                 or env_vars.get("MYSQL_ROOT_PASSWORD"))
 
-    if root_pwd:
+    if name and app_user and app_pwd:
+        # Application user, single database. Dump tables only (no CREATE
+        # DATABASE), restore explicitly into <name> so app-level grants suffice.
+        user, password, cred_src = app_user, app_pwd, "DB_USER/DB_PWD"
+        scope, scope_label, restore_target = [name], f"database '{name}'", name
+    elif root_pwd:
         user, password, cred_src = "root", root_pwd, "DB_ROOT_PWD"
+        if name:
+            scope, scope_label, restore_target = ["--databases", name], f"database '{name}'", None
+        else:
+            scope, scope_label, restore_target = ["--all-databases"], "all databases", None
     else:
-        user, password, cred_src = (app_user or "root"), app_pwd, "DB_PWD"
+        # Last resort: whatever login exists; require_credentials reports if none.
+        user = app_user or "root"
+        password = app_pwd
+        cred_src = "DB_PWD"
+        if name:
+            scope, scope_label, restore_target = [name], f"database '{name}'", name
+        else:
+            scope, scope_label, restore_target = ["--all-databases"], "all databases", None
 
     service = env_vars.get("DB_SERVICE_NAME") or env_vars.get("MYSQL_SERVICE_NAME")
-    service_src = "DB_SERVICE_NAME"
-    if not service and env_vars.get("DB_HOST"):
-        service, service_src = env_vars["DB_HOST"], "DB_HOST"
-
-    if name:
-        scope, scope_label = ["--databases", name], f"database '{name}'"
+    if service:
+        service_src = "DB_SERVICE_NAME"
     else:
-        scope, scope_label = ["--all-databases"], "all databases"
+        service, service_src = f"{app_name}_{DB_SERVICE_SUFFIX}", "default"
 
     settings = {
         "name": name,
@@ -241,6 +253,7 @@ def read_db_settings(env_vars, require_retention=False):
         "service_src": service_src,
         "scope": scope,
         "scope_label": scope_label,
+        "restore_target": restore_target,
     }
     if require_retention:
         try:
@@ -250,33 +263,35 @@ def read_db_settings(env_vars, require_retention=False):
     return settings
 
 
-def require_credentials(db):
-    """Exits with a clear message if password or service name could not be resolved."""
+def require_password(db):
+    """Exits with a clear message if no usable database password was resolved."""
     if not db["password"]:
-        print("[-] Error: no database password in .env. Set DB_ROOT_PWD (preferred) or DB_PWD.",
+        print("[-] Error: no usable database password in .env. Set DB_USER + DB_PWD",
+              file=sys.stderr)
+        print("    (preferred) or DB_ROOT_PWD.", file=sys.stderr)
+        sys.exit(1)
+
+
+def resolve_container_or_exit(db):
+    """Finds the local DB container or exits with guidance."""
+    container_id = find_local_container(db["service"])
+    if not container_id:
+        print(f"[-] Error: no running container for service '{db['service']}' on this node.",
+              file=sys.stderr)
+        print("    Confirm it is running here:  docker service ls --format '{{.Name}}'",
+              file=sys.stderr)
+        print("    If the service name differs from <app>_db, set DB_SERVICE_NAME in .env.",
               file=sys.stderr)
         sys.exit(1)
-    if not db["service"]:
-        print("[-] Error: no database service in .env. Set DB_SERVICE_NAME to the full Swarm",
-              file=sys.stderr)
-        print("    service name (e.g. <app>_db). DB_HOST is used only if it equals that name.",
-              file=sys.stderr)
-        sys.exit(1)
+    return container_id
 
 
 # --- ACTIONS ---
 def export_db(app_dir, env_vars, assume_yes):
     """Dumps the database to <timestamp>.sql.gz and repoints latest.sql.gz."""
-    db = read_db_settings(env_vars, require_retention=True)
-    require_credentials(db)
-
-    container_id = find_local_container(db["service"])
-    if not container_id:
-        print(f"[-] Error: no container for service '{db['service']}' on this node.",
-              file=sys.stderr)
-        print("    The service may be scheduled on another node, or not running.",
-              file=sys.stderr)
-        sys.exit(1)
+    db = read_db_settings(env_vars, app_dir.name, require_retention=True)
+    require_password(db)
+    container_id = resolve_container_or_exit(db)
 
     target_backup_dir = backup_dir_for(app_dir, env_vars)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -343,16 +358,9 @@ def export_db(app_dir, env_vars, assume_yes):
 
 def import_db(app_dir, env_vars, backup_file_path, assume_yes):
     """Restores the database from an explicit archive or the latest dump."""
-    db = read_db_settings(env_vars)
-    require_credentials(db)
-
-    container_id = find_local_container(db["service"])
-    if not container_id:
-        print(f"[-] Error: no container for service '{db['service']}' on this node.",
-              file=sys.stderr)
-        print("    The service may be scheduled on another node, or not running.",
-              file=sys.stderr)
-        sys.exit(1)
+    db = read_db_settings(env_vars, app_dir.name)
+    require_password(db)
+    container_id = resolve_container_or_exit(db)
 
     target_backup_dir = backup_dir_for(app_dir, env_vars)
 
@@ -392,7 +400,7 @@ def import_db(app_dir, env_vars, backup_file_path, assume_yes):
             print(f"      ... and {len(available) - 10} more")
 
     print_kv("Restore from", f"{backup_file.name} ({human_size(backup_file.stat().st_size)})")
-    target_label = f"database '{db['name']}'" if db["name"] else "the database contents in the archive"
+    target_label = f"database '{db['name']}'" if db["name"] else "the archive contents"
     print_kv("Target", f"OVERWRITE {target_label} in '{db['service']}'")
 
     if not confirm_proceed(assume_yes, destructive=True):
@@ -402,11 +410,12 @@ def import_db(app_dir, env_vars, backup_file_path, assume_yes):
     print(f"[+] Importing into '{db['service']}'...")
     env = os.environ.copy()
     env["MYSQL_PWD"] = db["password"]
+    target = f" {shlex.quote(db['restore_target'])}" if db["restore_target"] else ""
     cmd = (
         "set -o pipefail; "
         f"gunzip < {shlex.quote(str(backup_file))} "
         f"| docker exec -i -e MYSQL_PWD {shlex.quote(container_id)} "
-        f"mysql -u{shlex.quote(db['user'])}"
+        f"mysql -u{shlex.quote(db['user'])}{target}"
     )
     if subprocess.run(cmd, shell=True, executable="/bin/bash", env=env).returncode == 0:
         print("[+] Import successful.")
@@ -482,8 +491,9 @@ if __name__ == "__main__":
     if app_dir is None:
         print(f"[-] Error: could not resolve '{target_dir_str}' to an app directory with a .env.",
               file=sys.stderr)
-        print(f"    Looked for a .env in the path itself and under {APP_BASE_DIRS}.",
+        print(f"    Pass an app name or path, e.g. '{action} zaideih'. Looked in the path itself",
               file=sys.stderr)
+        print(f"    and under {APP_BASE_DIRS}.", file=sys.stderr)
         sys.exit(1)
 
     configs = parse_env_file(app_dir / ".env")
