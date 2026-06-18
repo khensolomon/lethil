@@ -1,53 +1,124 @@
 #!/usr/bin/env python3
 """
-Swarm DB Manager - v.26.05.29-4
+Swarm DB Manager - v.26.06.18-2
 
 Description:
-  A zero-dependency database backup and restoration engine tailored for Docker 
-  Swarm environments running Django & MySQL stacks. It dynamically locates active 
-  running tasks across the Swarm cluster, parses local configuration secrets, and 
-  executes highly reliable, compressed database exports and imports.
+  Zero-dependency MySQL backup and restore engine for Docker Swarm stacks.
+  Resolves an app by name or path, reads its .env, locates the database
+  container running on the local node, and performs compressed dump/restore
+  over `docker exec`. Every run prints a plan of what was found and where the
+  data will go before anything is touched.
 
-Features:
-  * Dual-File Exporting: Generates a timestamped archive and automatically updates 
-    a 'mysql_backup_latest.sql.gz' relative symlink pointing to the newest backup.
-  * Application Path Resolution: Automatically resolves a simple app name (e.g. 'app_one') 
-    to its actual path by searching common directories (e.g., /home/ubuntu/apps, /var/www).
-  * Auto-Latest Restore Discovery: If the import command omits the backup file argument, 
-    the script automatically detects and offers to restore the most recent backup file.
-  * Pipefail Integration: Forwards execution to /bin/bash with 'pipefail' active 
-    to guarantee errors in the mysqldump pipeline fail the script immediately.
-  * Corrupt/Empty File Prevention: Assesses both execution exit-status and 
-    file-size footprints to clean up corrupt/empty archives on stream failures.
-  * Smart Parameter Routing: Simplifies cron and manual tasks by allowing omission 
-    of path parameters, defaulting directly to the current working directory.
-  * Built-in Safety Prompts: Includes explicit risk warning prompts before executing 
-    overwrites on active database instances.
+Layout (defaults):
+  App directory:   /opt/<app>/.env
+  Backup storage:  /opt/bucket/storage/<app>/mysql/
+  Dump files:      <timestamp>.sql.gz   (e.g. 20260618_143022.sql.gz)
+  Rolling pointer: latest.sql.gz -> newest dump (relative symlink)
+
+Recognised .env keys:
+  DB_NAME        Database to back up. When set, the dump is scoped to this one
+                 database (mysqldump --databases <name>, self-contained on
+                 restore). When absent, the whole instance is dumped
+                 (--all-databases).
+  DB_ROOT_PWD    Root password. Preferred credential for dump/restore so the
+                 operation works regardless of per-database grants.
+                 Aliases: DB_ROOT_PASSWORD, MYSQL_ROOT_PASSWORD.
+  DB_PWD         Application password. Used as a fallback when no root password
+                 is present. Aliases: DB_PASSWORD, MYSQL_PASSWORD.
+  DB_USER        Login used only when falling back to DB_PWD. Default: root.
+                 Alias: MYSQL_USER.
+  DB_SERVICE_NAME  Full Swarm service name of the database (e.g. zaideih_db),
+                 used to locate the container. Alias: MYSQL_SERVICE_NAME.
+                 Falls back to DB_HOST only if DB_HOST equals the full service
+                 name (a short overlay alias such as 'db' will not match).
+  DB_HOST, DB_PORT  Not required: dump/restore run inside the container against
+                 localhost, so host and port are unused (DB_HOST is consulted
+                 only as the service-name fallback above).
+  BACKUP_DIR     Overrides the storage root. Final path stays <root>/<app>/mysql.
+  BACKUP_RETENTION_DAYS  Days to keep timestamped dumps. Default: 7.
+
+Resolution:
+  An <app> argument is matched strictly: an existing directory that contains a
+  .env is used as-is; otherwise the bare name is looked up as <base>/<app>/.env
+  under APP_BASE_DIRS. Unrelated folders living under the base or storage
+  directories are never scanned or guessed.
+
+Container lookup:
+  The target container is found on the local node via the Swarm service label
+  (com.docker.swarm.service.name). `docker exec` only reaches local containers,
+  so a service scheduled on another node is reported clearly instead of failing
+  later with a confusing error.
+
+Safety:
+  - A plan is printed before every action; nothing runs until confirmed.
+  - Export proceeds automatically when stdin is not a TTY (cron-friendly).
+  - Import always requires confirmation in a terminal, or --yes when
+    non-interactive; a database is never overwritten silently.
+  - pipefail guards the dump and restore pipelines.
+  - Dumps smaller than the minimum size are deleted and reported as failures.
+  - The password is passed through the MYSQL_PWD environment variable, keeping
+    it out of the host and container process lists.
 
 Usage:
-  Export (Backup):
-    python3 ./apps/swarm/db.py export [<app_name> or /path/to/app]
+  Export:  python3 db.py export [<app>|/path/to/app] [--yes]
+  Import:  python3 db.py import [<app>|/path/to/app] [/path/to/backup.sql.gz] [--yes]
+  List:    python3 db.py list   [<app>|/path/to/app]
+  Help:    python3 db.py help
 
-  Import (Restore):
-    python3 ./apps/swarm/db.py import [<app_name> or /path/to/app] [/path/to/backup.sql.gz]
-    (Omitting the backup file path automatically selects the newest backup for that app)
+  Omitting <app> uses the current directory. Omitting the backup file on import
+  selects latest.sql.gz, or the newest dump if the pointer is missing.
 """
 
 import os
 import sys
+import shlex
 import subprocess
 from datetime import datetime
 from pathlib import Path
 
-# --- GLOBAL CONFIGURATION CONSTANTS ---
-DEFAULT_BACKUP_DIR = "/var/backups/swarm_apps"
-APPS_BASE_DIRS = [
-    "/home/ubuntu/apps",
-    "/home/ubuntu",
-    "/var/www",
-    "/apps",
-    "."
-]
+# --- DEFAULTS ---
+APP_BASE_DIRS   = ["/opt"]                      # where <app> directories live (each holds a .env)
+STORAGE_BASE    = "/opt/bucket/storage"         # root of per-app backup storage
+DB_SUBDIR       = "mysql"                        # dumps live under <storage>/<app>/<subdir>/
+LATEST_NAME     = "latest.sql.gz"               # relative symlink to the newest dump
+RETENTION_DAYS  = 7                              # default; overridable via .env BACKUP_RETENTION_DAYS
+MIN_VALID_BYTES = 100                            # dumps smaller than this are treated as failures
+SWARM_LABEL     = "com.docker.swarm.service.name"
+
+
+# --- HELPERS ---
+def human_size(n):
+    """Formats a byte count as a short human-readable string."""
+    size = float(n)
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if size < 1024 or unit == "TB":
+            return f"{int(size)} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+
+
+def print_kv(label, value):
+    """Prints a single aligned key/value line for a plan block."""
+    print(f"    {label + ':':<14}{value}")
+
+
+def confirm_proceed(assume_yes, destructive=False):
+    """
+    Decides whether to proceed after a plan has been shown.
+      - assume_yes (--yes)        -> always proceed.
+      - interactive terminal      -> ask y/N.
+      - non-interactive + safe    -> proceed (cron-friendly export).
+      - non-interactive + danger  -> refuse (no silent overwrite).
+    """
+    if assume_yes:
+        return True
+    if sys.stdin.isatty():
+        return input("Proceed? (y/N): ").strip().lower() in ("y", "yes")
+    if destructive:
+        print("[-] Refusing a destructive action in non-interactive mode without --yes.",
+              file=sys.stderr)
+        return False
+    return True
+
 
 def parse_env_file(env_path):
     """
@@ -58,244 +129,368 @@ def parse_env_file(env_path):
     if not env_path.exists():
         return env_vars
 
-    with open(env_path, 'r') as f:
+    with open(env_path, "r") as f:
         for line in f:
             line = line.strip()
-            # Ignore empty lines or comments
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
-            # Split at the first '=' only
-            if '=' in line:
-                key, value = line.split('=', 1)
+            if "=" in line:
+                key, value = line.split("=", 1)
                 key = key.strip()
                 value = value.strip()
-                # Strip wrapping quotes if present
                 if (value.startswith('"') and value.endswith('"')) or \
                    (value.startswith("'") and value.endswith("'")):
                     value = value[1:-1]
                 env_vars[key] = value
     return env_vars
 
+
 def resolve_app_directory(app_arg):
     """
-    Smarter Directory Resolution:
-    If app_arg is an existing directory path, returns it.
-    Otherwise, scans standard base directories looking for a folder matching app_arg
-    that contains a '.env' file.
+    Strict app resolution. Returns a Path or None.
+      1. If app_arg is a directory containing a .env, it is used directly.
+      2. Otherwise app_arg is treated as a bare name and looked up only as
+         <base>/<app_arg>/.env under APP_BASE_DIRS. No deep or fuzzy scanning,
+         so unrelated siblings under the base directories are ignored.
     """
     path_attempt = Path(app_arg).resolve()
-    if path_attempt.is_dir() and (path_attempt / '.env').exists():
+    if path_attempt.is_dir() and (path_attempt / ".env").exists():
         return path_attempt
 
-    # If it is a simple app name, look for it under known parent directories
-    for base_str in APPS_BASE_DIRS:
-        base_dir = Path(base_str).resolve()
-        if base_dir.is_dir():
-            # Check direct subdirectory
-            candidate = base_dir / app_arg
-            if candidate.is_dir() and (candidate / '.env').exists():
-                return candidate
-            
-            # Search one level deep for matching directories (e.g. user home subfolders)
-            try:
-                for sub in base_dir.iterdir():
-                    if sub.is_dir():
-                        nested_candidate = sub / app_arg
-                        if nested_candidate.is_dir() and (nested_candidate / '.env').exists():
-                            return nested_candidate
-                        if sub.name == app_arg and (sub / '.env').exists():
-                            return sub
-            except PermissionError:
-                continue
+    for base_str in APP_BASE_DIRS:
+        candidate = Path(base_str).resolve() / app_arg
+        if candidate.is_dir() and (candidate / ".env").exists():
+            return candidate
 
-    # Fallback to sibling directories in parent folder
-    sibling_candidate = Path("..").resolve() / app_arg
-    if sibling_candidate.is_dir() and (sibling_candidate / '.env').exists():
-        return sibling_candidate
+    return None
 
-    # Return the resolved path_attempt if search fails so that the script handles it gracefully
-    return path_attempt
 
-def get_swarm_container(db_service_name):
-    """
-    Dynamically fetches the container ID of the active running Swarm service task.
-    """
-    try:
-        swarm_cmd = f"docker service ps -q --filter 'desired-state=running' {db_service_name} | head -n1"
-        container_id = subprocess.check_output(swarm_cmd, shell=True, text=True).strip()
-        return container_id
-    except subprocess.CalledProcessError:
-        return ""
+def backup_dir_for(app_dir, env_vars):
+    """Computes <storage>/<app>/<subdir>; .env BACKUP_DIR overrides the storage root."""
+    base = env_vars.get("BACKUP_DIR") or STORAGE_BASE
+    return Path(base).resolve() / app_dir.name / DB_SUBDIR
 
-def export_db(app_path, env_vars):
+
+def list_backups(backup_dir):
+    """Returns timestamped dumps in a directory, newest first, excluding the pointer."""
+    if not backup_dir.is_dir():
+        return []
+    files = [f for f in backup_dir.glob("*.sql.gz")
+             if f.name != LATEST_NAME and not f.is_symlink()]
+    return sorted(files, key=lambda f: f.stat().st_mtime, reverse=True)
+
+
+def find_local_container(service_name):
     """
-    Backs up the database to a compressed .sql.gz archive with strict error-checking and retention cleanup.
-    Additionally updates a 'mysql_backup_latest.sql.gz' symbolic link to point to this new backup.
+    Returns the local container ID for a Swarm service, or "" if none is running
+    on this node. Uses the service label because `docker exec` only reaches
+    containers on the local node, unlike `docker service ps` task IDs.
     """
-    db_user = env_vars.get('DB_USER') or env_vars.get('MYSQL_USER') or 'root'
-    db_password = env_vars.get('DB_PASSWORD') or env_vars.get('MYSQL_PASSWORD') or env_vars.get('MYSQL_ROOT_PASSWORD')
-    db_service_name = env_vars.get('DB_SERVICE_NAME') or env_vars.get('MYSQL_SERVICE_NAME')
-    backup_dir_str = env_vars.get('BACKUP_DIR') or DEFAULT_BACKUP_DIR
-    retention_days = int(env_vars.get('BACKUP_RETENTION_DAYS', '7'))
-    
-    if not db_password:
-        print("[-] Error: Database password (DB_PASSWORD/MYSQL_PASSWORD) missing from .env", file=sys.stderr)
-        sys.exit(1)
-        
-    if not db_service_name:
-        print("[-] Error: Service name (DB_SERVICE_NAME/MYSQL_SERVICE_NAME) missing from .env", file=sys.stderr)
-        sys.exit(1)
-        
-    target_backup_dir = Path(backup_dir_str) / app_path.name
-    target_backup_dir.mkdir(parents=True, exist_ok=True)
-    
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_file = target_backup_dir / f"mysql_backup_{timestamp}.sql.gz"
-    latest_link = target_backup_dir / "mysql_backup_latest.sql.gz"
-    
-    container_id = get_swarm_container(db_service_name)
-    if not container_id:
-        print(f"[-] Error: No running container found for Swarm service '{db_service_name}'", file=sys.stderr)
-        sys.exit(1)
-        
-    print(f"[+] Exporting database from Swarm service '{db_service_name}'...")
-    
     cmd = (
-        f"set -o pipefail; "
-        f"docker exec -i {container_id} mysqldump "
-        f"-u{db_user} -p'{db_password}' "
-        f"--single-transaction --routines --triggers --all-databases "
-        f"| gzip > {backup_file}"
+        "docker ps -q "
+        f"-f label={SWARM_LABEL}={shlex.quote(service_name)} "
+        "| head -n1"
     )
-    
-    result = subprocess.run(cmd, shell=True, executable='/bin/bash')
-    
-    if result.returncode == 0 and backup_file.exists() and backup_file.stat().st_size > 100:
-        print(f"[+] Export successful: {backup_file} ({backup_file.stat().st_size} bytes)")
-        
-        # Smart relative symlink updating
-        try:
-            if latest_link.exists() or latest_link.is_symlink():
-                latest_link.unlink()
-            # Creating a relative symlink avoids broken paths if backup folder is moved or mounted elsewhere
-            latest_link.symlink_to(backup_file.name)
-            print(f"[+] Updated symlink: {latest_link} -> {backup_file.name}")
-        except Exception as e:
-            print(f"[!] Warning: Failed to create/update latest symlink: {e}", file=sys.stderr)
+    out = subprocess.run(cmd, shell=True, executable="/bin/bash",
+                         capture_output=True, text=True)
+    return out.stdout.strip()
 
-        # Retention management: Clean up old backups safely only after a successful dump
-        now = datetime.now()
-        for f in target_backup_dir.glob("*.sql.gz"):
-            # Ensure we do not accidentally delete our 'latest' symlink or a file named 'latest.sql.gz'
-            if f.name == "mysql_backup_latest.sql.gz":
-                continue
-            if (now - datetime.fromtimestamp(f.stat().st_mtime)).days > retention_days:
-                f.unlink()
-                print(f"[–] Deleted expired backup: {f.name}")
+
+def read_db_settings(env_vars, require_retention=False):
+    """
+    Resolves credentials, target service, and dump scope from parsed .env values.
+
+    Credential choice: the root password (DB_ROOT_PWD) is preferred so that a
+    full-instance dump and any restore succeed regardless of per-database
+    grants. The application password (DB_PWD) is used only as a fallback.
+
+    Scope: when DB_NAME is set the dump is restricted to that single database;
+    otherwise the whole instance is dumped.
+    """
+    name = env_vars.get("DB_NAME")
+
+    app_user = env_vars.get("DB_USER") or env_vars.get("MYSQL_USER")
+    app_pwd  = (env_vars.get("DB_PWD")
+                or env_vars.get("DB_PASSWORD")
+                or env_vars.get("MYSQL_PASSWORD"))
+    root_pwd = (env_vars.get("DB_ROOT_PWD")
+                or env_vars.get("DB_ROOT_PASSWORD")
+                or env_vars.get("MYSQL_ROOT_PASSWORD"))
+
+    if root_pwd:
+        user, password, cred_src = "root", root_pwd, "DB_ROOT_PWD"
     else:
-        print("[-] Error: Export failed or produced an empty backup file.", file=sys.stderr)
+        user, password, cred_src = (app_user or "root"), app_pwd, "DB_PWD"
+
+    service = env_vars.get("DB_SERVICE_NAME") or env_vars.get("MYSQL_SERVICE_NAME")
+    service_src = "DB_SERVICE_NAME"
+    if not service and env_vars.get("DB_HOST"):
+        service, service_src = env_vars["DB_HOST"], "DB_HOST"
+
+    if name:
+        scope, scope_label = ["--databases", name], f"database '{name}'"
+    else:
+        scope, scope_label = ["--all-databases"], "all databases"
+
+    settings = {
+        "name": name,
+        "user": user,
+        "password": password,
+        "cred_src": cred_src,
+        "service": service,
+        "service_src": service_src,
+        "scope": scope,
+        "scope_label": scope_label,
+    }
+    if require_retention:
+        try:
+            settings["retention"] = int(env_vars.get("BACKUP_RETENTION_DAYS", str(RETENTION_DAYS)))
+        except ValueError:
+            settings["retention"] = RETENTION_DAYS
+    return settings
+
+
+def require_credentials(db):
+    """Exits with a clear message if password or service name could not be resolved."""
+    if not db["password"]:
+        print("[-] Error: no database password in .env. Set DB_ROOT_PWD (preferred) or DB_PWD.",
+              file=sys.stderr)
+        sys.exit(1)
+    if not db["service"]:
+        print("[-] Error: no database service in .env. Set DB_SERVICE_NAME to the full Swarm",
+              file=sys.stderr)
+        print("    service name (e.g. <app>_db). DB_HOST is used only if it equals that name.",
+              file=sys.stderr)
+        sys.exit(1)
+
+
+# --- ACTIONS ---
+def export_db(app_dir, env_vars, assume_yes):
+    """Dumps the database to <timestamp>.sql.gz and repoints latest.sql.gz."""
+    db = read_db_settings(env_vars, require_retention=True)
+    require_credentials(db)
+
+    container_id = find_local_container(db["service"])
+    if not container_id:
+        print(f"[-] Error: no container for service '{db['service']}' on this node.",
+              file=sys.stderr)
+        print("    The service may be scheduled on another node, or not running.",
+              file=sys.stderr)
+        sys.exit(1)
+
+    target_backup_dir = backup_dir_for(app_dir, env_vars)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = target_backup_dir / f"{timestamp}.sql.gz"
+    latest_link = target_backup_dir / LATEST_NAME
+
+    print("[*] Export plan:")
+    print_kv("App", app_dir.name)
+    print_kv("App dir", app_dir)
+    print_kv("Database", db["scope_label"])
+    print_kv("DB service", f"{db['service']} (from {db['service_src']})")
+    print_kv("Auth", f"{db['user']} (from {db['cred_src']})")
+    print_kv("Container", f"{container_id} (local node)")
+    print_kv("Backup dir", target_backup_dir)
+    print_kv("New dump", backup_file.name)
+    print_kv("Pointer", f"{LATEST_NAME} -> {backup_file.name}")
+    print_kv("Retention", f"{db['retention']} days")
+
+    if not confirm_proceed(assume_yes, destructive=False):
+        print("[-] Export cancelled.")
+        return
+
+    target_backup_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[+] Exporting {db['scope_label']} from '{db['service']}'...")
+
+    env = os.environ.copy()
+    env["MYSQL_PWD"] = db["password"]
+    scope_str = " ".join(shlex.quote(s) for s in db["scope"])
+    cmd = (
+        "set -o pipefail; "
+        f"docker exec -i -e MYSQL_PWD {shlex.quote(container_id)} "
+        f"mysqldump -u{shlex.quote(db['user'])} "
+        f"--single-transaction --routines --triggers {scope_str} "
+        f"| gzip > {shlex.quote(str(backup_file))}"
+    )
+    result = subprocess.run(cmd, shell=True, executable="/bin/bash", env=env)
+
+    if result.returncode != 0 or not backup_file.exists() or backup_file.stat().st_size <= MIN_VALID_BYTES:
+        print("[-] Error: export failed or produced an empty backup file.", file=sys.stderr)
         if backup_file.exists():
             backup_file.unlink()
         sys.exit(1)
 
-def import_db(app_path, env_vars, backup_file_path=None):
-    """
-    Restores the database from a specified compressed archive or auto-detects the latest backup.
-    """
-    db_user = env_vars.get('DB_USER') or env_vars.get('MYSQL_USER') or 'root'
-    db_password = env_vars.get('DB_PASSWORD') or env_vars.get('MYSQL_PASSWORD') or env_vars.get('MYSQL_ROOT_PASSWORD')
-    db_service_name = env_vars.get('DB_SERVICE_NAME') or env_vars.get('MYSQL_SERVICE_NAME')
-    backup_dir_str = env_vars.get('BACKUP_DIR') or DEFAULT_BACKUP_DIR
-    
-    if not db_password or not db_service_name:
-        print("[-] Error: Missing database credentials or service name in .env", file=sys.stderr)
-        sys.exit(1)
-        
-    container_id = get_swarm_container(db_service_name)
+    print(f"[+] Export successful: {backup_file.name} ({human_size(backup_file.stat().st_size)})")
+
+    # Relative pointer so the folder can be moved or mounted elsewhere without breaking.
+    try:
+        if latest_link.exists() or latest_link.is_symlink():
+            latest_link.unlink()
+        latest_link.symlink_to(backup_file.name)
+        print(f"[+] Pointer updated: {LATEST_NAME} -> {backup_file.name}")
+    except OSError as e:
+        print(f"[!] Warning: failed to update {LATEST_NAME}: {e}", file=sys.stderr)
+
+    # Retention runs only after a confirmed successful dump.
+    now = datetime.now()
+    for f in target_backup_dir.glob("*.sql.gz"):
+        if f.name == LATEST_NAME or f.is_symlink():
+            continue
+        if (now - datetime.fromtimestamp(f.stat().st_mtime)).days > db["retention"]:
+            f.unlink()
+            print(f"[*] Deleted expired backup: {f.name}")
+
+
+def import_db(app_dir, env_vars, backup_file_path, assume_yes):
+    """Restores the database from an explicit archive or the latest dump."""
+    db = read_db_settings(env_vars)
+    require_credentials(db)
+
+    container_id = find_local_container(db["service"])
     if not container_id:
-        print(f"[-] Error: No running container for service '{db_service_name}'", file=sys.stderr)
+        print(f"[-] Error: no container for service '{db['service']}' on this node.",
+              file=sys.stderr)
+        print("    The service may be scheduled on another node, or not running.",
+              file=sys.stderr)
         sys.exit(1)
 
-    if not backup_file_path:
-        # Smart Auto-Detection of the latest backup
-        target_backup_dir = Path(backup_dir_str) / app_path.name
-        # Try checking if our smart symlink exists first, otherwise fallback to finding the newest file
-        latest_link = target_backup_dir / "mysql_backup_latest.sql.gz"
-        if latest_link.exists() or latest_link.is_symlink():
-            backup_file = latest_link.resolve()
-            print(f"[+] No backup file specified. Using target of 'latest' symlink: {backup_file.name}")
-        else:
-            backup_files = sorted(
-                [f for f in target_backup_dir.glob("*.sql.gz") if f.name != "mysql_backup_latest.sql.gz"], 
-                key=lambda x: x.stat().st_mtime
-            )
-            if not backup_files:
-                print(f"[-] Error: No backup files found in directory '{target_backup_dir}' to restore.", file=sys.stderr)
-                sys.exit(1)
-            backup_file = backup_files[-1]
-            print(f"[+] No backup file specified. Auto-detected latest backup file: {backup_file.name}")
+    target_backup_dir = backup_dir_for(app_dir, env_vars)
+
+    if backup_file_path:
+        backup_file = Path(backup_file_path).resolve()
     else:
-        backup_file = Path(backup_file_path)
+        latest_link = target_backup_dir / LATEST_NAME
+        if latest_link.is_symlink() and latest_link.resolve().exists():
+            backup_file = latest_link.resolve()
+        else:
+            candidates = list_backups(target_backup_dir)
+            if not candidates:
+                print(f"[-] Error: no dumps found in '{target_backup_dir}'.", file=sys.stderr)
+                sys.exit(1)
+            backup_file = candidates[0]
 
     if not backup_file.exists():
-        print(f"[-] Error: Backup file not found at {backup_file}", file=sys.stderr)
+        print(f"[-] Error: backup file not found at {backup_file}", file=sys.stderr)
         sys.exit(1)
-        
-    print(f"[!] WARNING: About to overwrite database in '{db_service_name}' using {backup_file.name}")
-    confirm = input("Are you sure you want to proceed? (y/N): ")
-    if confirm.lower() != 'y':
+
+    print("[*] Import plan:")
+    print_kv("App", app_dir.name)
+    print_kv("App dir", app_dir)
+    print_kv("DB service", f"{db['service']} (from {db['service_src']})")
+    print_kv("Auth", f"{db['user']} (from {db['cred_src']})")
+    print_kv("Container", f"{container_id} (local node)")
+    print_kv("Backup dir", target_backup_dir)
+
+    available = list_backups(target_backup_dir)
+    if available:
+        print("    Available:")
+        for f in available[:10]:
+            st = f.stat()
+            stamp = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M")
+            print(f"      {f.name:<24} {human_size(st.st_size):>9}  {stamp}")
+        if len(available) > 10:
+            print(f"      ... and {len(available) - 10} more")
+
+    print_kv("Restore from", f"{backup_file.name} ({human_size(backup_file.stat().st_size)})")
+    target_label = f"database '{db['name']}'" if db["name"] else "the database contents in the archive"
+    print_kv("Target", f"OVERWRITE {target_label} in '{db['service']}'")
+
+    if not confirm_proceed(assume_yes, destructive=True):
         print("[-] Import cancelled.")
         return
 
-    print(f"[+] Importing database into Swarm service '{db_service_name}'...")
-    cmd = f"set -o pipefail; gunzip < {backup_file} | docker exec -i {container_id} mysql -u{db_user} -p'{db_password}'"
-    
-    if subprocess.run(cmd, shell=True, executable='/bin/bash').returncode == 0:
-        print("[+] Import successful!")
+    print(f"[+] Importing into '{db['service']}'...")
+    env = os.environ.copy()
+    env["MYSQL_PWD"] = db["password"]
+    cmd = (
+        "set -o pipefail; "
+        f"gunzip < {shlex.quote(str(backup_file))} "
+        f"| docker exec -i -e MYSQL_PWD {shlex.quote(container_id)} "
+        f"mysql -u{shlex.quote(db['user'])}"
+    )
+    if subprocess.run(cmd, shell=True, executable="/bin/bash", env=env).returncode == 0:
+        print("[+] Import successful.")
     else:
-        print("[-] Error: Import failed.", file=sys.stderr)
+        print("[-] Error: import failed.", file=sys.stderr)
         sys.exit(1)
 
+
+def list_db(app_dir, env_vars):
+    """Prints the backup directory contents without restoring anything."""
+    target_backup_dir = backup_dir_for(app_dir, env_vars)
+    latest_link = target_backup_dir / LATEST_NAME
+
+    print("[*] Backups:")
+    print_kv("App", app_dir.name)
+    print_kv("Backup dir", target_backup_dir)
+    if latest_link.is_symlink():
+        print_kv("Pointer", f"{LATEST_NAME} -> {os.readlink(latest_link)}")
+
+    backups = list_backups(target_backup_dir)
+    if not backups:
+        print("    (no dumps found)")
+        return
+    for f in backups[:20]:
+        st = f.stat()
+        stamp = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M")
+        print(f"    {f.name:<24} {human_size(st.st_size):>9}  {stamp}")
+    if len(backups) > 20:
+        print(f"    ... and {len(backups) - 20} more")
+
+
+# --- ENTRY ---
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or sys.argv[1].lower() in ('-h', '--help', 'help'):
+    args = sys.argv[1:]
+    if not args or args[0].lower() in ("-h", "--help", "help"):
         print(__doc__.strip())
         sys.exit(0)
-        
-    action = sys.argv[1].lower()
-    
+
+    assume_yes = False
+    cleaned = []
+    for a in args:
+        if a in ("-y", "--yes"):
+            assume_yes = True
+        else:
+            cleaned.append(a)
+
+    action = cleaned[0].lower()
+    rest = cleaned[1:]
+
     target_dir_str = "."
     backup_file_arg = None
-    
-    if action == "export":
-        if len(sys.argv) >= 3:
-            target_dir_str = sys.argv[2]
+
+    if action in ("export", "list"):
+        if rest:
+            target_dir_str = rest[0]
     elif action == "import":
-        if len(sys.argv) == 3:
-            # Smart Parameter Parsing: Determine if argument is the app directory or the backup archive
-            arg = sys.argv[2]
+        if len(rest) == 1:
+            arg = rest[0]
             if arg.endswith(".sql.gz") or Path(arg).is_file():
                 backup_file_arg = arg
             else:
                 target_dir_str = arg
-        elif len(sys.argv) >= 4:
-            target_dir_str = sys.argv[2]
-            backup_file_arg = sys.argv[3]
+        elif len(rest) >= 2:
+            target_dir_str = rest[0]
+            backup_file_arg = rest[1]
     else:
-        print(f"[-] Error: Unknown action '{action}'. Use 'export' or 'import'.", file=sys.stderr)
+        print(f"[-] Error: unknown action '{action}'. Use 'export', 'import', or 'list'.",
+              file=sys.stderr)
         print("\n" + __doc__.strip())
         sys.exit(1)
-        
-    # Smart app directory resolution by path or name search
+
     app_dir = resolve_app_directory(target_dir_str)
-    env_path = app_dir / '.env'
-    
-    if not env_path.exists():
-        print(f"[-] Error: Resolved directory '{app_dir}' is not a valid app folder (.env file missing).", file=sys.stderr)
+    if app_dir is None:
+        print(f"[-] Error: could not resolve '{target_dir_str}' to an app directory with a .env.",
+              file=sys.stderr)
+        print(f"    Looked for a .env in the path itself and under {APP_BASE_DIRS}.",
+              file=sys.stderr)
         sys.exit(1)
-        
-    configs = parse_env_file(env_path)
-    
+
+    configs = parse_env_file(app_dir / ".env")
+
     if action == "export":
-        export_db(app_dir, configs)
+        export_db(app_dir, configs, assume_yes)
     elif action == "import":
-        import_db(app_dir, configs, backup_file_arg)
+        import_db(app_dir, configs, backup_file_arg, assume_yes)
+    elif action == "list":
+        list_db(app_dir, configs)
