@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Swarm DB Manager - v.26.06.18-12
+Swarm DB Manager - v.26.06.18-13
 
 Description:
   Zero-dependency MySQL backup and restore engine for Django + MySQL stacks.
@@ -30,14 +30,16 @@ Clean / exec -- DRY-RUN BY DEFAULT:
   Both run their SQL inside a transaction that is ROLLED BACK unless --apply is
   given, so nothing persists while testing. `mysql -t -v` shows output; add
   `SELECT ROW_COUNT();` after a delete to see how many rows it would touch.
-  Add --apply to commit for real. Output is minimal by default (just query
-  results, e.g. SELECT rows); --verbose restores echoed statements and boxed
-  tables for debugging.
-    clean : runs the standing set assets/db-query/*-clean.sql, in lexical order.
+  Add --apply to commit for real. By default each statement is echoed as it
+  runs (so you see what executes, on which table) with compact results;
+  --verbose adds boxed result tables, --quiet shows results only. Dry-run starts
+  the transaction via `mysql --init-command` (so the SET/START wrapper is never
+  echoed) and rolls back -- the only extra line is a trailing ROLLBACK.
+    clean : runs the standing set assets/queries/*-clean.sql, in lexical order.
             Only '-clean.sql' files run; other .sql files in the folder are
             ignored (keep notes/one-offs there freely). Source by mode:
-              local  -> disk:  <app>/assets/db-query/
-              docker -> inside the <app>_web container at /code/assets/db-query/
+              local  -> disk:  <app>/assets/queries/
+              docker -> inside the <app>_web container at /code/assets/queries/
             (so rules ship with the image; no separate copy needed).
     exec  : runs ONE ad-hoc .sql file (or - for stdin) -- one-off surgery or
             SELECT inspection.
@@ -55,7 +57,7 @@ Recognised .env keys:
                  is unset. Aliases: DB_ROOT_PASSWORD, MYSQL_ROOT_PASSWORD.
   DB_HOST, DB_PORT  Used in local mode. Default 127.0.0.1:3306.
   DB_SERVICE_NAME  Optional persistent service override (default <app>_db).
-  DB_CLEAN_DIR   Optional override for the clean dir (default assets/db-query).
+  DB_CLEAN_DIR   Optional override for the clean dir (default assets/queries).
   BACKUP_DIR     Overrides the storage root. Final path stays <root>/<app>/mysql.
   BACKUP_RETENTION_DAYS  Days to keep timestamped dumps. Default: 7.
 
@@ -76,7 +78,7 @@ Usage:
   Clean:   python3 db.py clean  [<app>|/path] [--apply] [--yes]
   Exec:    python3 db.py exec   [<app>|/path] <file.sql|-> [--apply] [--yes]
   List:    python3 db.py list   [<app>|/path]
-  Common:  [--local|--docker] [--service <name>] [--verbose]
+  Common:  [--local|--docker] [--service <name>] [--verbose|--quiet]
   Help:    python3 db.py help
 
   Omitting <app> uses the current directory.
@@ -97,8 +99,8 @@ STORAGE_BASE       = "/opt/bucket/storage"      # root of per-app backup storage
 DB_SUBDIR          = "mysql"                     # dumps live under <storage>/<app>/<subdir>/
 DB_SERVICE_SUFFIX  = "db"                        # compose service; full Swarm name is <app>_db
 WEB_SERVICE_SUFFIX = "web"                       # app code container; full Swarm name is <app>_web
-CONTAINER_CODE_DIR = "/code"                     # image WORKDIR; clean dir is <code>/assets/db-query
-CLEAN_REL          = "assets/db-query"          # repo-relative dir of clean scripts (disk + image)
+CONTAINER_CODE_DIR = "/code"                     # image WORKDIR; clean dir is <code>/assets/queries
+CLEAN_REL          = "assets/queries"           # repo-relative dir of clean scripts (disk + image)
 CLEAN_GLOB         = "*-clean.sql"             # only these run in the standing clean (opt-in tag)
 LATEST_NAME        = "latest.sql.gz"           # relative symlink to the newest dump
 RETENTION_DAYS     = 7                           # default; overridable via .env BACKUP_RETENTION_DAYS
@@ -347,18 +349,34 @@ def client_prefix(conn, db, client, extra=""):
             f"-u{shlex.quote(db['user'])}")
 
 
-def output_flags(verbose):
-    """mysql result formatting for clean/exec: minimal by default, boxed+echoed with --verbose."""
-    return "-t -v" if verbose else ""
+def output_flags(verbose, quiet):
+    """
+    mysql echo/format for clean/exec:
+      default   -> -v      (echo each statement, so you see what runs on what table)
+      --verbose -> -v -t   (also box the result tables)
+      --quiet   -> (none)  (results only, no statement echo)
+    """
+    if quiet:
+        return ""
+    return "-v -t" if verbose else "-v"
 
 
-def piped_sql(source_cmd, mysql_cmd, dry_run):
-    """Wraps a SQL source -> mysql pipe; in dry-run, brackets it in a rolled-back transaction."""
+def build_sql_run(source_cmd, conn, db, verbose, quiet, dry_run):
+    """
+    Builds the shell pipeline that streams SQL into mysql.
+
+    Dry-run starts the transaction via `mysql --init-command` (which is NOT
+    echoed, so the SET/START wrapper never appears in the output) and appends an
+    explicit ROLLBACK so nothing persists -- the only extra line shown is that
+    trailing ROLLBACK, confirming the run was a no-op.
+    """
+    target = f" {shlex.quote(db['name'])}" if db["name"] else ""
+    extra = output_flags(verbose, quiet)
     if dry_run:
-        begin = shlex.quote("SET autocommit=0; START TRANSACTION;")
-        end = shlex.quote("ROLLBACK;")
-        return f"set -o pipefail; {{ echo {begin}; {source_cmd}; echo {end}; }} | {mysql_cmd}"
-    return f"set -o pipefail; {source_cmd} | {mysql_cmd}"
+        extra = (f"{extra} " if extra else "") + "--init-command=" + shlex.quote("SET autocommit=0")
+    mysql = client_prefix(conn, db, "mysql", extra) + target
+    body = f"{{ {source_cmd}; echo {shlex.quote('ROLLBACK;')}; }}" if dry_run else f"{{ {source_cmd}; }}"
+    return f"set -o pipefail; {body} | {mysql}"
 
 
 def run_shell(cmd, db):
@@ -428,13 +446,11 @@ def clean_source_cmd(found):
     return f"docker exec {shlex.quote(found['web'])} sh -c {shlex.quote(inner)}"
 
 
-def run_clean(conn, db, found, apply, verbose):
+def run_clean(conn, db, found, apply, verbose, quiet):
     """Streams the discovered clean scripts into the live database (dry-run unless apply)."""
     tag = "apply" if apply else "DRY-RUN"
     print(f"[+] Clean ({tag}): {len(found['files'])} file(s)...")
-    target = f" {shlex.quote(db['name'])}" if db["name"] else ""
-    mysql = client_prefix(conn, db, "mysql", output_flags(verbose)) + target
-    cmd = piped_sql(clean_source_cmd(found), mysql, dry_run=not apply)
+    cmd = build_sql_run(clean_source_cmd(found), conn, db, verbose, quiet, dry_run=not apply)
     if run_shell(cmd, db) != 0:
         print("[-] Error: clean failed.", file=sys.stderr)
         sys.exit(1)
@@ -471,7 +487,7 @@ def maybe_upload_r2(app_name, local_dir, ready, assume_yes, no_r2):
 
 
 # --- ACTIONS ---
-def export_db(app_dir, env_vars, db, conn, assume_yes, do_clean, no_clean, apply, no_r2, verbose):
+def export_db(app_dir, env_vars, db, conn, assume_yes, do_clean, no_clean, apply, no_r2, verbose, quiet):
     """Cleans (optional), dumps to <timestamp>.sql.gz, repoints latest, copies to R2 (optional)."""
     target_backup_dir = backup_dir_for(app_dir, env_vars)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -533,7 +549,7 @@ def export_db(app_dir, env_vars, db, conn, assume_yes, do_clean, no_clean, apply
         else:
             run_now = False
         if run_now:
-            run_clean(conn, db, found, apply, verbose)
+            run_clean(conn, db, found, apply, verbose, quiet)
         else:
             print("[*] Skipped clean.")
 
@@ -634,7 +650,7 @@ def import_db(app_dir, env_vars, db, conn, backup_file_path, assume_yes):
         sys.exit(1)
 
 
-def clean_db(app_dir, env_vars, db, conn, assume_yes, apply, verbose):
+def clean_db(app_dir, env_vars, db, conn, assume_yes, apply, verbose, quiet):
     """Runs the standing clean set against the live database (dry-run unless --apply)."""
     found = discover_clean(app_dir, env_vars, conn)
     if found["kind"] == "none":
@@ -655,10 +671,10 @@ def clean_db(app_dir, env_vars, db, conn, assume_yes, apply, verbose):
         print("[-] Clean cancelled.")
         return
 
-    run_clean(conn, db, found, apply, verbose)
+    run_clean(conn, db, found, apply, verbose, quiet)
 
 
-def exec_db(app_dir, env_vars, db, conn, sql_arg, assume_yes, apply, verbose):
+def exec_db(app_dir, env_vars, db, conn, sql_arg, assume_yes, apply, verbose, quiet):
     """Runs one ad-hoc .sql file (or stdin) against the app DB (dry-run unless --apply)."""
     tmp = None
     if sql_arg == "-":
@@ -689,10 +705,8 @@ def exec_db(app_dir, env_vars, db, conn, sql_arg, assume_yes, apply, verbose):
         return
 
     print("[+] Executing ...")
-    target = f" {shlex.quote(db['name'])}" if db["name"] else ""
-    mysql = client_prefix(conn, db, "mysql", output_flags(verbose)) + target
     source = f"cat {shlex.quote(str(sql_path))}"
-    rc = run_shell(piped_sql(source, mysql, dry_run=not apply), db)
+    rc = run_shell(build_sql_run(source, conn, db, verbose, quiet, dry_run=not apply), db)
     if tmp:
         os.unlink(tmp.name)
 
@@ -733,7 +747,7 @@ if __name__ == "__main__":
         print(__doc__.strip())
         sys.exit(0)
 
-    assume_yes = apply = do_clean = no_clean = no_r2 = verbose = False
+    assume_yes = apply = do_clean = no_clean = no_r2 = verbose = quiet = False
     force_mode = None
     service_override = None
     cleaned = []
@@ -746,6 +760,8 @@ if __name__ == "__main__":
             apply = True
         elif a == "--verbose":
             verbose = True
+        elif a == "--quiet":
+            quiet = True
         elif a == "--clean":
             do_clean = True
         elif a == "--no-clean":
@@ -827,10 +843,10 @@ if __name__ == "__main__":
     connection = resolve_connection(settings, force_mode)
 
     if action == "export":
-        export_db(app_dir, configs, settings, connection, assume_yes, do_clean, no_clean, apply, no_r2, verbose)
+        export_db(app_dir, configs, settings, connection, assume_yes, do_clean, no_clean, apply, no_r2, verbose, quiet)
     elif action == "import":
         import_db(app_dir, configs, settings, connection, backup_file_arg, assume_yes)
     elif action == "clean":
-        clean_db(app_dir, configs, settings, connection, assume_yes, apply, verbose)
+        clean_db(app_dir, configs, settings, connection, assume_yes, apply, verbose, quiet)
     elif action == "exec":
-        exec_db(app_dir, configs, settings, connection, sql_arg, assume_yes, apply, verbose)
+        exec_db(app_dir, configs, settings, connection, sql_arg, assume_yes, apply, verbose, quiet)

@@ -55,6 +55,10 @@ python3 /opt/apps/swarm/db.py list
 cd ~/dev/zaideih
 python3 ~/dev/lethil/apps/swarm/db.py list
 python3 ~/dev/lethil/apps/swarm/db.py exec ~/dev/zaideih/assets/db-query/test.v01.sql
+python3 ~/dev/lethil/apps/order/db.py list
+python3 ~/dev/lethil/apps/order/db.py exec ~/dev/zaideih/assets/query/test.v01.sql
+python3 ~/dev/lethil/apps/order/db.py exec ~/dev/zaideih/assets/queries/test.v01.sql
+python3 ~/dev/lethil/apps/order/db.py exec ~/dev/zaideih/assets/db/test.v01.sql
 ```
 
 ## What's here
