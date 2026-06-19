@@ -10,11 +10,11 @@ Description:
   mirrors manage.py and the exit code is propagated unchanged.
 
 Equivalence:
-    python3 django.py <app> <command> [args...]
+  python3 django.py <app> <command> [args...]
   is the same as, from inside the app's directory,
-    python3 django.py <command> [args...]
+  python3 django.py <command> [args...]
   which forwards to
-    python3 manage.py <command> [args...]
+  python3 manage.py <command> [args...]
 
 App resolution:
   The first token is the app only if it resolves to a directory containing a
@@ -46,8 +46,8 @@ from pathlib import Path
 
 # --- DEFAULTS ---
 APP_BASE_DIRS      = ["/opt"]                   # base dirs for bare-name lookup (plus $DB_APP_DIRS)
-WEB_SERVICE_SUFFIX = "web"                       # app code container; full Swarm name is <app>_web
-CONTAINER_CODE_DIR = "/code"                     # image WORKDIR (where manage.py lives)
+WEB_SERVICE_SUFFIX = "web"                      # app code container; full Swarm name is <app>_web
+CONTAINER_CODE_DIR = "/code"                    # image WORKDIR (where manage.py lives)
 VENV_DIR           = "venv"                     # dev virtualenv at <app>/.venv
 SWARM_LABEL        = "com.docker.swarm.service.name"
 

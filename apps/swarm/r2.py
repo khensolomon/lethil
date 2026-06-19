@@ -1,47 +1,47 @@
 #!/usr/bin/env python3
 """
-Cloudflare R2 backup/restore tool for Docker Swarm apps - v26.05.12-3
+Cloudflare R2 - v26.05.12-3
 
 Config:   /opt/bucket/storage/access/r2.conf  (default; overridable via --config)
 
 Usage (run from inside an app's bucket folder, e.g. /opt/bucket/storage/myordbok/):
 
-    r2.py backup mysql              Dump live DB via docker exec, upload to R2
-    r2.py restore mysql             Download latest.sql.gz from R2 to ./mysql/
-    r2.py restore mysql --if-empty  Only restore if local latest.sql.gz missing
-    r2.py list mysql                Show available R2 dumps
-    r2.py prune mysql --keep 7      Delete old timestamped dumps, keep N newest
+  r2.py backup mysql              Dump live DB via docker exec, upload to R2
+  r2.py restore mysql             Download latest.sql.gz from R2 to ./mysql/
+  r2.py restore mysql --if-empty  Only restore if local latest.sql.gz missing
+  r2.py list mysql                Show available R2 dumps
+  r2.py prune mysql --keep 7      Delete old timestamped dumps, keep N newest
 
-    r2.py push <folder>             Upload local folder to R2 (overwrite)
-    r2.py pull <folder>             Download R2 folder to local (overwrite)
+  r2.py push <folder>             Upload local folder to R2 (overwrite)
+  r2.py pull <folder>             Download R2 folder to local (overwrite)
 
-    r2.py status                    Show all folders, handlers, and basic state
-    r2.py info                      Show detected stack, container, R2 connection
+  r2.py status                    Show all folders, handlers, and basic state
+  r2.py info                      Show detected stack, container, R2 connection
 
 Or operate on any app from any directory using --app:
 
-    r2.py push --app myapp env
-    r2.py pull --app myapp env
-    r2.py backup --app myapp mysql
-    r2.py status --app myapp
+  r2.py push --app myapp env
+  r2.py pull --app myapp env
+  r2.py backup --app myapp mysql
+  r2.py status --app myapp
 
 Or use sync for general-purpose, path-explicit copies (no cwd, no app):
 
-    r2.py sync r2:storage/myapp/configs/ /opt/foo/configs/    # download
-    r2.py sync /opt/foo/configs/ r2:storage/myapp/configs/    # upload
-    r2.py sync r2:storage/dumps/big.tar.gz /tmp/big.tar.gz    # single file
+  r2.py sync r2:storage/myapp/configs/ /opt/foo/configs/    # download
+  r2.py sync /opt/foo/configs/ r2:storage/myapp/configs/    # upload
+  r2.py sync r2:storage/dumps/big.tar.gz /tmp/big.tar.gz    # single file
 
 App detection:
-    A folder under <R2_ROOT>/<bucket>/<n>/ is considered an "app" if and
-    only if <APP_DEPLOY_ROOT>/<n>/.env exists on the host. This .env is
-    created by the GitHub Actions deploy pipeline. Folders like access/,
-    store/, etc. that are NOT deployed apps are correctly excluded without
-    any hardcoded list.
+  A folder under <R2_ROOT>/<bucket>/<n>/ is considered an "app" if and
+  only if <APP_DEPLOY_ROOT>/<n>/.env exists on the host. This .env is
+  created by the GitHub Actions deploy pipeline. Folders like access/,
+  store/, etc. that are NOT deployed apps are correctly excluded without
+  any hardcoded list.
 
 Credentials:
-    - R2 creds live in r2.conf (one file, host-wide)
-    - MySQL creds NEVER touch the host — script execs into container and uses
-      env vars already set there (DB_NAME, MYSQL_ROOT_PASSWORD, etc.)
+  - R2 creds live in r2.conf (one file, host-wide)
+  - MySQL creds NEVER touch the host — script execs into container and uses
+  env vars already set there (DB_NAME, MYSQL_ROOT_PASSWORD, etc.)
 """
 
 from __future__ import annotations
@@ -71,7 +71,6 @@ except ImportError:
         "    pip install boto3\n"
     )
     sys.exit(2)
-
 
 # ============================================================================
 # Constants and conventions

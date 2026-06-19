@@ -64,7 +64,14 @@ cd ~/
 python3 ~/dev/lethil/apps/swarm/django.py ~/dev/zaideih healthcheck
 cd ~/dev/zaideih
 python3 ~/dev/lethil/apps/swarm/django.py healthcheck
+```
 
+## Hash
+
+```bash
+python3 ~/dev/lethil/script/hash.py
+python3 ~/dev/lethil/script/hash.py -s "test"
+python3 ~/dev/lethil/script/hash.py -s "test" -t 21
 ```
 
 ## What's here
@@ -86,7 +93,6 @@ python3 ~/dev/lethil/apps/swarm/django.py healthcheck
 Every workflow is a thin dispatcher. The script it calls does the actual work. Hand-runnable. Same arguments, same result.
 
 The exception: deploying static apps from `apps/` is a generic operation (build → rsync), so the workflow handles it directly. Task-specific work (Cloudflare API calls in `setup.py`, future `backup-db`, etc.) lives in scripts.
-
 
 ## Quick start
 

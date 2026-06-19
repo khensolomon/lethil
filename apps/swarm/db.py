@@ -48,7 +48,6 @@ Offsite copy to R2 (optional, via rclone), after a successful export:
   If rclone + remote are present, the new dump is copied to
   <remote>:<base>/<app>/mysql/. Prompted in a terminal; automatic under cron.
   --no-r2 skips it. Only *.sql.gz dumps are sent (copy, not sync).
-
 Recognised .env keys:
   DB_NAME        Database to back up; scopes the dump and the clean/exec target.
   DB_USER, DB_PWD  Application login. Preferred. Password aliases: DB_PASSWORD,
@@ -96,18 +95,18 @@ from pathlib import Path
 # --- DEFAULTS ---
 APP_BASE_DIRS      = ["/opt"]                   # base dirs for bare-name lookup (plus $DB_APP_DIRS)
 STORAGE_BASE       = "/opt/bucket/storage"      # root of per-app backup storage
-DB_SUBDIR          = "mysql"                     # dumps live under <storage>/<app>/<subdir>/
-DB_SERVICE_SUFFIX  = "db"                        # compose service; full Swarm name is <app>_db
-WEB_SERVICE_SUFFIX = "web"                       # app code container; full Swarm name is <app>_web
-CONTAINER_CODE_DIR = "/code"                     # image WORKDIR; clean dir is <code>/assets/queries
+DB_SUBDIR          = "mysql"                    # dumps live under <storage>/<app>/<subdir>/
+DB_SERVICE_SUFFIX  = "db"                       # compose service; full Swarm name is <app>_db
+WEB_SERVICE_SUFFIX = "web"                      # app code container; full Swarm name is <app>_web
+CONTAINER_CODE_DIR = "/code"                    # image WORKDIR; clean dir is <code>/assets/queries
 CLEAN_REL          = "assets/queries"           # repo-relative dir of clean scripts (disk + image)
-CLEAN_GLOB         = "*-clean.sql"             # only these run in the standing clean (opt-in tag)
-LATEST_NAME        = "latest.sql.gz"           # relative symlink to the newest dump
-RETENTION_DAYS     = 7                           # default; overridable via .env BACKUP_RETENTION_DAYS
-MIN_VALID_BYTES    = 100                         # dumps smaller than this are treated as failures
+CLEAN_GLOB         = "*-clean.sql"              # only these run in the standing clean (opt-in tag)
+LATEST_NAME        = "latest.sql.gz"            # relative symlink to the newest dump
+RETENTION_DAYS     = 7                          # default; overridable via .env BACKUP_RETENTION_DAYS
+MIN_VALID_BYTES    = 100                        # dumps smaller than this are treated as failures
 SWARM_LABEL        = "com.docker.swarm.service.name"
-RCLONE_REMOTE      = "r2"                        # rclone remote name (configured on the host)
-RCLONE_BASE        = "storage"                   # remote base; dir = <remote>:<base>/<app>/<subdir>/
+RCLONE_REMOTE      = "r2"                       # rclone remote name (configured on the host)
+RCLONE_BASE        = "storage"                  # remote base; dir = <remote>:<base>/<app>/<subdir>/
 
 
 # --- HELPERS ---
