@@ -15,24 +15,31 @@
     window.$docsify = {
       name: 'Documentation',
       repo: 'https://github.com/khensolomon/lethil',
-      auto2top: true,
-      // 1. Automatically builds your sidebar menu from your markdown files
+      // Sidebar Config
       loadSidebar: true,
-      maxLevel: 3,
-      // 2. Turns on quick search
+      alias: {
+        '/.*/_sidebar.md': '/_sidebar.md' // Prevents sidebar fallback breaking on deep links
+      },
+      subMaxLevel: 2, // Automatically pulls headers from setup.md into your menu
+      auto2top: true,
+
+      // Search Config fixed for subfolders
       search: {
+        maxAge: 86400000,
+        paths: 'auto',
         placeholder: 'Search documentation...',
         noData: 'No results found!',
         depth: 6
       }
     }
   </script>
-  <!-- Docsify Core and Plugins -->
+
   <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+
   <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
-  <!-- Beautiful Prism.js syntax highlighting for your code blocks -->
+
   <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
-  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
 </body>
 
 </html>
