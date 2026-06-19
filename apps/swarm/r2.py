@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-r2.py — Cloudflare R2 backup/restore tool for Docker Swarm apps.
+Cloudflare R2 backup/restore tool for Docker Swarm apps - v26.05.12-3
 
-Source:   https://github.com/khensolomon/lethil/blob/master/apps/swarm/r2.py
 Config:   /opt/bucket/storage/access/r2.conf  (default; overridable via --config)
 
 Usage (run from inside an app's bucket folder, e.g. /opt/bucket/storage/myordbok/):

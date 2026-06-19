@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Swarm DB Manager - v.26.06.18-13
+Swarm DB Manager - v26.06.18-13
 
 Description:
   Zero-dependency MySQL backup and restore engine for Django + MySQL stacks.
