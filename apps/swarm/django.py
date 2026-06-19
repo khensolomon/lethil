@@ -10,11 +10,11 @@ Description:
   mirrors manage.py and the exit code is propagated unchanged.
 
 Equivalence:
-  python3 django.py <app> <command> [args...]
+    python3 django.py <app> <command> [args...]
   is the same as, from inside the app's directory,
-  python3 django.py <command> [args...]
+    python3 django.py <command> [args...]
   which forwards to
-  python3 manage.py <command> [args...]
+    python3 manage.py <command> [args...]
 
 App resolution:
   The first token is the app only if it resolves to a directory containing a
@@ -26,8 +26,8 @@ Mode (auto, no flag):
   <app>_web container running on this node -> docker: `docker exec` it (a TTY is
   attached for interactive commands such as createsuperuser and shell).
   Otherwise -> local: run the checkout's manage.py with its virtualenv python --
-  <app>/.venv/bin/python, else $VIRTUAL_ENV, else python3 (DJANGO_PYTHON
-  overrides). No manual `source .venv/bin/activate` is needed.
+  <app>/venv/bin/python, else $VIRTUAL_ENV, else python3 (DJANGO_PYTHON
+  overrides). No manual `source venv/bin/activate` is needed.
 
 Passthrough:
   No options of its own. manage.py flags (--help, --verbosity, --noinput, ...)
@@ -46,9 +46,9 @@ from pathlib import Path
 
 # --- DEFAULTS ---
 APP_BASE_DIRS      = ["/opt"]                   # base dirs for bare-name lookup (plus $DB_APP_DIRS)
-WEB_SERVICE_SUFFIX = "web"                      # app code container; full Swarm name is <app>_web
-CONTAINER_CODE_DIR = "/code"                    # image WORKDIR (where manage.py lives)
-VENV_DIR           = "venv"                     # dev virtualenv at <app>/.venv
+WEB_SERVICE_SUFFIX = "web"                       # app code container; full Swarm name is <app>_web
+CONTAINER_CODE_DIR = "/code"                     # image WORKDIR (where manage.py lives)
+VENV_DIR           = "venv"                      # dev virtualenv at <app>/venv
 SWARM_LABEL        = "com.docker.swarm.service.name"
 
 
@@ -88,21 +88,27 @@ def find_local_container(service_name):
 
 def local_python(app_dir):
     """
-    Resolves the interpreter for local mode without requiring an activated venv:
-    DJANGO_PYTHON -> <app>/.venv/bin/python -> $VIRTUAL_ENV/bin/python -> python3.
+    Resolves the interpreter for local mode without an activated venv. Returns
+    (interpreter, source). Search order:
+      DJANGO_PYTHON -> <app>/{venv,.venv,env}/bin/{python,python3}
+      -> $VIRTUAL_ENV/bin/python -> python3 (system).
+    A project venv living outside the checkout (poetry, pipenv, pyenv) is not
+    auto-discovered; point DJANGO_PYTHON at it, or activate it so $VIRTUAL_ENV is set.
     """
     override = os.environ.get("DJANGO_PYTHON")
     if override:
-        return override
-    venv = app_dir / VENV_DIR / "bin" / "python"
-    if venv.is_file():
-        return str(venv)
+        return override, "DJANGO_PYTHON"
+    for name in dict.fromkeys((VENV_DIR, "venv", ".venv", "env")):
+        for exe in ("python", "python3"):
+            candidate = app_dir / name / "bin" / exe
+            if candidate.is_file():
+                return str(candidate), f"{name}/bin/{exe}"
     active = os.environ.get("VIRTUAL_ENV")
     if active:
         candidate = Path(active) / "bin" / "python"
         if candidate.is_file():
-            return str(candidate)
-    return "python3"
+            return str(candidate), "VIRTUAL_ENV"
+    return "python3", "system"
 
 
 if __name__ == "__main__":
@@ -134,6 +140,7 @@ if __name__ == "__main__":
         argv = ["docker", "exec", tty, container, "python", "manage.py", *command]
         run_cwd = None
         where = f"docker / {web_service}"
+        interpreter = "python"
     else:
         manage = app_dir / "manage.py"
         if not manage.is_file():
@@ -142,12 +149,20 @@ if __name__ == "__main__":
             print("    In production the web service may be down; in dev, run from the app checkout.",
                   file=sys.stderr)
             sys.exit(2)
-        argv = [local_python(app_dir), "manage.py", *command]
+        interpreter, py_src = local_python(app_dir)
+        argv = [interpreter, "manage.py", *command]
         run_cwd = str(app_dir)
         where = f"local / {app_dir.name}"
+        if py_src == "system":
+            print(f"[!] No virtualenv found in {app_dir} (venv/.venv/env); using system python3,",
+                  file=sys.stderr)
+            print("    which likely lacks Django. Create <app>/venv, or set DJANGO_PYTHON to the",
+                  file=sys.stderr)
+            print('    interpreter that has Django (after activating once: DJANGO_PYTHON="$(command -v python)").',
+                  file=sys.stderr)
 
     # Notice goes to stderr so stdout stays purely manage.py's output.
-    print(f"[*] {where}: manage.py {' '.join(command)}".rstrip(), file=sys.stderr)
+    print(f"[*] {where}: {interpreter} manage.py {' '.join(command)}".rstrip(), file=sys.stderr)
 
     try:
         result = subprocess.run(argv, cwd=run_cwd)
