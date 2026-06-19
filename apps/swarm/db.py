@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Swarm DB Manager - v.26.06.18-4
+Swarm DB Manager - v.26.06.18-7
 
 Description:
   Zero-dependency MySQL backup and restore engine for Docker Swarm stacks.
@@ -15,6 +15,25 @@ Layout (defaults):
   Dump files:      <timestamp>.sql.gz   (e.g. 20260618_143022.sql.gz)
   Rolling pointer: latest.sql.gz -> newest dump (relative symlink)
 
+Pre-export clean (optional, per app):
+  If db_clean.sql is present in the app directory (/opt/<app>/db_clean.sql,
+  next to .env, or DB_CLEAN_FILE in .env), those statements run against the LIVE
+  database as the application user before the dump -- useful for deleting spam
+  rows so both the live DB and the backup come out clean. The app directory is
+  deliberate: it is not mounted into the database container, so the MySQL
+  entrypoint never mistakes this .sql for an init script (unlike the backup dir,
+  which may be bind-mounted to /docker-entrypoint-initdb.d). It is never
+  required: no file means no clean step. The plan flags it as a live-data
+  change, --no-clean skips it, and a failure aborts before any dump is taken.
+
+Offsite copy to R2 (optional, via rclone):
+  After a successful export, if rclone is installed and the remote is
+  configured, the new dump is copied to <remote>:<base>/<app>/mysql/. In a
+  terminal this is offered as a prompt; non-interactively (cron) it runs
+  automatically. --no-r2 skips it. A copy (not sync) is used, so R2 keeps its
+  own history independent of local retention. Only *.sql.gz dumps are sent;
+  db_clean.sql and the latest.sql.gz symlink are not.
+
 Recognised .env keys:
   DB_NAME        Database to back up. When DB_NAME, DB_USER and DB_PWD are all
                  present the dump is scoped to this single database and runs as
@@ -28,6 +47,9 @@ Recognised .env keys:
                  Note: the official MySQL image leaves root password-less when
                  started with MYSQL_ALLOW_EMPTY_PASSWORD=yes, in which case
                  DB_ROOT_PWD will not authenticate -- use the application login.
+  DB_CLEAN_FILE  Optional path to the pre-export clean script. Default:
+                 <app>/db_clean.sql (next to .env). Relative paths resolve under
+                 the app directory.
   BACKUP_DIR     Overrides the storage root. Final path stays <root>/<app>/mysql.
   BACKUP_RETENTION_DAYS  Days to keep timestamped dumps. Default: 7.
 
@@ -59,7 +81,7 @@ Safety:
     it out of the host and container process lists.
 
 Usage:
-  Export:  python3 db.py export [<app>|/path/to/app] [--yes]
+  Export:  python3 db.py export [<app>|/path/to/app] [--yes] [--no-clean] [--no-r2]
   Import:  python3 db.py import [<app>|/path/to/app] [/path/to/backup.sql.gz] [--yes]
   List:    python3 db.py list   [<app>|/path/to/app]
   Help:    python3 db.py help
@@ -71,6 +93,7 @@ Usage:
 import os
 import sys
 import shlex
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -84,6 +107,9 @@ LATEST_NAME       = "latest.sql.gz"             # relative symlink to the newest
 RETENTION_DAYS    = 7                            # default; overridable via .env BACKUP_RETENTION_DAYS
 MIN_VALID_BYTES   = 100                          # dumps smaller than this are treated as failures
 SWARM_LABEL       = "com.docker.swarm.service.name"
+CLEAN_FILE        = "db_clean.sql"              # optional pre-export cleaner in the app dir (NOT the backup dir)
+RCLONE_REMOTE     = "r2"                         # rclone remote name (configured on the host)
+RCLONE_BASE       = "storage"                    # remote base; dir = <remote>:<base>/<app>/<subdir>/
 
 
 # --- HELPERS ---
@@ -196,6 +222,35 @@ def find_local_container(service_name):
     return out.stdout.strip()
 
 
+def clean_file_for(app_dir, env_vars):
+    """Returns the pre-export clean script Path in the app dir if it exists, else None."""
+    override = env_vars.get("DB_CLEAN_FILE")
+    if override:
+        path = Path(override)
+        if not path.is_absolute():
+            path = app_dir / path
+    else:
+        path = app_dir / CLEAN_FILE
+    return path if path.is_file() else None
+
+
+def r2_remote_path(app_name):
+    """Remote directory for an app's dumps, e.g. r2:storage/zaideih/mysql/."""
+    return f"{RCLONE_REMOTE}:{RCLONE_BASE}/{app_name}/{DB_SUBDIR}/"
+
+
+def rclone_ready():
+    """Returns (ready, reason). Ready only if rclone exists and the remote is configured."""
+    if shutil.which("rclone") is None:
+        return False, "rclone not installed"
+    out = subprocess.run(["rclone", "listremotes"], capture_output=True, text=True)
+    if out.returncode != 0:
+        return False, "rclone listremotes failed"
+    if f"{RCLONE_REMOTE}:" not in out.stdout.split():
+        return False, f"remote '{RCLONE_REMOTE}:' not configured"
+    return True, ""
+
+
 def read_db_settings(env_vars, app_name, require_retention=False):
     """
     Resolves backup identity, target service, and dump scope from .env values.
@@ -229,7 +284,7 @@ def read_db_settings(env_vars, app_name, require_retention=False):
         else:
             scope, scope_label, restore_target = ["--all-databases"], "all databases", None
     else:
-        # Last resort: whatever login exists; require_credentials reports if none.
+        # Last resort: whatever login exists; require_password reports if none.
         user = app_user or "root"
         password = app_pwd
         cred_src = "DB_PWD"
@@ -286,9 +341,53 @@ def resolve_container_or_exit(db):
     return container_id
 
 
+def run_clean(container_id, db, clean_file):
+    """Runs the app's clean script against the live database. Aborts on failure."""
+    print(f"[+] Running pre-export clean against the live database: {clean_file.name}")
+    env = os.environ.copy()
+    env["MYSQL_PWD"] = db["password"]
+    target = f" {shlex.quote(db['name'])}" if db["name"] else ""
+    cmd = (
+        "set -o pipefail; "
+        f"docker exec -i -e MYSQL_PWD {shlex.quote(container_id)} "
+        f"mysql -u{shlex.quote(db['user'])}{target} "
+        f"< {shlex.quote(str(clean_file))}"
+    )
+    if subprocess.run(cmd, shell=True, executable="/bin/bash", env=env).returncode != 0:
+        print("[-] Error: pre-export clean failed; aborting before the dump.", file=sys.stderr)
+        sys.exit(1)
+    print("[+] Clean step completed.")
+
+
+def maybe_upload_r2(app_name, local_dir, ready, assume_yes, no_r2):
+    """Copies the backup dir to R2 when rclone is ready and not opted out."""
+    if no_r2 or not ready:
+        return
+    remote = r2_remote_path(app_name)
+    if assume_yes or not sys.stdin.isatty():
+        do_upload = True
+    else:
+        do_upload = input(f"[?] Upload backup to R2 ({remote})? (y/N): ").strip().lower() in ("y", "yes")
+    if not do_upload:
+        print("[*] Skipped R2 upload.")
+        return
+
+    print(f"[+] Uploading to R2: {remote}")
+    rc = subprocess.run(["rclone", "copy", str(local_dir), remote,
+                         "--include", "*.sql.gz"]).returncode
+    if rc == 0:
+        print("[+] R2 upload complete.")
+    else:
+        print("[!] Warning: R2 upload FAILED. The local backup is intact, but the offsite",
+              file=sys.stderr)
+        print("    copy did not complete. Exiting non-zero so automation can alert.",
+              file=sys.stderr)
+        sys.exit(1)
+
+
 # --- ACTIONS ---
-def export_db(app_dir, env_vars, assume_yes):
-    """Dumps the database to <timestamp>.sql.gz and repoints latest.sql.gz."""
+def export_db(app_dir, env_vars, assume_yes, no_clean, no_r2):
+    """Cleans (optional), dumps to <timestamp>.sql.gz, repoints latest, copies to R2 (optional)."""
     db = read_db_settings(env_vars, app_dir.name, require_retention=True)
     require_password(db)
     container_id = resolve_container_or_exit(db)
@@ -298,6 +397,25 @@ def export_db(app_dir, env_vars, assume_yes):
     backup_file = target_backup_dir / f"{timestamp}.sql.gz"
     latest_link = target_backup_dir / LATEST_NAME
 
+    clean_file = None if no_clean else clean_file_for(app_dir, env_vars)
+    r2_ready, r2_reason = rclone_ready()
+
+    if no_clean:
+        clean_label = "skipped (--no-clean)"
+    elif clean_file:
+        clean_label = f"{clean_file}  (MODIFIES live data before dump)"
+    else:
+        clean_label = "none"
+
+    if no_r2:
+        r2_label = "disabled (--no-r2)"
+    elif not r2_ready:
+        r2_label = f"skipped ({r2_reason})"
+    elif assume_yes or not sys.stdin.isatty():
+        r2_label = f"yes, automatic -> {r2_remote_path(app_dir.name)}"
+    else:
+        r2_label = f"will prompt -> {r2_remote_path(app_dir.name)}"
+
     print("[*] Export plan:")
     print_kv("App", app_dir.name)
     print_kv("App dir", app_dir)
@@ -305,18 +423,24 @@ def export_db(app_dir, env_vars, assume_yes):
     print_kv("DB service", f"{db['service']} (from {db['service_src']})")
     print_kv("Auth", f"{db['user']} (from {db['cred_src']})")
     print_kv("Container", f"{container_id} (local node)")
+    print_kv("Pre-clean", clean_label)
     print_kv("Backup dir", target_backup_dir)
     print_kv("New dump", backup_file.name)
     print_kv("Pointer", f"{LATEST_NAME} -> {backup_file.name}")
     print_kv("Retention", f"{db['retention']} days")
+    print_kv("R2 upload", r2_label)
 
+    # The single confirm covers the clean step (a live-data change) and the dump.
     if not confirm_proceed(assume_yes, destructive=False):
         print("[-] Export cancelled.")
         return
 
     target_backup_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[+] Exporting {db['scope_label']} from '{db['service']}'...")
 
+    if clean_file:
+        run_clean(container_id, db, clean_file)
+
+    print(f"[+] Exporting {db['scope_label']} from '{db['service']}'...")
     env = os.environ.copy()
     env["MYSQL_PWD"] = db["password"]
     scope_str = " ".join(shlex.quote(s) for s in db["scope"])
@@ -354,6 +478,8 @@ def export_db(app_dir, env_vars, assume_yes):
         if (now - datetime.fromtimestamp(f.stat().st_mtime)).days > db["retention"]:
             f.unlink()
             print(f"[*] Deleted expired backup: {f.name}")
+
+    maybe_upload_r2(app_dir.name, target_backup_dir, r2_ready, assume_yes, no_r2)
 
 
 def import_db(app_dir, env_vars, backup_file_path, assume_yes):
@@ -454,11 +580,15 @@ if __name__ == "__main__":
         print(__doc__.strip())
         sys.exit(0)
 
-    assume_yes = False
+    assume_yes = no_clean = no_r2 = False
     cleaned = []
     for a in args:
         if a in ("-y", "--yes"):
             assume_yes = True
+        elif a == "--no-clean":
+            no_clean = True
+        elif a == "--no-r2":
+            no_r2 = True
         else:
             cleaned.append(a)
 
@@ -499,7 +629,7 @@ if __name__ == "__main__":
     configs = parse_env_file(app_dir / ".env")
 
     if action == "export":
-        export_db(app_dir, configs, assume_yes)
+        export_db(app_dir, configs, assume_yes, no_clean, no_r2)
     elif action == "import":
         import_db(app_dir, configs, backup_file_arg, assume_yes)
     elif action == "list":

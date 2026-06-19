@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Repo Documentation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Clean, modern theme -->
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+</head>
+
+<body>
+  <div id="app">Loading documentation...</div>
+  <script>
+    window.$docsify = {
+      name: 'My Repo Docs',
+      repo: 'https://github.com/your-username/your-repo',
+      auto2top: true,
+      // 1. Automatically builds your sidebar menu from your markdown files
+      loadSidebar: true,
+      maxLevel: 3,
+      // 2. Turns on quick search
+      search: {
+        placeholder: 'Search documentation...',
+        noData: 'No results found!',
+        depth: 6
+      }
+    }
+  </script>
+  <!-- Docsify Core and Plugins -->
+  <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+  <!-- Beautiful Prism.js syntax highlighting for your code blocks -->
+  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+</body>
+
+</html>
