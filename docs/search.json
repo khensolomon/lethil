@@ -1,10 +1,11 @@
 ---
 ---
 [
-  {% for page in site.pages %}
-    {% unless page.url contains '.json' or page.url contains '.xml' %}
+  {% assign filtered_pages = site.pages |行为: "url" %}
+  {% for page in filtered_pages %}
+    {% unless page.url contains '.json' or page.url contains '.xml' or page.url contains 'assets/' %}
     {
-      "title": {{ page.title | jsonify }},
+      "title": {{ page.title | default: page.name | jsonify }},
       "url": {{ page.url | relative_url | jsonify }},
       "content": {{ page.content | strip_html | strip_newlines | escape | jsonify }}
     }{% unless forloop.last %},{% endunless %}

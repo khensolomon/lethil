@@ -91,7 +91,6 @@
       const resultsContainer = document.getElementById('search-results');
       if (!input) return;
 
-      // Fetch the search index data we will generate via Jekyll
       const response = await fetch("{{ '/search.json' | relative_url }}");
       const searchIndex = await response.json();
 
@@ -99,12 +98,13 @@
         const query = e.target.value.toLowerCase().trim();
         resultsContainer.innerHTML = '';
 
-        if (query.length < 2) return; // Don't search for 1-letter words
+        if (query.length < 2) return;
 
-        const matches = searchIndex.filter(page =>
-          page.title.toLowerCase().includes(query) ||
-          page.content.toLowerCase().includes(query)
-        );
+        const matches = searchIndex.filter(page => {
+          const title = page.title ? page.title.toLowerCase() : '';
+          const content = page.content ? page.content.toLowerCase() : '';
+          return title.includes(query) || content.includes(query);
+        });
 
         if (matches.length === 0) {
           resultsContainer.innerHTML = '<li>No results found</li>';
@@ -113,7 +113,7 @@
 
         matches.forEach(page => {
           const li = document.createElement('li');
-          li.innerHTML = `<a href="${page.url}">${page.title}</a>`;
+          li.innerHTML = `<a href="${page.url}">${page.title || 'Untitled Page'}</a>`;
           resultsContainer.appendChild(li);
         });
       });
