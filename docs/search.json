@@ -1,7 +1,7 @@
 ---
 ---
 [
-  {% assign filtered_pages = site.pages |行为: "url" %}
+  {% assign filtered_pages = site.pages | where_exp: "item", "item.url" %}
   {% for page in filtered_pages %}
     {% unless page.url contains '.json' or page.url contains '.xml' or page.url contains 'assets/' %}
     {

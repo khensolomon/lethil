@@ -7,93 +7,274 @@
   <title>{{ page.title }}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-coy.min.css">
   <style>
+    :root {
+      --bg-color: #f8fafc;
+      --surface-color: #ffffff;
+      --primary-color: #3b82f6;
+      --primary-hover: #2563eb;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --sidebar-width: 280px;
+      --transition-speed: 0.3s;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      color: var(--text-main);
       line-height: 1.6;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      color: #333;
-      background-color: #fafafa;
+      padding-top: 70px;
+      /* Space for fixed header */
     }
 
-    /* Make sure code blocks look nice and scroll horizontally on mobile */
-    pre {
-      padding: 15px;
-      border-radius: 6px;
-      overflow-x: auto;
+    /* Fixed Header Layer */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 70px;
+      background: var(--surface-color);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
     }
 
+    /* --- Pure CSS Sidebar Hack --- */
+    #sidebar-toggle {
+      display: none;
+    }
+
+    .menu-btn {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 24px;
+      height: 18px;
+      cursor: pointer;
+      z-index: 200;
+    }
+
+    .menu-btn span {
+      display: block;
+      height: 2px;
+      width: 100%;
+      background-color: var(--text-main);
+      border-radius: 2px;
+      transition: transform var(--transition-speed), opacity var(--transition-speed);
+    }
+
+    /* Animated Hamburger to X */
+    #sidebar-toggle:checked~header .menu-btn span:nth-child(1) {
+      transform: translateY(8px) rotate(45deg);
+    }
+
+    #sidebar-toggle:checked~header .menu-btn span:nth-child(2) {
+      opacity: 0;
+    }
+
+    #sidebar-toggle:checked~header .menu-btn span:nth-child(3) {
+      transform: translateY(-8px) rotate(-45deg);
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: calc(-1 * var(--sidebar-width));
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--surface-color);
+      border-right: 1px solid var(--border-color);
+      padding: 90px 24px 24px 24px;
+      box-shadow: var(--shadow-lg);
+      transition: transform var(--transition-speed) ease-in-out;
+      z-index: 90;
+    }
+
+    #sidebar-toggle:checked~.sidebar {
+      transform: translateX(var(--sidebar-width));
+    }
+
+    /* Navigation styling inside Sidebar */
     nav {
       display: flex;
-      gap: 15px;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #ddd;
+      flex-direction: column;
+      gap: 8px;
     }
 
     nav a {
-      color: #0066cc;
+      color: var(--text-muted);
       text-decoration: none;
-      font-weight: bold;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: background-color var(--transition-speed), color var(--transition-speed);
     }
 
     nav a:hover {
-      text-decoration: underline;
+      background-color: var(--bg-color);
+      color: var(--text-main);
     }
 
     nav a.active {
-      color: #ffffff;
-      background-color: #0066cc;
-      font-weight: bold;
-      text-decoration: none;
+      color: var(--surface-color);
+      background-color: var(--primary-color);
     }
 
+    /* --- Improved Search UI --- */
     .search-container {
-      margin: 20px 0;
+      position: relative;
+      width: 300px;
     }
 
     #search-input {
       width: 100%;
-      padding: 8px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      padding: 8px 16px;
+      font-size: 14px;
+      color: var(--text-main);
+      background-color: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+    }
+
+    #search-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      background-color: var(--surface-color);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
 
     .search-results-list {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 360px;
+      max-height: 400px;
+      overflow-y: auto;
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
       list-style: none;
-      padding: 0;
+      display: none;
+      z-index: 110;
+    }
+
+    .search-results-list.has-results {
+      display: block;
     }
 
     .search-results-list li {
-      margin: 10px 0;
+      border-bottom: 1px solid var(--border-color);
     }
 
-    hr {
-      border: 0;
-      border-top: 1px solid #ddd;
+    .search-results-list li:last-child {
+      border-bottom: none;
+    }
+
+    .search-results-list a {
+      display: block;
+      padding: 12px 16px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .search-results-list a:hover {
+      background-color: var(--bg-color);
+    }
+
+    .search-results-list .result-title {
+      font-weight: 600;
+      color: var(--primary-color);
+      display: block;
+      font-size: 14px;
+    }
+
+    .search-results-list .result-snippet {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .search-results-list .no-results {
+      padding: 16px;
+      color: var(--text-muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    mark {
+      background-color: #fef08a;
+      color: #854d0e;
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+
+    /* --- Main Layout Content --- */
+    main {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 24px;
+    }
+
+    pre {
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
       margin: 20px 0;
     }
   </style>
 </head>
 
 <body>
-  <nav>
-    <a href="{{ '/' | relative_url }}" class="{% if page.url == '/' %}active{% endif %}">Home</a>
-    <a href="{{ '/setup.html' | relative_url }}" class="{% if page.url == '/setup.html' %}active{% endif %}">Setup</a>
-    <a href="{{ '/instructions.html' | relative_url }}"
-      class="{% if page.url == '/instructions.html' %}active{% endif %}">Instructions</a>
-    <a href="{{ '/summary.html' | relative_url }}"
-      class="{% if page.url == '/summary.html' %}active{% endif %}">Summary</a>
-    <a href="{{ '/description.html' | relative_url }}"
-      class="{% if page.url == '/description.html' %}active{% endif %}">Description</a>
-  </nav>
 
-  <div class="search-container">
-    <input type="text" id="search-input" placeholder="Search pages...">
-    <ul id="search-results" class="search-results-list"></ul>
-  </div>
+  <input type="checkbox" id="sidebar-toggle">
+
+  <header>
+    <label for="sidebar-toggle" class="menu-btn">
+      <span></span>
+      <span></span>
+      <span></span>
+    </label>
+
+    <div class="search-container">
+      <input type="text" id="search-input" placeholder="Search pages...">
+      <ul id="search-results" class="search-results-list"></ul>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <nav>
+      <a href="{{ '/' | relative_url }}" class="{% if page.url == '/' %}active{% endif %}">Home</a>
+      <a href="{{ '/setup.html' | relative_url }}" class="{% if page.url == '/setup.html' %}active{% endif %}">Setup</a>
+      <a href="{{ '/instructions.html' | relative_url }}"
+        class="{% if page.url == '/instructions.html' %}active{% endif %}">Instructions</a>
+      <a href="{{ '/summary.html' | relative_url }}"
+        class="{% if page.url == '/summary.html' %}active{% endif %}">Summary</a>
+      <a href="{{ '/description.html' | relative_url }}"
+        class="{% if page.url == '/description.html' %}active{% endif %}">Description</a>
+    </nav>
+  </aside>
 
   <main>
     {{ content }}
@@ -103,34 +284,73 @@
     async function initSearch() {
       const input = document.getElementById('search-input');
       const resultsContainer = document.getElementById('search-results');
-      if (!input) return;
+      if (!input || !resultsContainer) return;
 
-      const response = await fetch("{{ '/search.json' | relative_url }}");
-      const searchIndex = await response.json();
+      try {
+        const response = await fetch("{{ '/search.json' | relative_url }}");
+        const searchIndex = await response.json();
 
-      input.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
-        resultsContainer.innerHTML = '';
+        input.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase().trim();
+          resultsContainer.innerHTML = '';
 
-        if (query.length < 2) return;
+          if (query.length < 2) {
+            resultsContainer.classList.remove('has-results');
+            return;
+          }
 
-        const matches = searchIndex.filter(page => {
-          const title = page.title ? page.title.toLowerCase() : '';
-          const content = page.content ? page.content.toLowerCase() : '';
-          return title.includes(query) || content.includes(query);
+          const matches = searchIndex.filter(page => {
+            const title = page.title ? page.title.toLowerCase() : '';
+            const content = page.content ? page.content.toLowerCase() : '';
+            return title.includes(query) || content.includes(query);
+          });
+
+          resultsContainer.classList.add('has-results');
+
+          if (matches.length === 0) {
+            resultsContainer.innerHTML = '<li class="no-results">No results found</li>';
+            return;
+          }
+
+          matches.forEach(page => {
+            const li = document.createElement('li');
+
+            // Extract a clean snippet containing the query term
+            let snippet = page.content || '';
+            const idx = snippet.toLowerCase().indexOf(query);
+            if (idx !== -1) {
+              const start = Math.max(0, idx - 30);
+              const end = Math.min(snippet.length, idx + 60);
+              snippet = (start > 0 ? '...' : '') + snippet.slice(start, end) + (end < snippet.length ? '...' : '');
+            } else {
+              snippet = snippet.slice(0, 80) + '...';
+            }
+
+            // Simple text-matching helper to highlight queries safely
+            const regex = new RegExp(`(${query})`, 'gi');
+            const highlightedTitle = (page.title || 'Untitled Page').replace(regex, '<mark>$1</mark>');
+            const highlightedSnippet = snippet.replace(regex, '<mark>$1</mark>');
+
+            li.innerHTML = `
+              <a href="${page.url}">
+                <span class="result-title">${highlightedTitle}</span>
+                <span class="result-snippet">${highlightedSnippet}</span>
+              </a>
+            `;
+            resultsContainer.appendChild(li);
+          });
         });
 
-        if (matches.length === 0) {
-          resultsContainer.innerHTML = '<li>No results found</li>';
-          return;
-        }
-
-        matches.forEach(page => {
-          const li = document.createElement('li');
-          li.innerHTML = `<a href="${page.url}">${page.title || 'Untitled Page'}</a>`;
-          resultsContainer.appendChild(li);
+        // Hide search results when clicking away
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.search-container')) {
+            resultsContainer.classList.remove('has-results');
+          }
         });
-      });
+
+      } catch (err) {
+        console.error("Failed to initialize search engine index:", err);
+      }
     }
     initSearch();
   </script>
