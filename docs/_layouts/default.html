@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page.title }} | My Site</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+      background-color: #fafafa;
+    }
+
+    /* Navigation Menu styling */
+    nav {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    nav a {
+      color: #0066cc;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    nav a:hover {
+      text-decoration: underline;
+    }
+
+    /* Search Box styling */
+    .search-container {
+      margin: 20px 0;
+    }
+
+    #search-input {
+      width: 100%;
+      padding: 8px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .search-results-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .search-results-list li {
+      margin: 10px 0;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #ddd;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Simple Navigation Menu -->
+  <nav>
+    <a href="{{ '/' | relative_url }}">Home</a>
+    <a href="{{ '/setup.html' | relative_url }}">Setup Guide</a>
+  </nav>
+
+  <!-- The Site Search Component -->
+  <div class="search-container">
+    <input type="text" id="search-input" placeholder="Search pages...">
+    <ul id="search-results" class="search-results-list"></ul>
+  </div>
+
+  <main>
+    <!-- Jekyll will inject page markdown/html content right here -->
+    {{ content }}
+  </main>
+
+  <!-- Search Engine Script -->
+  <script>
+    async function initSearch() {
+      const input = document.getElementById('search-input');
+      const resultsContainer = document.getElementById('search-results');
+      if (!input) return;
+
+      // Fetch the search index data we will generate via Jekyll
+      const response = await fetch("{{ '/search.json' | relative_url }}");
+      const searchIndex = await response.json();
+
+      input.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        resultsContainer.innerHTML = '';
+
+        if (query.length < 2) return; // Don't search for 1-letter words
+
+        const matches = searchIndex.filter(page =>
+          page.title.toLowerCase().includes(query) ||
+          page.content.toLowerCase().includes(query)
+        );
+
+        if (matches.length === 0) {
+          resultsContainer.innerHTML = '<li>No results found</li>';
+          return;
+        }
+
+        matches.forEach(page => {
+          const li = document.createElement('li');
+          li.innerHTML = `<a href="${page.url}">${page.title}</a>`;
+          resultsContainer.appendChild(li);
+        });
+      });
+    }
+    initSearch();
+  </script>
+</body>
+
+</html>

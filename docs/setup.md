@@ -1,3 +1,8 @@
+---
+layout: default
+title: Setup Guide
+---
+
 # Production Deployment Guide
 
 **Stack:** Django · MySQL · Nginx · Docker Swarm · Cloudflare Tunnel · GitHub Actions
