@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Setup Guide
+title: Setup
 ---
 
 # Production Deployment Guide
