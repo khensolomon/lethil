@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-secrets.py — project-aware GitHub secrets manager.
+Secrets manager - v26.06.20-2
 
 Single source of truth: the project .env file. Run from inside any git
 repository that has a .env at its root.
@@ -50,6 +50,9 @@ USAGE
   python3 secrets.py --restore     Restore .env from a previous backup
   python3 secrets.py --rotate      Guided SSH key rotation
   python3 secrets.py --check       Verify gh, git, .env structure
+  python3 secrets.py --update      Render .env from origin.env (dry-run)
+  python3 secrets.py --update --apply    Render and write .env
+  python3 secrets.py --update --core FILE  Use a specific core .env for @core
   python3 secrets.py --env FILE    Override which .env file to use
   python3 secrets.py --repo ORG/R  Override REPO_OWNER/REPO_NAME detection
 """
@@ -138,6 +141,46 @@ ALWAYS_SENSITIVE = {SSH_KEY_SECRET, BUNDLE_SECRET}
 
 # Number of timestamped backup files to retain per project.
 BACKUP_RETENTION = 10
+
+# ── @core inheritance and origin.env rendering (used by --update) ──────────────
+#
+# An app keeps a committed template, origin.env, that owns the structure,
+# comments and the full key set. A value of exactly "@core" in origin.env means
+# "inherit this key's value from the core .env at render time". --update renders
+# the app's .env from origin.env, resolving @core against the core .env and
+# carrying over any values already filled into the app .env.
+#
+# The core .env lives at the ROOT of the repository that holds this script,
+# i.e. one directory above the script's own folder:
+#
+#     <core-repo>/.env                 ← the shared-value source
+#     <core-repo>/script/secrets.py    ← this file
+#
+# --core PATH overrides the location.
+
+INHERIT_TOKEN = "@core"
+
+# Default core .env: <dir-containing-script>/../.env  (script lives in script/).
+CORE_ENV = Path(__file__).resolve().parent.parent / ".env"
+
+# The committed per-app template that .env is rendered from.
+ORIGIN_NAME = "origin.env"
+
+# A value still holding an angle-bracket stub like <db_password> counts as
+# "not yet filled", so it never wins over origin or core.
+PLACEHOLDER_RE = re.compile(r"<[^>]+>")
+
+# Matches a whole KEY=VALUE assignment line, capturing the indent, key, the
+# separator (with its surrounding spaces, so column alignment survives) and the
+# remainder. Comment lines and "#@" markers start with '#' and never match.
+ASSIGN_RE = re.compile(r"^(\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*=\s*)(.*)$")
+
+# Interpolation: ${NAME}, optionally qualified ${self:NAME} / ${core:NAME}.
+# A value containing one of these is "derived" — origin owns it and re-resolves
+# it on every render, so a stale literal in .env never overrides it. Unqualified
+# names resolve against this .env first, then the core .env. A literal '$' is
+# written as '$$'. '@core' is sugar for '${core:<same-key>}'.
+VAR_RE = re.compile(r"\$\{(?:(self|core):)?([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
 def is_sensitive(key: str) -> bool:
@@ -1238,6 +1281,328 @@ def cmd_push(args, repo: str, env_data: dict, env_path: Path, backup_dir: Path) 
 
 
 # ==============================================================================
+# ORIGIN RENDERING  (--update:  origin.env + core .env  →  .env)
+# ==============================================================================
+
+def split_value_comment(rest: str) -> tuple:
+    """
+    Split the part after '=' into (value, trailing).
+    Quote-aware; a '#' starts an inline comment only when preceded by
+    whitespace, so a value such as a hex colour or a '#'-bearing password is
+    kept intact. 'trailing' holds the spacing plus the comment, verbatim.
+    """
+    in_quote = ""
+    prev     = ""
+    cut      = len(rest)
+    for i, ch in enumerate(rest):
+        if in_quote:
+            if ch == in_quote:
+                in_quote = ""
+        elif ch in ('"', "'"):
+            in_quote = ch
+        elif ch == "#" and prev.isspace():
+            cut = i
+            break
+        prev = ch
+    value    = rest[:cut].rstrip()
+    trailing = rest[len(value):]
+    return value, trailing
+
+
+def is_unfilled(value: str) -> bool:
+    """A value is unfilled if it is blank or still holds a <placeholder>."""
+    return (not value.strip()) or bool(PLACEHOLDER_RE.search(value))
+
+
+def read_assignments(path: Path) -> dict:
+    """
+    Read a flat {KEY: value} map from a file, ignoring comments, blanks and
+    '#@' markers. Values keep their original form (quotes included). Used to
+    carry an app .env's already-filled values across an --update render.
+    Returns an empty map if the file is absent.
+    """
+    out = {}
+    if not path.exists():
+        return out
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return out
+    for line in text.splitlines():
+        m = ASSIGN_RE.match(line)
+        if not m:
+            continue
+        key  = m.group(2)
+        value, _ = split_value_comment(m.group(4))
+        out[key] = value
+    return out
+
+
+def load_core_values(core_path: Path) -> dict:
+    """
+    Flatten the core .env into a single {KEY: value} lookup used to resolve
+    @core references. Values from every zone are eligible. Aborts with a clear
+    message if the core .env is missing.
+    """
+    if not core_path.exists():
+        abort(
+            f"core .env not found at: {core_path}",
+            "It supplies the values for every @core reference.\n"
+            "Place it at the repo root beside the script/ folder, or pass --core PATH."
+        )
+    data = parse_env_file(core_path)
+    flat = {}
+    for zone in ("bundle", "individual", "local"):
+        flat.update(data[zone])
+    return flat
+
+
+def resolve_variables(raw_map: dict, core_values: dict, origin_name: str) -> dict:
+    """
+    Expand ${...} tokens in every raw value, recursively, returning a flat
+    {KEY: final_value} map.
+
+    Lookup for ${NAME}: this .env first (raw_map, resolved recursively), then the
+    core .env. ${core:NAME} / ${self:NAME} force a side. '$$' is a literal '$'.
+    A reference to a missing name, or a value missing in core, aborts. A cycle
+    (A → B → A) aborts with the path named.
+    """
+    cache     = {}
+    resolving = []   # ordered stack, for cycle path reporting
+
+    def from_core(name: str, owner: str) -> str:
+        v = core_values.get(name)
+        if v is None or is_unfilled(v):
+            abort(
+                f"{origin_name}: {owner} references ${{{name}}}, but the core .env "
+                f"has no usable value for {name}.",
+                f"core .env: {CORE_ENV}\n"
+                f"Add {name} to the core .env, or use a literal."
+            )
+        return v
+
+    def lookup(name: str, qual, owner: str) -> str:
+        if qual == "core":
+            return from_core(name, owner)
+        if qual == "self":
+            if name not in raw_map:
+                abort(f"{origin_name}: {owner} references ${{self:{name}}}, "
+                      f"but {name} is not defined in this .env.")
+            return resolve(name)
+        # unqualified: this .env first, then core
+        if name in raw_map:
+            return resolve(name)
+        return from_core(name, owner)
+
+    def substitute(raw: str, owner: str) -> str:
+        out = []
+        i = 0
+        while i < len(raw):
+            if raw[i:i + 2] == "$$":          # escaped literal '$'
+                out.append("$")
+                i += 2
+                continue
+            m = VAR_RE.match(raw, i)
+            if m:
+                out.append(lookup(m.group(2), m.group(1), owner))
+                i = m.end()
+                continue
+            out.append(raw[i])
+            i += 1
+        return "".join(out)
+
+    def resolve(key: str) -> str:
+        if key in cache:
+            return cache[key]
+        if key in resolving:
+            cycle = " → ".join(resolving + [key])
+            abort(f"{origin_name}: circular variable reference: {cycle}.",
+                  "A value cannot depend on itself, directly or via a chain.")
+        resolving.append(key)
+        value = substitute(raw_map[key], key)
+        resolving.pop()
+        cache[key] = value
+        return value
+
+    return {k: resolve(k) for k in raw_map}
+
+
+def render_origin(origin_path: Path, env_values: dict, core_values: dict) -> tuple:
+    """
+    Render the text of a new .env from origin.env.
+
+    Each assignment's value is selected by precedence. The FORM of the origin
+    value decides who owns the key:
+
+      • origin value is '@core'          → DERIVED. Sugar for ${core:<key>};
+                                            resolved from the core .env.
+      • origin value contains '${...}'   → DERIVED. Resolved by interpolation.
+                                            Origin owns it; the .env never wins,
+                                            so it can never go stale.
+      • app .env already holds a real    → KEPT. The human owns it; filled
+        (non-placeholder) value            secrets and local edits survive.
+      • origin value is a <placeholder>  → PLACEHOLDER. Flagged to be filled.
+      • plain literal, not in .env       → ORIGIN. Seeds the key.
+
+    Every non-assignment line — comments, blanks, '#@' markers — and the indent,
+    alignment and inline comment of each assignment line are preserved verbatim.
+
+    Returns (rendered_text, report, orphans):
+      report  : list of (key, source, value) where source ∈
+                {core, derived, kept, origin, placeholder}
+      orphans : {KEY: value} present in the app .env but absent from origin.env
+    """
+    text        = origin_path.read_text(encoding="utf-8")
+    trailing_nl = text.endswith("\n")
+
+    # ── Pass 1: collect emit items and choose each key's raw (pre-expansion) value
+    items       = []          # ("raw", line)  or  ("kv", indent, key, sep, comment)
+    raw_map     = {}          # key → raw value (may still hold ${...})
+    source_map  = {}          # key → source label
+    origin_keys = set()
+
+    for line in text.splitlines():
+        m = ASSIGN_RE.match(line)
+        if not m:
+            items.append(("raw", line))
+            continue
+
+        indent, key, sep, rest = m.groups()
+        origin_keys.add(key)
+        ovalue, comment = split_value_comment(rest)
+        stripped = ovalue.strip()
+
+        if stripped == INHERIT_TOKEN:
+            raw, source = f"${{core:{key}}}", "core"      # @core → ${core:KEY}
+        elif "${" in ovalue:
+            raw, source = ovalue, "derived"               # origin owns it
+        else:
+            ev = env_values.get(key)
+            if ev is not None and not is_unfilled(ev):
+                raw, source = ev, "kept"
+            elif is_unfilled(ovalue):
+                raw, source = ovalue, "placeholder"
+            else:
+                raw, source = ovalue, "origin"
+
+        raw_map[key]    = raw
+        source_map[key] = source
+        items.append(("kv", indent, key, sep, comment))
+
+    # ── Pass 2: expand ${...} across the whole namespace (this .env + core)
+    final = resolve_variables(raw_map, core_values, origin_path.name)
+
+    # ── Pass 3: emit lines with resolved values; build the report in file order
+    out_lines = []
+    report    = []
+    for item in items:
+        if item[0] == "raw":
+            out_lines.append(item[1])
+            continue
+        _, indent, key, sep, comment = item
+        value = final[key]
+        out_lines.append(f"{indent}{key}{sep}{value}{comment}")
+        report.append((key, source_map[key], value))
+
+    orphans  = {k: v for k, v in env_values.items() if k not in origin_keys}
+    rendered = "\n".join(out_lines) + ("\n" if trailing_nl else "")
+    return rendered, report, orphans
+
+
+def append_orphan_block(rendered: str, orphans: dict) -> str:
+    """Append orphan keys under a clearly flagged block for manual reconciliation."""
+    bar = "─" * 62
+    block = [
+        "",
+        f"# {bar}",
+        "# UNMANAGED — present in .env but not in origin.env.",
+        "# Add each to origin.env to manage it, or delete it. Left untouched here.",
+        f"# {bar}",
+    ]
+    for k in sorted(orphans):
+        block.append(f"{k}={orphans[k]}")
+    block.append("")
+    return rendered.rstrip("\n") + "\n" + "\n".join(block)
+
+
+def _show_value(source: str, value: str) -> str:
+    """Display form for the dry-run table — unmasked, only length-capped."""
+    if source == "placeholder":
+        return f"{value}   (FILL ME)"
+    flat = value.replace("\n", "\\n")
+    return flat if len(flat) <= 60 else flat[:57] + "..."
+
+
+def cmd_update(args, git_root: Path, env_path: Path) -> None:
+    """
+    Render the app .env from origin.env, resolving @core from the core .env and
+    carrying over values already filled into the app .env.
+
+    Dry-run by default — prints what every key would resolve to and writes
+    nothing. Pass --apply to write the .env. No backup is taken here; backups
+    are made on --push. The write is atomic (temp file + rename).
+    """
+    header("UPDATE — render .env from origin.env + core")
+
+    origin_path = (Path(args.origin).expanduser().resolve()
+                   if args.origin else git_root / ORIGIN_NAME)
+    if not origin_path.exists():
+        abort(
+            f"{ORIGIN_NAME} not found at: {origin_path}",
+            f"--update renders .env from {ORIGIN_NAME}. Create it (the committed "
+            f"template), or pass --origin PATH."
+        )
+
+    core_path   = (Path(args.core).expanduser().resolve()
+                   if args.core else CORE_ENV)
+    core_values = load_core_values(core_path)
+    env_values  = read_assignments(env_path)
+
+    print(f"\n  origin : {origin_path}")
+    print(f"  core   : {core_path}")
+    print(f"  target : {env_path}")
+
+    rendered, report, orphans = render_origin(origin_path, env_values, core_values)
+    if orphans:
+        rendered = append_orphan_block(rendered, orphans)
+
+    rows = [(key, source, _show_value(source, value)) for key, source, value in report]
+    print_table(rows, ("KEY", "SOURCE", "VALUE"))
+
+    counts = {}
+    for _, source, _v in report:
+        counts[source] = counts.get(source, 0) + 1
+    summary = "  ".join(f"{counts[s]} {s}" for s in ("core", "derived", "kept", "origin", "placeholder") if counts.get(s))
+    print(f"  {summary}")
+
+    unfilled = [k for k, s, _v in report if s == "placeholder"]
+    if unfilled:
+        print(f"\n  {len(unfilled)} key(s) still hold a <placeholder> — fill in {env_path.name}:")
+        for k in unfilled:
+            print(f"    {k}")
+
+    if orphans:
+        print(f"\n  {len(orphans)} unmanaged key(s) in {env_path.name} (kept, flagged for review):")
+        for k in sorted(orphans):
+            print(f"    {k}")
+        print(f"  Add them to {ORIGIN_NAME} to manage, or remove them.")
+
+    if not args.apply:
+        print(f"\n  Dry run — nothing written. Re-run with --apply to write {env_path.name}.\n")
+        return
+
+    try:
+        tmp = env_path.parent / ".env.update.tmp"
+        tmp.write_text(rendered, encoding="utf-8")
+        tmp.rename(env_path)
+    except (PermissionError, OSError) as e:
+        abort(f"Failed to write {env_path}: {e}")
+
+    print(f"\n  Wrote {env_path}")
+    print("  No backup taken here — backups are made on --push.\n")
+
+
+# ==============================================================================
 # ARGUMENT PARSING
 # ==============================================================================
 
@@ -1263,11 +1628,17 @@ def parse_args():
     mode.add_argument("--restore",    action="store_true", help="Restore .env from a backup.")
     mode.add_argument("--rotate",     action="store_true", help="Guided SSH key rotation.")
     mode.add_argument("--check",      action="store_true", help="Verify gh, git, .env structure.")
+    mode.add_argument("--update",     action="store_true", help="Render .env from origin.env, resolving @core from the core .env.")
 
     # Push modifiers (only meaningful with --push)
     parser.add_argument("--only",     metavar="KEY",      help="Push one secret (partial match ok).")
     parser.add_argument("--dry-run",  action="store_true",help="Preview what --push would do. Nothing sent.")
     parser.add_argument("--force",    action="store_true",help="Push all secrets, skip stale detection.")
+
+    # Update modifiers (only meaningful with --update)
+    parser.add_argument("--apply",    action="store_true",help="With --update: write .env (default is a dry-run preview).")
+    parser.add_argument("--core",     metavar="FILE",     help="With --update: override the core .env used to resolve @core.")
+    parser.add_argument("--origin",   metavar="FILE",     help="With --update: override the origin.env template.")
 
     # Global overrides
     parser.add_argument("--env",      metavar="FILE",     help="Override .env file path.")
@@ -1283,13 +1654,6 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # ── Verify gh is available before anything else ───────────────────────────
-    if not _gh_available():
-        abort(
-            "gh (GitHub CLI) is not installed or not on PATH.",
-            "Run: python3 secrets.py --check   for install instructions."
-        )
-
     # ── Find git root ─────────────────────────────────────────────────────────
     git_root = find_git_root(Path.cwd())
     if not git_root:
@@ -1300,6 +1664,18 @@ def main():
 
     # ── Locate .env ───────────────────────────────────────────────────────────
     env_path = Path(args.env).expanduser().resolve() if args.env else git_root / ".env"
+
+    # ── --update is fully local (origin.env + core .env → .env): no gh needed ──
+    if args.update:
+        cmd_update(args, git_root, env_path)
+        return
+
+    # ── Verify gh is available before anything that talks to GitHub ───────────
+    if not _gh_available():
+        abort(
+            "gh (GitHub CLI) is not installed or not on PATH.",
+            "Run: python3 secrets.py --check   for install instructions."
+        )
 
     # ── --check and --init are allowed before .env is fully configured ────────
     if args.check:

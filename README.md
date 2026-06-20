@@ -14,7 +14,9 @@ sudo python ~/dev/lethil/me/vm/create.py
 Push secrets to GitHub
 
 ```bash
+cd /app?
 python3 ~/dev/lethil/script/secrets.py --push
+python3 ~/dev/lethil/script/secrets.py --update
 ```
 
 ## 3. Setup
