@@ -1,8 +1,3 @@
----
-layout: default
-title: Setup
----
-
 # Production Deployment Guide
 
 **Stack:** Django · MySQL · Nginx · Docker Swarm · Cloudflare Tunnel · GitHub Actions
@@ -20,7 +15,6 @@ The bootstrap is robotic. `setup.py` provisions the VM, creates the Cloudflare T
 - [x] install rclone and config — now handled by `setup.py` (see [Section 4](#4-running-the-setup-script))
 
 ---
-
 
 ## Table of Contents
 
@@ -129,7 +123,7 @@ The endpoint URL is `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`. `setup.py` 
 
 Suggested entry in your password manager:
 
-```
+```bash
 Production server bootstrap
   CF_API_TOKEN              cfut_...
   CF_ACCOUNT_ID             f47...
@@ -316,7 +310,7 @@ Setup logs are written to `/var/log/setup.log`.
 
 ## 5. Directory Structure
 
-```
+```bash
 /opt/
 ├── infra/
 │   └── landing/               # Vanilla nginx landing-page stack

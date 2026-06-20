@@ -1,4 +1,4 @@
-# lethil — Project Instructions
+# Instructions
 
 These instructions tailor responses for work on the `lethil` infrastructure monorepo.
 

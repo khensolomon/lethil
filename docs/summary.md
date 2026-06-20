@@ -1,4 +1,4 @@
-# lethil — Project Summary (Handoff)
+# Summary (Handoff)
 
 ## What this project is
 

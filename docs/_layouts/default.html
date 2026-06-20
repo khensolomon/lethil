@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ page.title }} | My Site</title>
+  <title>{{ page.title }} | Lethil</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -16,7 +17,13 @@
       background-color: #fafafa;
     }
 
-    /* Navigation Menu styling */
+    /* Make sure code blocks look nice and scroll horizontally on mobile */
+    pre {
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+
     nav {
       display: flex;
       gap: 15px;
@@ -35,7 +42,6 @@
       text-decoration: underline;
     }
 
-    /* Search Box styling */
     .search-container {
       margin: 20px 0;
     }
@@ -123,6 +129,8 @@
     }
     initSearch();
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 </body>
 
 </html>

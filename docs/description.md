@@ -1,4 +1,4 @@
-# lethil — Project Description
+# Description
 
 lethil is a personal infrastructure monorepo (github.com/khensolomon/lethil) that consolidates everything needed to provision and operate a single-developer production server: the server bootstrap script, static-site/SPA sources, GitHub Actions workflows that dispatch tasks, and operator helper scripts.
 
