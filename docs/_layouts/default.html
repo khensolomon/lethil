@@ -42,6 +42,13 @@
       text-decoration: underline;
     }
 
+    nav a.active {
+      color: #ffffff;
+      background-color: #0066cc;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
     .search-container {
       margin: 20px 0;
     }
@@ -72,28 +79,26 @@
 </head>
 
 <body>
-
-  <!-- Simple Navigation Menu -->
   <nav>
-    <a href="{{ '/' | relative_url }}">Home</a>
-    <a href="{{ '/setup.html' | relative_url }}">Setup</a>
-    <a href="{{ '/instructions.html' | relative_url }}">Instructions</a>
-    <a href="{{ '/summary.html' | relative_url }}">Summary</a>
-    <a href="{{ '/description.html' | relative_url }}">Description</a>
+    <a href="{{ '/' | relative_url }}" class="{% if page.url == '/' %}active{% endif %}">Home</a>
+    <a href="{{ '/setup.html' | relative_url }}" class="{% if page.url == '/setup.html' %}active{% endif %}">Setup</a>
+    <a href="{{ '/instructions.html' | relative_url }}"
+      class="{% if page.url == '/instructions.html' %}active{% endif %}">Instructions</a>
+    <a href="{{ '/summary.html' | relative_url }}"
+      class="{% if page.url == '/summary.html' %}active{% endif %}">Summary</a>
+    <a href="{{ '/description.html' | relative_url }}"
+      class="{% if page.url == '/description.html' %}active{% endif %}">Description</a>
   </nav>
 
-  <!-- The Site Search Component -->
   <div class="search-container">
     <input type="text" id="search-input" placeholder="Search pages...">
     <ul id="search-results" class="search-results-list"></ul>
   </div>
 
   <main>
-    <!-- Jekyll will inject page markdown/html content right here -->
     {{ content }}
   </main>
 
-  <!-- Search Engine Script -->
   <script>
     async function initSearch() {
       const input = document.getElementById('search-input');
