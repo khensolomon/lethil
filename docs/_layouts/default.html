@@ -5,20 +5,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ page.title }}</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-coy.min.css">
+
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-coy.min.css"
+    id="prism-theme">
+
   <style>
+    /* --- Theming System --- */
     :root {
-      --bg-color: #f8fafc;
+      --bg-color: #f6f8fa;
       --surface-color: #ffffff;
-      --primary-color: #3b82f6;
-      --primary-hover: #2563eb;
-      --text-main: #1e293b;
-      --text-muted: #64748b;
-      --border-color: #e2e8f0;
+      --primary-color: #0969da;
+      --primary-hover: #0366d6;
+      --text-main: #24292f;
+      --text-muted: #57606a;
+      --border-color: #d0d7de;
       --sidebar-width: 280px;
-      --transition-speed: 0.3s;
-      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --transition-speed: 0.35s;
+      --shadow-lg: -5px 0 25px rgba(0, 0, 0, 0.08);
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #0d1117;
+      --surface-color: #161b22;
+      --primary-color: #58a6ff;
+      --primary-hover: #79c0ff;
+      --text-main: #c9d1d9;
+      --text-muted: #8b949e;
+      --border-color: #30363d;
+      --shadow-lg: -5px 0 25px rgba(0, 0, 0, 0.5);
     }
 
     * {
@@ -28,46 +44,155 @@
     }
 
     body {
-      background-color: var(--bg-color);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      /* The body acts as the static background for the sidebar */
+      background-color: var(--surface-color);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: var(--text-main);
-      line-height: 1.6;
-      padding-top: 70px;
       overflow-x: hidden;
+      /* Prevents horizontal scroll during animation */
     }
 
-    /* Fixed Header Layer */
-    header {
+    /* --- Mechanics --- */
+    #sidebar-toggle {
+      display: none;
+    }
+
+    /* --- Base Sidebar (Fixed Underneath) --- */
+    .sidebar {
       position: fixed;
       top: 0;
       left: 0;
-      right: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--surface-color);
+      padding: 24px;
+      z-index: 1;
+      /* Sits beneath the main page */
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Brand/Top Area */
+    .sidebar-header {
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text-main);
+    }
+
+    /* Theme Switcher */
+    .theme-switcher {
+      display: flex;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .theme-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 6px 0;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .theme-btn.active {
+      background: var(--primary-color);
+      color: #ffffff;
+    }
+
+    /* Navigation */
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    nav a {
+      color: var(--text-main);
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    nav a:hover {
+      background-color: var(--bg-color);
+    }
+
+    nav a.active {
+      color: var(--primary-color);
+      background-color: var(--bg-color);
+      border-left: 3px solid var(--primary-color);
+      border-radius: 0 6px 6px 0;
+    }
+
+    /* --- Main Page Wrapper (The Layer that Moves) --- */
+    .page-wrapper {
+      position: relative;
+      z-index: 2;
+      /* Sits on top of the sidebar */
+      min-height: 100vh;
+      background-color: var(--bg-color);
+      transition: transform var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* The "Push Under" Action */
+    #sidebar-toggle:checked~.page-wrapper {
+      transform: translateX(var(--sidebar-width));
+    }
+
+    /* Dim overlay for closing */
+    .page-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.2);
+      z-index: 150;
+      opacity: 0;
+      visibility: hidden;
+      cursor: pointer;
+      transition: opacity var(--transition-speed);
+    }
+
+    #sidebar-toggle:checked~.page-wrapper .page-backdrop {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* --- Header Layer --- */
+    header {
+      position: sticky;
+      /* Moves natively with the wrapper */
+      top: 0;
       height: 70px;
       background: var(--surface-color);
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
-      justify-content: space-between;
       padding: 0 24px;
       z-index: 100;
     }
 
-    /* --- Pure CSS Sidebar Mechanics --- */
-    #sidebar-toggle {
-      display: none;
-    }
-
-    /* Hamburger Button */
     .menu-btn {
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      width: 24px;
-      height: 18px;
+      width: 22px;
+      height: 16px;
       cursor: pointer;
-      z-index: 210;
-      /* Must stay above the sidebar so we can close it */
-      position: relative;
     }
 
     .menu-btn span {
@@ -79,130 +204,61 @@
       transition: transform var(--transition-speed), opacity var(--transition-speed);
     }
 
-    /* Animate Hamburger to X */
-    #sidebar-toggle:checked~header .menu-btn span:nth-child(1) {
-      transform: translateY(8px) rotate(45deg);
+    #sidebar-toggle:checked~.page-wrapper .menu-btn span:nth-child(1) {
+      transform: translateY(7px) rotate(45deg);
     }
 
-    #sidebar-toggle:checked~header .menu-btn span:nth-child(2) {
+    #sidebar-toggle:checked~.page-wrapper .menu-btn span:nth-child(2) {
       opacity: 0;
     }
 
-    #sidebar-toggle:checked~header .menu-btn span:nth-child(3) {
-      transform: translateY(-8px) rotate(-45deg);
+    #sidebar-toggle:checked~.page-wrapper .menu-btn span:nth-child(3) {
+      transform: translateY(-7px) rotate(-45deg);
     }
 
-    /* Sidebar Layout */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: calc(-1 * var(--sidebar-width));
-      width: var(--sidebar-width);
-      height: 100vh;
-      background: var(--surface-color);
-      border-right: 1px solid var(--border-color);
-      padding: 90px 24px 24px 24px;
-      /* Padding top accounts for header/button space */
-      box-shadow: var(--shadow-lg);
-      transition: transform var(--transition-speed) ease-in-out;
-      z-index: 200;
-      /* Sidebar covers the header */
-      overflow-y: auto;
-    }
-
-    #sidebar-toggle:checked~.sidebar {
-      transform: translateX(var(--sidebar-width));
-    }
-
-    /* Mobile Backdrop Element */
-    .sidebar-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.4);
-      backdrop-filter: blur(2px);
-      z-index: 150;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity var(--transition-speed), visibility var(--transition-speed);
-      cursor: pointer;
-    }
-
-    /* Navigation Links */
-    nav {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    nav a {
-      color: var(--text-muted);
-      text-decoration: none;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-weight: 500;
-      transition: background-color 0.2s, color 0.2s;
-    }
-
-    nav a:hover {
-      background-color: var(--bg-color);
-      color: var(--text-main);
-    }
-
-    nav a.active {
-      color: var(--surface-color);
-      background-color: var(--primary-color);
-    }
-
-    /* --- Responsive Search Bar --- */
+    /* --- Search Engine UI --- */
     .search-container {
       position: relative;
       flex: 1;
       max-width: 400px;
-      /* Limits size on desktop, shrinks on mobile */
-      margin-left: 20px;
-      /* Buffer from the menu button */
+      margin-left: 24px;
     }
 
     #search-input {
       width: 100%;
-      padding: 10px 20px;
+      padding: 8px 18px;
       font-size: 14px;
       color: var(--text-main);
       background-color: var(--bg-color);
       border: 1px solid var(--border-color);
       border-radius: 24px;
-      /* Pill shape */
-      transition: all 0.2s ease;
+      transition: all 0.2s;
     }
 
     #search-input:focus {
       outline: none;
       border-color: var(--primary-color);
-      background-color: var(--surface-color);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+      box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
     }
 
-    /* Refined Floating Results */
     .search-results-list {
       position: absolute;
       top: calc(100% + 12px);
-      right: 0;
+      left: 0;
       width: 100%;
       min-width: 300px;
       max-height: 400px;
       overflow-y: auto;
       background: var(--surface-color);
       border: 1px solid var(--border-color);
-      border-radius: 16px;
-      /* Match input curves */
+      border-radius: 12px;
       padding: 8px;
-      /* Inner spacing for floating items */
-      box-shadow: var(--shadow-lg);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
       list-style: none;
       opacity: 0;
       visibility: hidden;
       transform: translateY(-10px);
-      transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+      transition: all 0.2s;
       z-index: 110;
     }
 
@@ -212,99 +268,49 @@
       transform: translateY(0);
     }
 
-    .search-results-list li {
-      margin-bottom: 4px;
-    }
-
-    .search-results-list li:last-child {
-      margin-bottom: 0;
-    }
-
     .search-results-list a {
       display: block;
-      padding: 12px 16px;
+      padding: 10px 14px;
       text-decoration: none;
       color: var(--text-main);
-      border-radius: 10px;
-      /* Inner rounded corners on hover */
-      transition: background-color 0.2s;
+      border-radius: 6px;
     }
 
     .search-results-list a:hover {
       background-color: var(--bg-color);
     }
 
-    .search-results-list .result-title {
+    .result-title {
       font-weight: 600;
       color: var(--primary-color);
       display: block;
       font-size: 14px;
     }
 
-    .search-results-list .result-snippet {
+    .result-snippet {
       font-size: 12px;
       color: var(--text-muted);
       display: block;
       margin-top: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .search-results-list .no-results {
-      padding: 16px;
-      color: var(--text-muted);
-      text-align: center;
-      font-size: 14px;
     }
 
     mark {
-      background-color: #fef08a;
-      color: #854d0e;
+      background-color: rgba(255, 216, 89, 0.4);
+      color: var(--text-main);
       padding: 0 2px;
-      border-radius: 4px;
+      border-radius: 3px;
     }
 
-    /* --- Smart Layout Shifting --- */
+    /* --- Content Layout --- */
     main {
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 0 24px;
-      transition: transform var(--transition-speed) ease-in-out;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 24px 80px 24px;
     }
 
-    pre {
-      padding: 16px;
-      border-radius: 8px;
-      overflow-x: auto;
-      background: var(--surface-color);
-      border: 1px solid var(--border-color);
-      box-shadow: var(--shadow-sm);
-      margin: 20px 0;
-    }
-
-    /* Desktop View: Push the main page */
-    @media (min-width: 769px) {
-      #sidebar-toggle:checked~main {
-        transform: translateX(calc(var(--sidebar-width) / 2));
-      }
-    }
-
-    /* Mobile View: Show backdrop overlay instead of pushing */
-    @media (max-width: 768px) {
-      #sidebar-toggle:checked~.sidebar-backdrop {
-        opacity: 1;
-        visibility: visible;
-      }
-
-      .search-results-list {
-        position: fixed;
-        top: 80px;
-        left: 16px;
-        right: 16px;
-        width: auto;
-        min-width: 0;
-      }
+    /* Adjust GitHub Markdown background to transparent to inherit our theme */
+    .markdown-body {
+      background-color: transparent !important;
     }
   </style>
 </head>
@@ -312,22 +318,16 @@
 <body>
 
   <input type="checkbox" id="sidebar-toggle">
-  <label for="sidebar-toggle" class="sidebar-backdrop"></label>
-
-  <header>
-    <label for="sidebar-toggle" class="menu-btn">
-      <span></span>
-      <span></span>
-      <span></span>
-    </label>
-
-    <div class="search-container">
-      <input type="text" id="search-input" placeholder="Search pages...">
-      <ul id="search-results" class="search-results-list"></ul>
-    </div>
-  </header>
 
   <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-title">Documentation</div>
+      <div class="theme-switcher">
+        <button class="theme-btn active" data-mode="auto">Auto</button>
+        <button class="theme-btn" data-mode="light">Light</button>
+        <button class="theme-btn" data-mode="dark">Dark</button>
+      </div>
+    </div>
     <nav>
       <a href="{{ '/' | relative_url }}" class="{% if page.url == '/' %}active{% endif %}">Home</a>
       <a href="{{ '/setup.html' | relative_url }}" class="{% if page.url == '/setup.html' %}active{% endif %}">Setup</a>
@@ -340,11 +340,74 @@
     </nav>
   </aside>
 
-  <main>
-    {{ content }}
-  </main>
+  <div class="page-wrapper">
+    <label for="sidebar-toggle" class="page-backdrop"></label>
+
+    <header>
+      <label for="sidebar-toggle" class="menu-btn">
+        <span></span>
+        <span></span>
+        <span></span>
+      </label>
+
+      <div class="search-container">
+        <input type="text" id="search-input" placeholder="Search pages...">
+        <ul id="search-results" class="search-results-list"></ul>
+      </div>
+    </header>
+
+    <main class="markdown-body">
+      {{ content }}
+    </main>
+  </div>
 
   <script>
+    // --- Theming Logic ---
+    const themeBtns = document.querySelectorAll('.theme-btn');
+    const prismTheme = document.getElementById('prism-theme');
+
+    function setTheme(mode) {
+      // Manage buttons
+      themeBtns.forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+      // Save preference
+      localStorage.setItem('theme-pref', mode);
+
+      // Evaluate 'Auto' mode
+      let activeMode = mode;
+      if (mode === 'auto') {
+        activeMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+
+      // Apply to HTML and GitHub Markdown data attribute
+      if (activeMode === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.setAttribute('data-color-mode', 'dark');
+        prismTheme.href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-twilight.min.css"; // Dark code blocks
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.documentElement.setAttribute('data-color-mode', 'light');
+        prismTheme.href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-coy.min.css"; // Light code blocks
+      }
+    }
+
+    // Initialize Theme
+    const savedTheme = localStorage.getItem('theme-pref') || 'auto';
+    setTheme(savedTheme);
+
+    themeBtns.forEach(btn => {
+      btn.addEventListener('click', () => setTheme(btn.dataset.mode));
+    });
+
+    // Listen for OS auto changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (localStorage.getItem('theme-pref') === 'auto') {
+        setTheme('auto');
+      }
+    });
+
+    // --- Search Engine ---
     async function initSearch() {
       const input = document.getElementById('search-input');
       const resultsContainer = document.getElementById('search-results');
@@ -372,7 +435,7 @@
           resultsContainer.classList.add('has-results');
 
           if (matches.length === 0) {
-            resultsContainer.innerHTML = '<li class="no-results">No results found</li>';
+            resultsContainer.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-muted)">No results found</li>';
             return;
           }
 
@@ -403,7 +466,7 @@
           });
         });
 
-        // Hide search results when clicking away or hitting Escape
+        // Close search on click away or ESC
         document.addEventListener('click', (e) => {
           if (!e.target.closest('.search-container')) {
             resultsContainer.classList.remove('has-results');
@@ -417,7 +480,7 @@
         });
 
       } catch (err) {
-        console.error("Failed to initialize search engine index:", err);
+        console.error("Search failed:", err);
       }
     }
     initSearch();
