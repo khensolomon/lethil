@@ -8,16 +8,16 @@
 
   <link rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css">
-  <link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/toolbar/prism-toolbar.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-coy.min.css"
     id="prism-theme">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/toolbar/prism-toolbar.min.css">
 
   <style>
     /* --- Theming System --- */
     :root {
-      --bg-color: #f6f8fa;
-      --surface-color: #ffffff;
+      --bg-color: #fff;
+      --surface-color: #fafafa;
       --primary-color: #0969da;
       --primary-hover: #0366d6;
       --text-main: #24292f;
@@ -25,7 +25,6 @@
       --border-color: #d0d7de;
       --sidebar-width: 280px;
       --transition-speed: 0.35s;
-      --shadow-lg: -5px 0 25px rgba(0, 0, 0, 0.08);
     }
 
     [data-theme="dark"] {
@@ -36,7 +35,6 @@
       --text-main: #c9d1d9;
       --text-muted: #8b949e;
       --border-color: #30363d;
-      --shadow-lg: -5px 0 25px rgba(0, 0, 0, 0.5);
     }
 
     * {
@@ -46,20 +44,17 @@
     }
 
     body {
-      /* The body acts as the static background for the sidebar */
       background-color: var(--surface-color);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: var(--text-main);
       overflow-x: hidden;
-      /* Prevents horizontal scroll during animation */
     }
 
-    /* --- Mechanics --- */
     #sidebar-toggle {
       display: none;
     }
 
-    /* --- Base Sidebar (Fixed Underneath) --- */
+    /* --- Base Sidebar --- */
     .sidebar {
       position: fixed;
       top: 0;
@@ -67,60 +62,34 @@
       width: var(--sidebar-width);
       height: 100vh;
       background: var(--surface-color);
-      padding: 24px;
       z-index: 1;
-      /* Sits beneath the main page */
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      box-shadow: inset -20px 0px 12px -20px rgba(0, 0, 0, 0.3);
     }
 
-    /* Brand/Top Area */
     .sidebar-header {
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--border-color);
+      height: 71px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
     }
 
     .brand-title {
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       font-weight: 700;
-      margin-bottom: 16px;
       color: var(--text-main);
     }
 
-    /* Theme Switcher */
-    .theme-switcher {
-      display: flex;
-      background: var(--bg-color);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-
-    .theme-btn {
-      flex: 1;
-      background: transparent;
-      border: none;
-      padding: 6px 0;
-      font-size: 12px;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: background 0.2s, color 0.2s;
-    }
-
-    .theme-btn.active {
-      background: var(--primary-color);
-      color: #ffffff;
-    }
-
     /* Navigation */
-    nav {
+    .sidebar nav {
+      padding: 24px;
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
 
-    nav a {
+    .sidebar nav a {
       color: var(--text-main);
       text-decoration: none;
       padding: 10px 14px;
@@ -130,34 +99,104 @@
       transition: background-color 0.2s;
     }
 
-    nav a:hover {
+    .sidebar nav a:hover {
       background-color: var(--bg-color);
     }
 
-    nav a.active {
+    .sidebar nav a.active {
       color: var(--primary-color);
       background-color: var(--bg-color);
       border-left: 3px solid var(--primary-color);
       border-radius: 0 6px 6px 0;
     }
 
-    /* --- Main Page Wrapper (The Layer that Moves) --- */
+    /* --- NEW: Sidebar Footer (Repo Links) --- */
+    .sidebar-footer {
+      margin-top: auto;
+      /* Pushes to bottom */
+      padding: 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .repo-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .repo-link:hover {
+      color: var(--primary-color);
+    }
+
+    .repo-link svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    .repo-stats {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border-color);
+    }
+
+    .repo-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .repo-stat-item svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    /* --- Main Page Wrapper Layer --- */
     .page-wrapper {
       position: relative;
       z-index: 2;
-      /* Sits on top of the sidebar */
       min-height: 100vh;
+      width: 100%;
       background-color: var(--bg-color);
-      transition: transform var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: var(--shadow-lg);
+      /* Animate both transform (mobile) and margin/width (desktop) */
+      transition: transform var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1),
+        margin-left var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1),
+        width var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* The "Push Under" Action */
+    /* --- Layout Mechanics based on Viewport --- */
+
+    /* Default (Mobile/Tablet): Push the screen via transform */
     #sidebar-toggle:checked~.page-wrapper {
       transform: translateX(var(--sidebar-width));
     }
 
-    /* Dim overlay for closing */
+    /* Desktop View (1024px+): Fluid width adjustment, NO clipping */
+    @media (min-width: 1024px) {
+      #sidebar-toggle:checked~.page-wrapper {
+        transform: none;
+        /* Disable sliding off-screen */
+        margin-left: var(--sidebar-width);
+        width: calc(100% - var(--sidebar-width));
+        /* Recalculates to perfectly fit remaining space */
+      }
+    }
+
+    /* Dim overlay base state */
     .page-backdrop {
       position: absolute;
       inset: 0;
@@ -169,15 +208,9 @@
       transition: opacity var(--transition-speed);
     }
 
-    #sidebar-toggle:checked~.page-wrapper .page-backdrop {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    /* --- Header Layer --- */
+    /* --- Header Layout --- */
     header {
       position: sticky;
-      /* Moves natively with the wrapper */
       top: 0;
       height: 70px;
       background: var(--surface-color);
@@ -195,11 +228,12 @@
       width: 22px;
       height: 16px;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
     .menu-btn span {
       display: block;
-      height: 2px;
+      height: 3px;
       width: 100%;
       background-color: var(--text-main);
       border-radius: 2px;
@@ -218,12 +252,12 @@
       transform: translateY(-7px) rotate(-45deg);
     }
 
-    /* --- Search Engine UI --- */
+    /* --- Responsive Search Bar --- */
     .search-container {
       position: relative;
       flex: 1;
-      max-width: 400px;
-      margin-left: 24px;
+      max-width: 360px;
+      margin-left: 20px;
     }
 
     #search-input {
@@ -233,7 +267,7 @@
       color: var(--text-main);
       background-color: var(--bg-color);
       border: 1px solid var(--border-color);
-      border-radius: 24px;
+      border-radius: 7px;
       transition: all 0.2s;
     }
 
@@ -248,7 +282,7 @@
       top: calc(100% + 12px);
       left: 0;
       width: 100%;
-      min-width: 300px;
+      min-width: 280px;
       max-height: 400px;
       overflow-y: auto;
       background: var(--surface-color);
@@ -303,16 +337,102 @@
       border-radius: 3px;
     }
 
-    /* --- Content Layout --- */
+    /* --- Theme Switcher Pill (Far Right) --- */
+    .theme-switcher {
+      display: flex;
+      background: var(--border-color);
+      border-radius: 7px;
+      padding: 2px;
+      gap: 1px;
+      margin-left: auto;
+      flex-shrink: 0;
+      border: 1px solid var(--border-color);
+    }
+
+    .theme-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .theme-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .theme-btn:hover {
+      color: var(--text-main);
+    }
+
+    .theme-btn.active {
+      background: var(--surface-color);
+      color: var(--primary-color);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+
+    /* --- Content Area Layout --- */
     main {
       max-width: 860px;
       margin: 0 auto;
       padding: 40px 24px 80px 24px;
     }
 
-    /* Adjust GitHub Markdown background to transparent to inherit our theme */
     .markdown-body {
       background-color: transparent !important;
+    }
+
+    /* --- Responsiveness Adjustments --- */
+    @media (max-width: 1023px) {
+
+      /* Only trigger the dimming backdrop on tablet/mobile screens */
+      #sidebar-toggle:checked~.page-wrapper .page-backdrop {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .theme-switcher {
+        margin-left: 7px;
+      }
+
+      .sidebar {
+        box-shadow: inset -18px 0px 12px -18px rgba(0, 0, 0, 0.5);
+      }
+
+      .search-container {
+        margin-left: 12px;
+      }
+
+      .search-results-list {
+        position: fixed;
+        top: 80px;
+        left: 16px;
+        right: 16px;
+        width: auto;
+      }
+
+      .header-theme-switcher {
+        display: none;
+      }
+
+      .sidebar-theme-switcher {
+        display: flex;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .sidebar-theme-switcher {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -323,13 +443,9 @@
 
   <aside class="sidebar">
     <div class="sidebar-header">
-      <div class="brand-title">Documentation</div>
-      <div class="theme-switcher">
-        <button class="theme-btn active" data-mode="auto">Auto</button>
-        <button class="theme-btn" data-mode="light">Light</button>
-        <button class="theme-btn" data-mode="dark">Dark</button>
-      </div>
+      <div class="brand-title">Docs</div>
     </div>
+
     <nav>
       <a href="{{ '/' | relative_url }}" class="{% if page.url == '/' %}active{% endif %}">Home</a>
       <a href="{{ '/setup.html' | relative_url }}" class="{% if page.url == '/setup.html' %}active{% endif %}">Setup</a>
@@ -340,6 +456,43 @@
       <a href="{{ '/description.html' | relative_url }}"
         class="{% if page.url == '/description.html' %}active{% endif %}">Description</a>
     </nav>
+
+    <div class="sidebar-footer">
+      <a href="https://github.com/khensolomon/lethil" class="repo-link">
+        <svg viewBox="0 0 16 16">
+          <path fill-rule="evenodd"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z">
+          </path>
+        </svg>
+        Source
+      </a>
+      <a href="https://github.com/khensolomon/lethil/issues" class="repo-link">
+        <svg viewBox="0 0 16 16">
+          <path fill-rule="evenodd"
+            d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9 3a1 1 0 11-2 0 1 1 0 012 0zm-.25-6.25a.75.75 0 00-1.5 0v3.5a.75.75 0 001.5 0v-3.5z">
+          </path>
+        </svg>
+        Issue
+      </a>
+      <div class="repo-stats">
+        <div class="repo-stat-item" title="Stars">
+          <svg viewBox="0 0 16 16">
+            <path fill-rule="evenodd"
+              d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z">
+            </path>
+          </svg>
+          1
+        </div>
+        <div class="repo-stat-item" title="Forks">
+          <svg viewBox="0 0 16 16">
+            <path fill-rule="evenodd"
+              d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v3.256a2.25 2.25 0 101.5 0V5.372zm3.141 5.03l.859-1.258a.25.25 0 00-.207-.394H6.251a.75.75 0 010-1.5h2.542a1.75 1.75 0 011.448 2.763l-.86 1.258a.25.25 0 00.208.394h2.162a.75.75 0 010 1.5H9.589a1.75 1.75 0 01-1.448-2.763zM14 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0z">
+            </path>
+          </svg>
+          1
+        </div>
+      </div>
+    </div>
   </aside>
 
   <div class="page-wrapper">
@@ -356,6 +509,37 @@
         <input type="text" id="search-input" placeholder="Search pages...">
         <ul id="search-results" class="search-results-list"></ul>
       </div>
+
+      <div class="theme-switcher">
+        <button class="theme-btn active" data-mode="auto" title="System Default">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </button>
+        <button class="theme-btn" data-mode="light" title="Light Mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+        <button class="theme-btn" data-mode="dark" title="Dark Mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <main class="markdown-body">
@@ -364,37 +548,31 @@
   </div>
 
   <script>
-    // --- Theming Logic ---
+    // --- Dark Mode Switcher Code ---
     const themeBtns = document.querySelectorAll('.theme-btn');
     const prismTheme = document.getElementById('prism-theme');
 
     function setTheme(mode) {
-      // Manage buttons
       themeBtns.forEach(btn => btn.classList.remove('active'));
       document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
-
-      // Save preference
       localStorage.setItem('theme-pref', mode);
 
-      // Evaluate 'Auto' mode
       let activeMode = mode;
       if (mode === 'auto') {
         activeMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
 
-      // Apply to HTML and GitHub Markdown data attribute
       if (activeMode === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
         document.documentElement.setAttribute('data-color-mode', 'dark');
-        prismTheme.href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-twilight.min.css"; // Dark code blocks
+        prismTheme.href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-twilight.min.css";
       } else {
         document.documentElement.removeAttribute('data-theme');
         document.documentElement.setAttribute('data-color-mode', 'light');
-        prismTheme.href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-coy.min.css"; // Light code blocks
+        prismTheme.href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-coy.min.css";
       }
     }
 
-    // Initialize Theme
     const savedTheme = localStorage.getItem('theme-pref') || 'auto';
     setTheme(savedTheme);
 
@@ -402,14 +580,11 @@
       btn.addEventListener('click', () => setTheme(btn.dataset.mode));
     });
 
-    // Listen for OS auto changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (localStorage.getItem('theme-pref') === 'auto') {
-        setTheme('auto');
-      }
+      if (localStorage.getItem('theme-pref') === 'auto') setTheme('auto');
     });
 
-    // --- Search Engine ---
+    // --- Search Engine Script ---
     async function initSearch() {
       const input = document.getElementById('search-input');
       const resultsContainer = document.getElementById('search-results');
@@ -437,13 +612,12 @@
           resultsContainer.classList.add('has-results');
 
           if (matches.length === 0) {
-            resultsContainer.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-muted)">No results found</li>';
+            resultsContainer.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-muted);font-size:14px;">No results found</li>';
             return;
           }
 
           matches.forEach(page => {
             const li = document.createElement('li');
-
             let snippet = page.content || '';
             const idx = snippet.toLowerCase().indexOf(query);
             if (idx !== -1) {
@@ -468,11 +642,8 @@
           });
         });
 
-        // Close search on click away or ESC
         document.addEventListener('click', (e) => {
-          if (!e.target.closest('.search-container')) {
-            resultsContainer.classList.remove('has-results');
-          }
+          if (!e.target.closest('.search-container')) resultsContainer.classList.remove('has-results');
         });
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape') {
@@ -480,16 +651,15 @@
             input.blur();
           }
         });
-
       } catch (err) {
         console.error("Search failed:", err);
       }
     }
     initSearch();
   </script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/toolbar/prism-toolbar.min.js"></script>
   <script
     src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js"></script>
