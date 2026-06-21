@@ -9,7 +9,7 @@ sudo python ~/dev/lethil/me/vm/create.py
 
 ## 2. Secrets
 
-more info of [secrets](secrets.md)
+... [more info](secrets.md)
 
 ```bash
 cd /app?
@@ -19,7 +19,7 @@ python3 ~/dev/lethil/script/secrets.py --update
 
 ## 3. Setup
 
-Provision a server, Either dispatch from GitHub Actions UI (the robotic way), or:
+...[more info](setup.md)
 
 ```bash
 python3 ~/dev/lethil/server/setup.py --show-command

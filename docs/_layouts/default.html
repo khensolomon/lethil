@@ -469,6 +469,8 @@
 
     <nav>
       <a href="{{ '/' | relative_url }}" class="{% if page.url == '/' %}active{% endif %}">Home</a>
+      <a href="{{ '/secrets.html' | relative_url }}"
+        class="{% if page.url == '/secrets.html' %}active{% endif %}">Secrets</a>
       <a href="{{ '/setup.html' | relative_url }}" class="{% if page.url == '/setup.html' %}active{% endif %}">Setup</a>
       <a href="{{ '/instructions.html' | relative_url }}"
         class="{% if page.url == '/instructions.html' %}active{% endif %}">Instructions</a>
