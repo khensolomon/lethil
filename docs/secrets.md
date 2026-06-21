@@ -1,6 +1,4 @@
-# secrets.py
-
-Project-aware GitHub secrets manager.
+# Secrets manager
 
 A single self-contained Python script that reads a project's `.env` file,
 validates it, and pushes the right pieces to GitHub Actions as repository
