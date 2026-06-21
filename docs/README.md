@@ -9,7 +9,7 @@ sudo python ~/dev/lethil/me/vm/create.py
 
 ## 2. Secrets
 
-Push secrets to GitHub
+more info of [secrets](secrets.md)
 
 ```bash
 cd /app?
