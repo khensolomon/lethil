@@ -8,8 +8,6 @@
 
   <link rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css">
-
-  <!-- Restored Prism CSS for syntax colors, but using the clean default theme (NO shadows) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"
     id="prism-theme">
   <link rel="stylesheet"
@@ -19,7 +17,8 @@
     /* --- Theming System --- */
     :root {
       --bg-color: #fff;
-      --surface-color: #fafafa;
+      --surface-color: #f6f8fa;
+      /* Soft contrast background */
       --primary-color: #0969da;
       --primary-hover: #0366d6;
       --text-main: #24292f;
@@ -199,17 +198,24 @@
       transition: opacity var(--transition-speed);
     }
 
-    /* --- Header Layout --- */
+    /* --- Dynamic Header Layout --- */
     header {
       position: sticky;
       top: 0;
       height: 70px;
-      background: var(--surface-color);
+      background: var(--bg-color);
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       padding: 0 24px;
       z-index: 100;
+      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+
+    /* Activated via JS on Scroll */
+    header.header-scrolled {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      border-bottom-color: transparent;
     }
 
     .menu-btn {
@@ -250,7 +256,6 @@
       max-width: 360px;
       margin-left: 20px;
       height: 38px;
-      /* Stable height placeholder */
     }
 
     .search-widget {
@@ -258,19 +263,19 @@
       top: 0;
       left: 0;
       right: 0;
-      background: var(--bg-color);
+      background: var(--surface-color);
+      /* Matches sidebar for a tool-like feel */
       border: 1px solid var(--border-color);
       border-radius: 8px;
       transition: all 0.2s ease;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      /* Fixes scrollbar overlaying rounded corners */
     }
 
     /* Elevated Unified State */
     .search-container.search-active .search-widget {
-      background: var(--surface-color);
+      background: var(--bg-color);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
       border-radius: 12px;
       z-index: 120;
@@ -287,8 +292,6 @@
       display: none;
     }
 
-    /* Hidden on desktop */
-
     #search-input {
       flex: 1;
       height: 100%;
@@ -300,27 +303,22 @@
       outline: none;
     }
 
-    /* Result Dropdown Box */
+    /* Refined Native Result Dropdown */
     .search-results-list {
       display: none;
       max-height: 400px;
       overflow-y: auto;
       overflow-x: hidden;
-      /* Prevents horizontal scroll entirely */
       border-top: 1px solid var(--border-color);
-      /* Divider between input and results */
       list-style: none;
-      padding: 8px;
-      margin-bottom: 4px;
-      /* Internal buffer so scrollbar doesn't touch bottom curve */
+      padding: 0;
+      /* Removed margin/padding for edge-to-edge native look */
     }
 
-    /* Toggle visibility purely via parent state */
     .search-container.search-active .search-results-list.has-results {
       display: block;
     }
 
-    /* Custom Sleek Scrollbars inside the Widget */
     .search-results-list::-webkit-scrollbar {
       width: 6px;
     }
@@ -336,14 +334,26 @@
 
     .search-results-list a {
       display: block;
-      padding: 10px 14px;
+      padding: 12px 16px;
       text-decoration: none;
       color: var(--text-main);
-      border-radius: 6px;
+      border-bottom: 1px solid var(--border-color);
+      /* Native separator lines */
+      transition: background-color 0.15s;
+    }
+
+    .search-results-list li:last-child a {
+      border-bottom: none;
     }
 
     .search-results-list a:hover {
-      background-color: var(--bg-color);
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    /* Subtle hover */
+
+    [data-theme="dark"] .search-results-list a:hover {
+      background-color: rgba(255, 255, 255, 0.05);
     }
 
     .result-title {
@@ -367,10 +377,10 @@
       border-radius: 3px;
     }
 
-    /* --- Theme Switcher Pill (Far Right) --- */
+    /* --- Theme Switcher Pill (Far Right Desktop) --- */
     .theme-switcher {
       display: flex;
-      background: var(--border-color);
+      background: var(--surface-color);
       border-radius: 7px;
       padding: 2px;
       gap: 1px;
@@ -385,8 +395,8 @@
       justify-content: center;
       background: transparent;
       border: none;
-      width: 24px;
-      height: 24px;
+      width: 26px;
+      height: 26px;
       border-radius: 5px;
       color: var(--text-muted);
       cursor: pointer;
@@ -394,8 +404,8 @@
     }
 
     .theme-btn svg {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
     }
 
     .theme-btn:hover {
@@ -403,9 +413,9 @@
     }
 
     .theme-btn.active {
-      background: var(--surface-color);
+      background: var(--bg-color);
       color: var(--primary-color);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     }
 
     /* --- Content Area Layout --- */
@@ -457,10 +467,6 @@
     }
 
     @media (max-width: 768px) {
-      .theme-switcher {
-        margin-left: 7px;
-      }
-
       .sidebar {
         box-shadow: inset -18px 0px 12px -18px rgba(0, 0, 0, 0.5);
       }
@@ -469,8 +475,22 @@
         display: none;
       }
 
+      /* Mobile Theme Switcher: Full-width Segmented Control */
       .sidebar-theme-switcher {
         display: flex;
+        width: 100%;
+        background: var(--bg-color);
+        margin-bottom: 16px;
+        padding: 4px;
+        border-radius: 8px;
+        justify-content: space-between;
+      }
+
+      .sidebar-theme-switcher .theme-btn {
+        flex: 1;
+        /* Equal width buttons */
+        height: 32px;
+        border-radius: 6px;
       }
 
       /* Mobile Full-Screen Takeover for Search */
@@ -502,7 +522,7 @@
         height: 64px;
         border-bottom: 1px solid var(--border-color);
         padding: 0 16px;
-        background: var(--surface-color);
+        background: var(--bg-color);
       }
 
       .search-container.search-active #search-cancel {
@@ -527,7 +547,6 @@
         padding: 0 4px;
       }
 
-      /* 16px prevents iOS auto-zoom */
       .search-container.search-active .search-results-list {
         max-height: none;
         flex: 1;
@@ -566,6 +585,7 @@
     </nav>
 
     <div class="sidebar-footer">
+      <!-- Redesigned Mobile Theme Switcher inside Sidebar -->
       <div class="theme-switcher sidebar-theme-switcher">
         <button class="theme-btn active" data-mode="auto" title="System Default"><svg viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -606,12 +626,12 @@
             <path fill-rule="evenodd"
               d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z">
             </path>
-          </svg><span id="star-count">0k</span></div>
+          </svg><span id="star-count">--</span></div>
         <div class="repo-stat-item" title="Forks"><svg viewBox="0 0 16 16">
             <path fill-rule="evenodd"
               d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v3.256a2.25 2.25 0 101.5 0V5.372zm3.141 5.03l.859-1.258a.25.25 0 00-.207-.394H6.251a.75.75 0 010-1.5h2.542a1.75 1.75 0 011.448 2.763l-.86 1.258a.25.25 0 00.208.394h2.162a.75.75 0 010 1.5H9.589a1.75 1.75 0 01-1.448-2.763zM14 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0z">
             </path>
-          </svg><span id="fork-count">0k</span></div>
+          </svg><span id="fork-count">--</span></div>
       </div>
     </div>
   </aside>
@@ -619,10 +639,10 @@
   <div class="page-wrapper">
     <label for="sidebar-toggle" class="page-backdrop"></label>
 
-    <header>
+    <!-- Target the header for JS scroll shadow -->
+    <header id="main-header">
       <label for="sidebar-toggle" class="menu-btn"><span></span><span></span><span></span></label>
 
-      <!-- New Unified Search Widget HTML Structure -->
       <div class="search-container" id="search-container">
         <div class="search-widget">
           <div class="search-input-wrapper">
@@ -671,6 +691,15 @@
   </div>
 
   <script>
+    // --- 1. Header Scroll Shadow & Theme Setup ---
+    document.addEventListener("DOMContentLoaded", () => {
+      const header = document.getElementById('main-header');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 10) header.classList.add('header-scrolled');
+        else header.classList.remove('header-scrolled');
+      });
+    });
+
     const themeBtns = document.querySelectorAll('.theme-btn');
     const prismTheme = document.getElementById('prism-theme');
 
@@ -719,7 +748,7 @@
     fetchRepoStats();
 
 
-    // --- 3. Unified Search Engine Scripts ---
+    // --- 2. Persistent Search Engine ---
     async function initSearch() {
       const container = document.getElementById('search-container');
       const input = document.getElementById('search-input');
@@ -727,10 +756,11 @@
       const resultsContainer = document.getElementById('search-results');
       if (!input || !resultsContainer) return;
 
-      // Method to smoothly close the unified search box
       const closeSearch = () => {
         container.classList.remove('search-active');
+        // Clear value when explicitly canceling to reset UX on mobile
         input.value = '';
+        sessionStorage.removeItem('lastSearchQuery');
         resultsContainer.innerHTML = '';
         resultsContainer.classList.remove('has-results');
         input.blur();
@@ -742,18 +772,23 @@
         const response = await fetch("{{ '/search.json' | relative_url }}");
         const searchIndex = await response.json();
 
-        // Expanding input on focus seamlessly
+        // Load Persistent Search Term
+        const savedQuery = sessionStorage.getItem('lastSearchQuery') || '';
+        if (savedQuery) input.value = savedQuery;
+
+        // Expanding input on focus and re-triggering logic if query exists
         input.addEventListener('focus', () => {
           container.classList.add('search-active');
           if (input.value.trim().length >= 2) {
-            resultsContainer.classList.add('has-results');
+            input.dispatchEvent(new Event('input')); // instantly show remembered results
           }
         });
 
         input.addEventListener('input', (e) => {
           const query = e.target.value.toLowerCase().trim();
+          sessionStorage.setItem('lastSearchQuery', query); // Persist term
           resultsContainer.innerHTML = '';
-          container.classList.add('search-active'); // ensure it stays open while typing
+          container.classList.add('search-active');
 
           if (query.length < 2) {
             resultsContainer.classList.remove('has-results');
@@ -799,7 +834,7 @@
           });
         });
 
-        // Click outside the unified widget dismisses the list, perfectly restoring base state
+        // Click outside the unified widget dismisses the list, keeps term
         document.addEventListener('click', (e) => {
           if (!e.target.closest('.search-container')) {
             container.classList.remove('search-active');
@@ -808,9 +843,7 @@
         });
 
         document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') {
-            closeSearch();
-          }
+          if (e.key === 'Escape') closeSearch();
         });
       } catch (err) {
         console.error("Search failed:", err);
