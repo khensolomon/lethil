@@ -3,8 +3,7 @@
 """
 Ubuntu Environment Interactive Setup Script
 
-Version: 1.1.7
-Date: 2026-03-07
+version: 26.06.03-7-2
 
 Description:
     An interactive, data-driven script to configure a fresh Ubuntu and Debian environment.
@@ -12,22 +11,22 @@ Description:
     JSON configuration injection via the '--tasks' argument.
     
 Changelog:
-    - 1.1.7 (2026-03-07): Added default value support for multi-choice prompts. Set 
-                          GNOME dock position to default to "LEFT" (Ubuntu default).
-    - 1.1.6 (2026-03-06): Added automatic clock repair. If the VM clock is out of sync, 
-                          the script will fetch the true time from the internet and use 
-                          'sudo date -s' to fix it automatically, preventing SSL/APT failures.
-    - 1.1.5 (2026-03-06): Improved internet pre-flight check to also validate system clock 
-                          synchronization. Out-of-sync clocks in VMs cause silent APT/SSL failures.
-    - 1.1.4 (2026-03-06): Improved internet connectivity check for VMs (GNOME Boxes). 
-                          Increased timeout, added error context, and made it bypassable.
-    - 1.1.3 (2026-03-05): Final Audit. Fixed FileNotFoundError crashes for missing core utils.
-                          Prevented silent directory creation. Un-hid apt-get update output.
-    - 1.1.2 (2026-03-05): Added Debian compatibility by safely checking for the 
-                          'dash-to-dock' gsettings schema.
-    - 1.1.1 (2026-03-05): Added remote URL support for custom JSON injection.
-    - 1.1.0 (2026-03-05): Added intelligent pre-flight checks and package upgrade handling.
-    - 1.0.0 (2026-03-04): Initial stable release.
+    - 26.06.03-7-2: Added default value support for multi-choice prompts. Set 
+                    GNOME dock position to default to "LEFT" (Ubuntu default).
+    - 26.06.03-6-3: Added automatic clock repair. If the VM clock is out of sync, 
+                    the script will fetch the true time from the internet and use 
+                    'sudo date -s' to fix it automatically, preventing SSL/APT failures.
+    - 26.06.03-6-2: Improved internet pre-flight check to also validate system clock 
+                    synchronization. Out-of-sync clocks in VMs cause silent APT/SSL failures.
+    - 26.06.03-6-1: Improved internet connectivity check for VMs (GNOME Boxes). 
+                    Increased timeout, added error context, and made it bypassable.
+    - 26.06.03-5-4: Final Audit. Fixed FileNotFoundError crashes for missing core utils.
+                    Prevented silent directory creation. Un-hid apt-get update output.
+    - 26.06.03-5-3: Added Debian compatibility by safely checking for the 
+                    'dash-to-dock' gsettings schema.
+    - 26.06.03-5-2: Added remote URL support for custom JSON injection.
+    - 26.06.03-5-1: Added intelligent pre-flight checks and package upgrade handling.
+    - 26.06.03-4-7: Initial stable release.
 """
 
 import os
