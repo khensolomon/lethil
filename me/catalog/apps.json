@@ -1,0 +1,104 @@
+{
+  "//": "Shared application catalog. Single source of truth for 'which apps to install', read by iso/ (build-time, cloud-init) and dev/ubuntu_desktop.py (runtime, live system). Add an app once here; reference its id from whichever consumer(s) need it. See catalog/README.md.",
+  "version": "v26.07.18-1",
+
+  "apps": {
+    "curl":              { "packages": ["curl"] },
+    "wget":               { "packages": ["wget"] },
+    "gpg":                { "packages": ["gpg"] },
+    "openssh-server":     { "packages": ["openssh-server"] },
+    "inkscape":           { "packages": ["inkscape"] },
+    "gimp":                { "packages": ["gimp"] },
+    "audacity":           { "packages": ["audacity"] },
+    "sqlitebrowser":      { "packages": ["sqlitebrowser"] },
+    "network-manager":    { "packages": ["network-manager"] },
+    "remmina":             { "packages": ["remmina"] },
+    "python-is-python3":  { "packages": ["python-is-python3"] },
+    "git":                 { "packages": ["git"] },
+    "mariadb-server":     { "packages": ["mariadb-server"] },
+    "spice-vdagent":      { "packages": ["spice-vdagent"] },
+
+    "chrome": {
+      "name": "Google Chrome",
+      "prompt": "Install Google Chrome?",
+      "default": true,
+      "iso": {
+        "late-commands": [
+          "wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -O /tmp/chrome.deb",
+          "apt-get install -y /tmp/chrome.deb"
+        ]
+      }
+    },
+
+    "vscode": {
+      "name": "Visual Studio Code",
+      "prompt": "Install VS Code?",
+      "default": true,
+      "iso": {
+        "ubuntu": { "snaps": ["code|classic"] },
+        "debian": {
+          "late-commands": [
+            "wget -qO /tmp/code.deb 'https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64'",
+            "apt-get install -y /tmp/code.deb"
+          ]
+        }
+      }
+    },
+
+    "dbeaver": {
+      "name": "DBeaver CE",
+      "prompt": "Install DBeaver CE?",
+      "default": true,
+      "iso": {
+        "ubuntu": { "snaps": ["dbeaver-ce"] },
+        "debian": {
+          "late-commands": [
+            "wget -qO /tmp/dbeaver.deb 'https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb'",
+            "apt-get install -y /tmp/dbeaver.deb"
+          ]
+        }
+      }
+    },
+
+    "docker": {
+      "name": "Docker",
+      "//": "iso installs a lightweight snap/distro package at image-build time; dev installs the full upstream Docker CE repo on a live system. Genuinely different install strategies for the same app, kept independent on purpose.",
+      "iso": {
+        "prompt": "Install Docker?",
+        "default": true,
+        "ubuntu": { "snaps": ["docker"] },
+        "debian": { "packages": ["docker.io"] }
+      },
+      "dev": {
+        "prompt": "Install Docker CE from the official Docker apt repository?",
+        "default": true,
+        "type": "docker_ce",
+        "packages": ["docker-ce", "docker-ce-cli", "containerd.io", "docker-buildx-plugin", "docker-compose-plugin"],
+        "groups": ["docker"],
+        "note": "Group membership changes require logging out and back in."
+      }
+    },
+
+    "virtualization-stack": {
+      "name": "Virtualization Stack (QEMU/KVM, libvirt, Boxes)",
+      "dev": {
+        "prompt": "Install the virtualization stack (GNOME Boxes, virt-manager, QEMU/KVM)?",
+        "default": true,
+        "type": "apt_stack",
+        "packages": ["gnome-boxes", "virt-manager", "virtinst", "qemu-system-x86", "libvirt-daemon-system", "libvirt-clients", "ovmf"],
+        "groups": ["libvirt", "kvm"],
+        "note": "Group membership changes require logging out and back in."
+      }
+    },
+
+    "lesion-extension": {
+      "name": "GNOME Extension: lesion",
+      "dev": {
+        "prompt": "Install custom GNOME extension 'lesion' (clone + symlink)?",
+        "default": true,
+        "type": "git_extension",
+        "repo": "https://github.com/khensolomon/lesion.git"
+      }
+    }
+  }
+}

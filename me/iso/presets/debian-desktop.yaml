@@ -33,57 +33,34 @@ autoinstall:
       - arches: [default]
         uri: http://archive.ubuntu.com/ubuntu
 
-  packages:
-    - network-manager
-    - remmina
-    - inkscape
-    - gimp
-    - audacity
-    - sqlitebrowser
-    - curl
-    - wget
-    - gpg
-    - python-is-python3
-    - openssh-server
-
   user-data:
     package_upgrade: false
 
 
-# isobuilder-specific extensions: prompts and conditional overrides
+# isobuilder-specific extensions: prompts and conditional overrides.
+#
+# `app_ids` references catalog/apps.json (repo root) — the single source
+# for "which apps to install", shared with dev/ubuntu_desktop.py. Adding
+# an app here means adding its id to catalog/apps.json once, then
+# referencing the id from whichever preset(s)/task(s) need it.
 builder:
   shared:
-    prompts:
-      - ask: "Install Google Chrome?"
-        default: "yes"
-        late-commands:
-          - "wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -O /tmp/chrome.deb"
-          - "apt-get install -y /tmp/chrome.deb"
-
-      - ask: "Install VS Code?"
-        default: "yes"
-        ubuntu:
-          snaps: ["code|classic"]
-        debian:
-          late-commands:
-            - "wget -qO /tmp/code.deb 'https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64'"
-            - "apt-get install -y /tmp/code.deb"
-
-      - ask: "Install DBeaver CE?"
-        default: "yes"
-        ubuntu:
-          snaps: ["dbeaver-ce"]
-        debian:
-          late-commands:
-            - "wget -qO /tmp/dbeaver.deb 'https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb'"
-            - "apt-get install -y /tmp/dbeaver.deb"
-
-      - ask: "Install Docker?"
-        default: "yes"
-        ubuntu:
-          snaps: ["docker"]
-        debian:
-          packages: ["docker.io"]
+    app_ids:
+      - network-manager
+      - remmina
+      - inkscape
+      - gimp
+      - audacity
+      - sqlitebrowser
+      - curl
+      - wget
+      - gpg
+      - python-is-python3
+      - openssh-server
+      - chrome
+      - vscode
+      - dbeaver
+      - docker
 
   ubuntu:
     late-commands:
@@ -104,7 +81,7 @@ builder:
         packages: ["ubuntu-restricted-extras"]
 
   debian:
-    packages:
+    app_ids:
       - spice-vdagent
     prompts:
       - ask: "Install standard system utilities (curl, wget, etc)?"

@@ -64,6 +64,18 @@ class UbuntuBuilder(Builder):
             f"  Run `build.py inspect <iso>` for full directory listing."
         )
 
+    def _ask_interactive_sections(self) -> None:
+        if not ui.UNATTENDED:
+            print()
+        preset_sections = self.autoinstall.get("interactive-sections", [])
+        default = "yes" if "identity" in preset_sections else "no"
+        keep_editable = ui.ask_yes_no(
+            "Keep hostname/username/password editable on the target machine "
+            "at install time (rather than fixed by this ISO)?",
+            default=default,
+        )
+        self.user_inputs.extra["interactive_sections"] = ["identity"] if keep_editable else []
+
     def _ask_disk_layout(self) -> None:
         if not ui.UNATTENDED:
             print()
@@ -138,10 +150,15 @@ class UbuntuBuilder(Builder):
             "tail -n 200 /var/log/installer/curtin-install.log > /dev/tty1 || true",
         ])
 
-        # Make autoinstall fully non-interactive. Without this, Subiquity may
-        # stop and ask interactively for any section we didn't fully specify
-        # (network, ssh, etc). Empty list == "don't be interactive about anything".
-        ai.setdefault("interactive-sections", [])
+        # Make autoinstall fully non-interactive except for sections the user
+        # chose to keep interactive (see _ask_interactive_sections). Without
+        # interactive-sections set at all, Subiquity may stop and ask
+        # interactively for any section we didn't fully specify (network,
+        # ssh, etc) — an empty list means "don't be interactive about
+        # anything not explicitly listed".
+        ai["interactive-sections"] = self.user_inputs.extra.get(
+            "interactive_sections", ai.get("interactive-sections", [])
+        )
 
         # Add a network section if missing — Subiquity halts on missing network
         # when interactive-sections is empty unless we provide one. The default

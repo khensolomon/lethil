@@ -3,13 +3,17 @@
 """
 Ubuntu Environment Interactive Setup Script
 
-version: v26.07.02-1
+version: v26.07.18-1
 
 Highlight:
     - Interactive, data-driven setup for fresh Ubuntu/Debian desktop
       environments. Designed to be executed directly from a URL or locally.
     - Dry-run by default: audits system state and reports what would change.
       No modification is made until '--apply' is passed.
+    - Which apps get installed is data, not code: fetched from a shared
+      catalog (catalog/apps.json, HTTPS by default) with the same
+      trust-on-first-use pinning as '--tasks'. Override with '--catalog'
+      to point at a local file or a different URL.
     - External JSON task injection via '--tasks' (local path or HTTPS URL).
       Remote task files are pinned with trust-on-first-use SHA-256 hashing
       and validated against a task schema before merging.
@@ -40,6 +44,9 @@ Usage:
         python3 ubuntu_desktop.py --apply --tasks ./tasks.json
         python3 ubuntu_desktop.py --apply --tasks https://example.com/tasks.json
 
+    Use a local catalog checkout instead of fetching over HTTPS:
+        python3 ubuntu_desktop.py --catalog ../catalog/apps.json
+
     Run directly from a URL:
         curl -fsSL https://raw.githubusercontent.com/khensolomon/lethil/master/me/dev/ubuntu_desktop.py | python3 - --apply
 
@@ -60,7 +67,7 @@ import subprocess
 import email.utils
 import urllib.request
 
-VERSION = "v26.07.02-1"
+VERSION = "v26.07.18-1"
 
 # ==========================================
 # 0. DEFAULTS
@@ -71,6 +78,7 @@ DEFAULTS = {
     "dev_dir": "~/dev",
     "extensions_dir": "~/.local/share/gnome-shell/extensions",
     "autostart_dir": "~/.config/autostart",
+    "catalog_url": "https://raw.githubusercontent.com/khensolomon/lethil/master/me/catalog/apps.json",
     "connectivity_urls": [
         "https://connectivity-check.ubuntu.com",
         "https://clients3.google.com/generate_204",
@@ -90,47 +98,39 @@ _APT_UPDATED = False
 # ==========================================
 # 1. CONFIGURATION DATA
 # ==========================================
-SETUP_TASKS = [
+#
+# App data itself (which packages, snaps, repos) is no longer hardcoded
+# here — it lives once in catalog/apps.json (repo root), shared with the
+# ISO builder (iso/). Adding an app means adding it to the catalog and
+# referencing its id below; nothing else in this file changes.
+#
+# TASK_MANIFEST keeps only what's genuinely specific to *this* script:
+# which catalog app ids map to a task, and how they're grouped under a
+# single prompt. That grouping is presentation, not installable-app
+# data, so it stays local rather than living in the catalog. A task with
+# a single app id resolves its name/prompt/type entirely from the
+# catalog; a task listing several ids (like "Required Applications")
+# bundles their packages under this task's own name/prompt/type.
+TASK_MANIFEST = [
     {
         "name": "Required Applications",
         "prompt": "Check and install missing required applications?",
         "type": "apt_packages",
-        "packages": [
+        "apps": [
             "git", "curl", "wget", "gpg",
             "inkscape", "gimp", "audacity",
             "sqlitebrowser", "mariadb-server",
             "openssh-server"
         ]
     },
-    {
-        "name": "Virtualization Stack (QEMU/KVM, libvirt, Boxes)",
-        "prompt": "Install the virtualization stack (GNOME Boxes, virt-manager, QEMU/KVM)?",
-        "type": "apt_stack",
-        "packages": [
-            "gnome-boxes", "virt-manager", "virtinst",
-            "qemu-system-x86", "libvirt-daemon-system",
-            "libvirt-clients", "ovmf"
-        ],
-        "groups": ["libvirt", "kvm"],
-        "note": "Group membership changes require logging out and back in."
-    },
-    {
-        "name": "Docker CE (upstream repository)",
-        "prompt": "Install Docker CE from the official Docker apt repository?",
-        "type": "docker_ce",
-        "packages": [
-            "docker-ce", "docker-ce-cli", "containerd.io",
-            "docker-buildx-plugin", "docker-compose-plugin"
-        ],
-        "groups": ["docker"],
-        "note": "Group membership changes require logging out and back in."
-    },
-    {
-        "name": "GNOME Extension",
-        "prompt": "Install custom GNOME extension 'lesion' (clone + symlink)?",
-        "type": "git_extension",
-        "repo": "https://github.com/khensolomon/lesion.git",
-    },
+    {"apps": ["virtualization-stack"]},
+    {"apps": ["docker"]},
+    {"apps": ["lesion-extension"]},
+]
+
+# Tasks with no installable "app" behind them (desktop config, not
+# packages) stay hardcoded here rather than in the catalog.
+STATIC_TASKS = [
     {
         "name": "Autostart Applications",
         "prompt": "Configure autostart applications?",
@@ -184,6 +184,21 @@ SETUP_TASKS = [
         "type": "gnome_dock_interactive"
     }
 ]
+
+# Populated at runtime in main() from TASK_MANIFEST + STATIC_TASKS, once
+# the catalog has been fetched. Declared here (empty) so functions that
+# reference it as a module global (load_custom_tasks' overlay check,
+# validate_tasks) keep working unchanged.
+SETUP_TASKS = []
+
+# Fields resolve_catalog_app pulls from an app's "dev" block, falling
+# back to the app's top-level value when "dev" doesn't override it.
+_CATALOG_INHERITABLE = ("prompt", "default", "packages")
+# Fields that only ever make sense inside a "dev" block — a bare apt
+# package has no "type", "repo", or "groups".
+_CATALOG_CONTEXT_ONLY = ("type", "groups", "repo", "note")
+
+
 
 # Schema used to validate built-in and injected tasks. Only these task
 # types are accepted; required fields must be present per type.
@@ -398,6 +413,91 @@ def fetch_url_trusted(url):
         print_success(f"Content matches pinned SHA-256 ({digest[:16]}...).", indent=1)
 
     return data
+
+def load_catalog(source):
+    """Loads the app catalog from a local path or HTTPS URL, defaulting to
+    DEFAULTS['catalog_url']. Uses the same trust-on-first-use pinning as
+    --tasks. Fails fast (hard error, no silent fallback) on any problem —
+    a stale or unreachable catalog is a "fix it" situation, not a "guess
+    and continue" one.
+    """
+    if source.startswith('http://'):
+        print_error("Plain HTTP is not accepted for the catalog. Use HTTPS.", indent=0)
+        sys.exit(1)
+
+    if source.startswith('https://'):
+        print_info(f"Fetching app catalog from {source}...", indent=0)
+        raw = fetch_url_trusted(source)
+    elif os.path.exists(source):
+        with open(source, 'rb') as f:
+            raw = f.read()
+    else:
+        print_error(f"Catalog not found: {source}", indent=0)
+        sys.exit(1)
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print_error(f"Catalog is not valid JSON: {e}", indent=0)
+        sys.exit(1)
+
+    apps = data.get('apps') if isinstance(data, dict) else None
+    if not isinstance(apps, dict):
+        print_error("Catalog must contain a top-level 'apps' object.", indent=0)
+        sys.exit(1)
+    return apps
+
+def resolve_catalog_app(app_id, apps, context='dev'):
+    """Resolve one catalog entry for this script's context, falling back
+    to the app's top-level fields when there's no context override (the
+    common case: a plain apt package with no divergent behavior)."""
+    if app_id not in apps:
+        print_error(f"Unknown app id '{app_id}' referenced (not in catalog).", indent=0)
+        sys.exit(1)
+
+    app = apps[app_id]
+    ctx = app.get(context) or {}
+    resolved = {}
+    for key in _CATALOG_INHERITABLE:
+        if key in ctx:
+            resolved[key] = ctx[key]
+        elif key in app:
+            resolved[key] = app[key]
+    for key in _CATALOG_CONTEXT_ONLY:
+        if key in ctx:
+            resolved[key] = ctx[key]
+    resolved['name'] = app.get('name', app_id)
+    return resolved
+
+def build_setup_tasks(apps):
+    """Resolves TASK_MANIFEST + STATIC_TASKS against the catalog into the
+    task-list shape TASK_HANDLERS/validate_tasks already expect. This is
+    the only place catalog data and this script's task shape meet."""
+    tasks = []
+    for entry in TASK_MANIFEST:
+        app_ids = entry["apps"]
+        if len(app_ids) == 1 and "type" not in entry:
+            resolved = resolve_catalog_app(app_ids[0], apps)
+            task = {"name": resolved["name"]}
+            if "type" in resolved:
+                task["type"] = resolved["type"]
+            if resolved.get("prompt"):
+                task["prompt"] = resolved["prompt"]
+            for key in ("packages", "groups", "repo", "note"):
+                if resolved.get(key):
+                    task[key] = resolved[key]
+            tasks.append(task)
+        else:
+            packages = []
+            for app_id in app_ids:
+                packages.extend(resolve_catalog_app(app_id, apps).get("packages", []))
+            tasks.append({
+                "name": entry["name"],
+                "prompt": entry["prompt"],
+                "type": entry["type"],
+                "packages": packages,
+            })
+    return tasks + STATIC_TASKS
 
 def apt_update_once(force=False):
     """Runs 'apt-get update' at most once per script run (unless forced)."""
@@ -1112,6 +1212,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--tasks', type=str, default=None,
                         help="Path or HTTPS URL to a custom JSON file to merge tasks.")
+    parser.add_argument('--catalog', type=str, default=None,
+                        help=f"Path or HTTPS URL to the app catalog (default: {DEFAULTS['catalog_url']}).")
     parser.add_argument('--apply', action='store_true',
                         help="Apply changes. Without this flag the script audits only.")
     parser.add_argument('--yes', action='store_true',
@@ -1124,6 +1226,10 @@ def main():
 
     if APPLY and not ASSUME_YES:
         ensure_tty()
+
+    global SETUP_TASKS
+    apps = load_catalog(args.catalog or DEFAULTS['catalog_url'])
+    SETUP_TASKS = build_setup_tasks(apps)
 
     final_tasks = validate_tasks(SETUP_TASKS, source="built-in")
 

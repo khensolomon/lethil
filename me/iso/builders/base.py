@@ -192,7 +192,14 @@ class Builder(ABC):
         if plain:
             u.password_hash = self._hash_password(plain)
 
+        self._ask_interactive_sections()
         self._ask_disk_layout()
+
+    def _ask_interactive_sections(self) -> None:
+        """Override to ask which autoinstall sections stay interactive on
+        the target machine at install time. Subiquity-based distros only —
+        Debian's preseed builder has no equivalent single-key mechanism."""
+        pass
 
     def _ask_disk_layout(self) -> None:
         """Override to add distro-specific disk layout prompts."""

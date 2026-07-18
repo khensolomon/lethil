@@ -38,6 +38,8 @@ except ImportError:
         "  pip install pyyaml"
     )
 
+from . import catalog as app_catalog
+
 
 class ConfigError(Exception):
     """Raised when a preset fails to load or validate."""
@@ -164,18 +166,79 @@ def _validate_prompts(builder: Dict, errors: List[str], warnings: List[str]) -> 
 
 
 # ---------------------------------------------------------------------------
+# Catalog expansion — resolves builder.<section>.app_ids into the same
+# literal packages/snaps/late-commands/prompts shape the schema already
+# expects. Runs before validation, so prompts.py and the schema itself
+# stay unaware the catalog exists — they only ever see resolved data.
+# ---------------------------------------------------------------------------
+
+_BUILDER_SECTIONS = ("shared", "ubuntu", "debian", "fedora", "arch")
+
+
+def _catalog_prompt_dict(resolved: Dict) -> Dict:
+    """Turn a resolve_app() result into a literal prompt dict (PROMPT_SCHEMA shape)."""
+    prompt = {
+        "ask": resolved["prompt"],
+        "default": "yes" if resolved.get("default", True) else "no",
+    }
+    for key in ("packages", "snaps", "late-commands", "ubuntu", "debian"):
+        if resolved.get(key):
+            prompt[key] = resolved[key]
+    return prompt
+
+
+def expand_app_ids(data: Dict, apps: Dict) -> Dict:
+    """
+    Walk builder.<section>.app_ids and resolve each id against the catalog:
+      - apps with a "prompt" become an entry appended to that section's
+        "prompts" list (same shape as a hand-written prompt).
+      - apps with no "prompt" are unconditional; their packages/snaps/
+        late-commands are appended directly onto the section's own
+        static packages/snaps/late-commands lists.
+    Mutates and returns `data`. Never touches `data["autoinstall"]` —
+    catalog resolution only ever writes into builder:, which the existing
+    merge machinery (prompts.merge_static_overrides, base.py) already
+    folds into autoinstall at build time.
+    """
+    builder = data.get("builder")
+    if not isinstance(builder, dict):
+        return data
+
+    for section_name in _BUILDER_SECTIONS:
+        section = builder.get(section_name)
+        if not isinstance(section, dict):
+            continue
+
+        app_ids = section.pop("app_ids", None)
+        if not app_ids:
+            continue
+
+        for app_id in app_ids:
+            resolved = app_catalog.resolve_app(app_id, apps, context="iso")
+            if resolved.get("prompt"):
+                section.setdefault("prompts", []).append(_catalog_prompt_dict(resolved))
+            else:
+                for key in ("packages", "snaps", "late-commands"):
+                    if resolved.get(key):
+                        section.setdefault(key, []).extend(resolved[key])
+
+    return data
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-def load_preset(path: Path) -> Tuple[Dict, List[str]]:
+def load_preset(path: Path, catalog_path: Path = None) -> Tuple[Dict, List[str]]:
     """
-    Load and validate a preset file.
+    Load, expand catalog app_ids, and validate a preset file.
 
     Returns:
         (config_dict, warnings)
 
     Raises:
-        ConfigError: if the file can't be parsed or fails validation.
+        ConfigError: if the file can't be parsed, the catalog can't be
+        resolved, or the result fails validation.
     """
     path = Path(path).expanduser()
     if not path.exists():
@@ -190,6 +253,12 @@ def load_preset(path: Path) -> Tuple[Dict, List[str]]:
 
     if data is None:
         raise ConfigError(f"Preset {path} is empty")
+
+    try:
+        apps = app_catalog.load_catalog(catalog_path)
+        expand_app_ids(data, apps)
+    except app_catalog.CatalogError as e:
+        raise ConfigError(f"Preset {path}: {e}") from e
 
     errors: List[str] = []
     warnings: List[str] = []
