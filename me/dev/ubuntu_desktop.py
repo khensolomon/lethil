@@ -41,7 +41,7 @@ Usage:
         python3 ubuntu_desktop.py --apply --tasks https://example.com/tasks.json
 
     Run directly from a URL:
-        curl -fsSL https://raw.githubusercontent.com/khensolomon/lethil/master/ubuntu_desktop.py | python3 - --apply
+        curl -fsSL https://raw.githubusercontent.com/khensolomon/lethil/master/me/dev/ubuntu_desktop.py | python3 - --apply
 
     Show version:
         python3 ubuntu_desktop.py --version
