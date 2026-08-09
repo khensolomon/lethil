@@ -10,6 +10,20 @@ nav_order: 99
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.08.03a
+
+- Restructured into a cross-repo setup. The Jekyll source now lives in the
+  main `lethil` repository under `docs/`, and a GitHub Actions workflow builds
+  it and deploys the generated site to the separate `khensolomon.github.io`
+  repository, which keeps serving the free GitHub Pages URL. Publishing is
+  gated on the commit message: a push whose message starts with `docs update:`
+  triggers a deploy, while any other commit pushes without touching the live
+  site. A one-time deploy-key setup (documented in the root README) gives the
+  workflow permission to write into the Pages repo.
+- Repointed the site's own-repo reference. The activity ticker that keeps the
+  site's own source repository out of its visible rotation now points at
+  `lethil` (where the docs source lives) instead of `khensolomon.github.io`.
+
 ## 26.07.28j
 
 - Reworked the menu button's hover motion to be more legible. Closed, the bars

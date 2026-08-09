@@ -1,6 +1,10 @@
-# khensolomon.github.io
+# Lethil — docs site
 
-Portfolio (Home) + documentation (Docs), one Jekyll site.
+The Jekyll source for **https://khensolomon.github.io/** (portfolio Home +
+documentation). This folder is the source of truth; it's built and deployed by
+the workflow at the repository root. See the top-level
+[`../README.md`](../README.md) for the deploy setup and the `docs update:`
+publishing flow.
 
 ## Local
 
@@ -12,20 +16,6 @@ bundle install
 bundle exec jekyll serve --livereload
 # http://localhost:4000
 ```
-
-## Deploy
-
-Pushes to `main` deploy **only** when the commit message starts with `deploy:`:
-
-```bash
-git commit -m "deploy: header + sidebar rework"
-git push
-```
-
-Any other commit message pushes without touching the live site. A manual
-deploy is also available from the Actions tab (`workflow_dispatch`).
-
-One-time repo setting: **Settings → Pages → Source → "GitHub Actions"**.
 
 ## Layout behavior
 
@@ -42,5 +32,8 @@ One-time repo setting: **Settings → Pages → Source → "GitHub Actions"**.
 
 ## Adding a docs page
 
-`docs/*.md` with `title`, `description`, `category`, `nav_order` front
-matter — layout, sidebar entry, and search index all follow automatically.
+Add a markdown file under the relevant section folder (`_docs/`, `_server/`,
+`_python/`, ...) with `title`, `description`, `category`, `nav_order` front
+matter — layout, sidebar entry, and search index all follow automatically. To
+add a whole new section, register a collection in `_config.yml`, create the
+`_<name>/` folder, and add an entry to `_data/sections.yml`.

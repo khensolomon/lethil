@@ -3,10 +3,10 @@
    hero and the first showcase. The dot's colour and pulse speed reflect how
    old the CURRENTLY SHOWN event is (six tiers, freshest to quiet) — not a
    separate "last active overall" stat — so it can never disagree with the
-   "x ago" text sitting right next to it. The site's own source repo (lethil,
-   which holds the docs) still counts for the "last updated" footer line, but
-   is kept OUT of the visible rotation so the site doesn't keep highlighting
-   itself as a project.
+   "x ago" text sitting right next to it. The portfolio's own repo
+   (khensolomon.github.io) still counts for the site's "last updated" footer
+   line, but is kept OUT of the visible rotation so the site doesn't keep
+   highlighting itself as a project.
    Degrades silently: if the API is unreachable or rate-limited, nothing shows. */
 (function () {
   "use strict";
@@ -16,7 +16,7 @@
   if (!root && !updatedEl) return;
 
   var USER = "khensolomon";
-  var SELF = USER + "/lethil";        // de-emphasised repo (docs source lives here)
+  var SELF = USER + "/khensolomon.github.io";        // de-emphasised repo
   var API  = "https://api.github.com/users/" + USER + "/events/public?per_page=60";
   var CACHE_KEY = "gh:events", CACHE_TTL = 5 * 60 * 1000;   // 5 min
 

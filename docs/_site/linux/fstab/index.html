@@ -1,0 +1,181 @@
+<!doctype html><html lang="en" data-theme="light" data-theme-pref="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Managing fstab — Lethil</title>
+  <meta name="description" content="Declarative mounts.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+
+  <!-- Resolve theme before first paint to avoid a flash. Must stay inline. -->
+  <script>
+    (function () {
+      try {
+        var pref = localStorage.getItem('theme') || 'auto';
+        var dark = pref === 'dark' ||
+          (pref === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+        var r = document.documentElement;
+        r.setAttribute('data-theme', dark ? 'dark' : 'light');
+        r.setAttribute('data-theme-pref', pref);
+      } catch (e) {}
+    })();
+  </script><link rel="stylesheet" href="/assets/css/style.css?v=1785783858">
+  <script>window.SITE = { searchUrl: "/search.json?v=1785783858" };</script>
+</head>
+<body class="is-docs" data-nav="closed">
+  <!-- Decide the initial nav state before the sidebar renders (no animation flash). -->
+  <script>
+    (function () {
+      try {
+        var b = document.body;
+        var wide = matchMedia('(min-width: 700px)').matches;
+        if (!wide) return; /* mobile always starts closed */
+        if (b.classList.contains('is-docs')) {
+          var stored = sessionStorage.getItem('nav:docs');
+          if (stored !== 'closed') b.setAttribute('data-nav', 'open');
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <aside id="sidebar" class="sidebar" aria-label="Site navigation">
+  <div class="sidebar__head">
+    
+    <a class="brand" href="/">
+      <svg class="brand__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 11.2 12 4l8 7.2"/><path d="M6 10v9.2h12V10"/><path d="M10 19v-5h4v5"/>
+      </svg>
+      <span class="brand-name">Home</span>
+    </a>
+    <button class="theme-toggle theme-toggle--icon" type="button" aria-label="Color theme: auto">
+      <svg class="ico ico-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.6v2.2M12 19.2v2.2M4.4 4.4l1.6 1.6M18 18l1.6 1.6M2.6 12h2.2M19.2 12h2.2M4.4 19.6l1.6-1.6M18 6l1.6-1.6"/>
+      </svg>
+      <svg class="ico ico-dark" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20.5 14.2A8 8 0 0 1 9.8 3.5 8 8 0 1 0 20.5 14.2Z"/>
+      </svg>
+      <svg class="ico ico-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="12" cy="12" r="8.5"/>
+        <path d="M12 3.5a8.5 8.5 0 0 0 0 17Z" fill="currentColor" stroke="none"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="sidebar__body">
+    <p class="sidebar__title mono muted">Linux</p>
+    <nav class="sidebar__nav" aria-label="Section pages"><a class="sidebar__link is-active"
+           href="/linux/fstab/">
+          <span class="mono sidebar__prefix">[*]</span>
+          Managing fstab
+        </a><a class="sidebar__link"
+           href="/linux/netplan/">
+          <span class="mono sidebar__prefix">[+]</span>
+          Static networking
+        </a></nav>
+
+    
+  </div><div class="sidebar__foot" hidden></div>
+</aside>
+
+
+  <div class="shell">
+    <header class="topbar">
+      <div class="topbar__cluster">
+        <button class="navbtn" type="button"
+                aria-controls="sidebar" aria-expanded="false"
+                aria-label="Toggle navigation" data-nav-toggle>
+          <span class="navbtn__icon" aria-hidden="true">
+            <span class="navbtn__bar"></span>
+            <span class="navbtn__bar"></span>
+            <span class="navbtn__bar"></span>
+          </span>
+        </button>
+
+        <a class="brand" href="/linux/">
+          <span class="brand-name">Linux</span>
+        </a>
+        <div class="search" data-search>
+  <div class="search__bar">
+    <button type="button" class="search__toggle" data-search-toggle aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="11" cy="11" r="6.5"/><path d="M20.5 20.5 16 16"/>
+      </svg>
+    </button>
+    <div class="search__field">
+      <button type="button" class="search__back" data-search-close aria-label="Close search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 5l-7 7 7 7"/>
+        </svg>
+      </button>
+      <input
+        type="search"
+        class="search__input"
+        placeholder="Search"
+        aria-label="Search"
+        autocomplete="off"
+        spellcheck="false"
+        data-search-input>
+      <span class="search__hint" data-search-hint aria-hidden="true" title="Press / or Ctrl+K to search">
+        <kbd>/</kbd>
+        <span class="search__hint-sep">or</span>
+        <kbd data-search-hint-mod>Ctrl</kbd><span class="search__hint-plus">+</span><kbd>K</kbd>
+      </span>
+    </div>
+  </div>
+  <div class="search__panel" data-search-panel hidden>
+    <ul class="search__results" data-search-results role="listbox"></ul>
+  </div>
+</div>
+
+        
+      </div>
+
+      <div class="topbar__cluster">
+        
+      </div>
+    </header>
+
+    <main class="page">
+      <div class="docs inset">
+  <article class="docs__content prose">
+    <header class="docs__head">
+      <p class="eyebrow mono accent">Linux</p>
+      <h1>Managing fstab</h1>
+      <p class="docs__lede">Declarative mounts.</p>
+    </header>
+    
+    <p>Managing mounts declaratively, including MergerFS pools. Static networking is
+covered separately in <a class="wikilink" href="/linux/netplan/">Static networking</a>.</p>
+
+<p>The <a class="wikilink" href="/plex/library/">Library layout</a> for Plex sits on top of these mounts.</p>
+
+
+  </article>
+</div>
+
+<footer class="docfoot inset">
+  <div class="docfoot__inner">
+    <span class="mono muted docfoot__built">
+      Lethil · built with
+      <a class="docfoot__jekyll" href="https://jekyllrb.com" rel="noopener" target="_blank" aria-label="Jekyll">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 3h6"/>
+          <path d="M10 3v6.5L5.6 18.2A2 2 0 0 0 7.4 21h9.2a2 2 0 0 0 1.8-2.8L14 9.5V3"/>
+          <path d="M7.7 14h8.6"/>
+        </svg>
+      </a>
+    </span>
+    <span class="mono muted">© 2026</span>
+  </div>
+</footer>
+
+    </main>
+  </div>
+
+  <script src="/assets/js/app.js?v=1785783858" defer></script>
+  <script src="/assets/js/search.js?v=1785783858" defer></script>
+  <script src="/assets/js/activity.js?v=1785783858" defer></script>
+  <script src="/assets/js/stars.js?v=1785783858" defer></script>
+</body>
+</html>
