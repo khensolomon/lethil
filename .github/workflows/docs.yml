@@ -14,10 +14,10 @@
 #   one-time setup in README.md.
 #
 # TRIGGER:
-#   Runs on push to main, but only actually deploys when the commit message
+#   Runs on push to master, but only actually deploys when the commit message
 #   starts with "docs update:" — e.g.
 #       git commit -m "docs update: rewrite the server guide"
-#   Any other message pushes to main without touching the live site, so
+#   Any other message pushes to master without touching the live site, so
 #   ordinary commits and local work stay cheap. A manual run is also available
 #   from the Actions tab (workflow_dispatch), which always deploys.
 # ===========================================================================
@@ -25,8 +25,8 @@ name: docs
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch: {}          # manual deploy from the Actions tab, no commit needed
+    branches: [master]
+  workflow_dispatch: {} # manual deploy from the Actions tab, no commit needed
 
 # Only one deploy at a time; a newer one supersedes an in-flight one.
 concurrency:
@@ -40,7 +40,6 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       startsWith(github.event.head_commit.message, 'docs update:')
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout lethil (docs source)
         uses: actions/checkout@v4
@@ -71,7 +70,7 @@ jobs:
         with:
           deploy_key: ${{ secrets.DEPLOY_KEY }}
           external_repository: khensolomon/khensolomon.github.io
-          publish_branch: main
+          publish_branch: master
           publish_dir: ./_site
           # We push ALREADY-BUILT HTML. This action writes a .nojekyll file by
           # default, which tells GitHub Pages to serve the files as-is instead
@@ -81,7 +80,7 @@ jobs:
           # A user site serves the repo root, so publish the whole _site as-is.
           # keep_files: false (default) — the target mirrors the built output,
           # so files deleted from the source are removed from the live site too.
-          # CNAME: uncomment and set if a custom domain is ever added.
+          # CNAME: uncomment and set if a custom domaster is ever added.
           # cname: example.com
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
