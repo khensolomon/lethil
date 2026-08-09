@@ -1,0 +1,32 @@
+{%- comment -%}
+  One collapsible section group in the home sidebar. Native <details> so it
+  works with zero JS. `meta` is a _data/sections.yml entry; `open` seeds the
+  expanded state. Previews up to a few pages, then links to the section index.
+
+  Obsidian-style: a chevron on the LEFT (rotates when open) replaces the old
+  letter badge for a cleaner, more file-tree feel. The optional highlight dot
+  and the one-line blurb (snap info) are kept.
+{%- endcomment -%}
+{%- assign sect_docs = site[meta.key] | where: "in_nav", true | sort: "nav_order" -%}
+<details class="sidebar-sect{% if meta.highlight %} is-highlight{% endif %}"{% if include.open %} open{% endif %}>
+  <summary class="sidebar-sect__summary">
+    <svg class="sidebar-sect__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M9 6l6 6-6 6"/>
+    </svg>
+    <span class="sidebar-sect__text">
+      <span class="sidebar-sect__label">{{ meta.label }}{% if meta.highlight %}<span class="sidebar-sect__dot" title="Highlighted"></span>{% endif %}</span>
+      {%- if meta.blurb %}<span class="sidebar-sect__blurb">{{ meta.blurb }}</span>{% endif -%}
+    </span>
+  </summary>
+  <div class="sidebar-sect__pages">
+    {%- for doc in sect_docs limit: 6 -%}
+      {%- if doc.title -%}
+      <a class="sidebar-sect__page{% if page.url == doc.url %} is-active{% endif %}" href="{{ doc.url | relative_url }}">{{ doc.title }}</a>
+      {%- endif -%}
+    {%- endfor -%}
+    {%- assign shown = sect_docs | size -%}
+    {%- if shown > 6 -%}
+      <a class="sidebar-sect__more" href="{{ '/' | append: meta.key | append: '/' | relative_url }}">All {{ shown }} pages →</a>
+    {%- endif -%}
+  </div>
+</details>

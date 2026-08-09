@@ -1,0 +1,263 @@
+---
+layout: default
+---
+{%- comment -%}
+  Optional feature banner. Content lives in _data/feature.yml so it can change
+  independently of the project list. Renders only when a name is set — a missing
+  file or blank fields emit nothing (no empty banner, no reserved gap).
+{%- endcomment -%}
+<section class="hero inset">
+  {%- assign feature = site.data.feature -%}
+  {% if feature and feature.name %}
+  <div class="feature reveal">
+    <a class="feature__link" href="{{ feature.url }}">
+      <span class="feature__label mono">{{ feature.label | default: 'Featured' }}</span>
+      <span class="feature__body">
+        <strong>{{ feature.name }}</strong>{% if feature.text %} — {{ feature.text }}{% endif %}
+      </span>
+      <span class="feature__arrow mono" aria-hidden="true">&#8599;</span>
+    </a>
+    {%- if feature.url contains 'github.com' -%}
+    {%- comment -%}
+      A separate click target (can't nest an <a> inside .feature__link) that
+      opens the repo's star page — the only way a visitor can actually star it,
+      GitHub gives no one-click "star from elsewhere" API. Shows a live count
+      once fetched; stays hidden (never a broken "0") if the API is unreachable.
+    {%- endcomment -%}
+    <a class="feature__star" data-feature-star href="{{ feature.url }}" rel="noopener" target="_blank" aria-label="Star {{ feature.name }} on GitHub" title="Star on GitHub" hidden>
+      <svg class="feature__star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3.5l2.55 5.6 6.03.63-4.5 4.13 1.24 6-5.32-3.06-5.32 3.06 1.24-6-4.5-4.13 6.03-.63z"/>
+      </svg>
+      <span class="feature__star-count mono" data-feature-star-count></span>
+    </a>
+    {%- endif -%}
+  </div>
+  {% endif %}
+
+  {%- comment -%}
+    Dynamic hero. Content rotates by weekday from _data/hero.yml (index 1=Mon …
+    7=Sun; fewer entries → the last one fills the rest). Liquid renders the
+    BUILD-day entry below so the page is correct with JS off and never flashes;
+    the inline script then swaps to the VISITOR's weekday and applies any date
+    override, running during parse so the change lands before first paint.
+    If the data file is missing or empty, the caption falls back to the site
+    title and the optional lines simply don't render — no build error.
+  {%- endcomment -%}
+  {%- assign hero = site.data.hero -%}
+  {%- assign days = hero.days -%}
+  {%- assign d = nil -%}
+  {%- if days and days.size > 0 -%}
+    {%- assign wd = site.time | date: "%u" | times: 1 -%}
+    {%- assign count = days | size -%}
+    {%- if wd > count %}{% assign wd = count %}{% endif -%}
+    {%- assign idx = wd | minus: 1 -%}
+    {%- assign d = days[idx] -%}
+  {%- endif -%}
+
+  {%- comment -%}
+    Per-day extras (all optional):
+      art   — an image beside the text. Present → a 2-column split (art left,
+              text right) that stacks (art on top) on small screens.
+      link  — a string → a single ↗ appended inline after the subject; OR a
+              list of { link, text } → a row of labelled ↗ links below it.
+    Everything is emitted so the client-side weekday swap can fill it; the
+    layout class + hidden flags mirror the build-day entry for JS-off visitors.
+  {%- endcomment -%}
+  {%- assign day_links = nil -%}{%- assign inline_link = nil -%}
+  {%- if d.link -%}
+    {%- if d.link.first.link -%}{%- assign day_links = d.link -%}
+    {%- else -%}{%- assign inline_link = d.link -%}{%- endif -%}
+  {%- endif -%}
+
+  <p class="hero__eyebrow mono reveal" data-hero-eyebrow hidden>{{ site.time | date: "%A · %-d %b %Y" }}</p>
+
+  <h1 class="hero__caption reveal" style="--d:1" data-hero-caption>{{ d.caption | default: site.title }}</h1>
+
+  {%- comment -%}
+    slogan/subject are always emitted so the client-side swap has an element to
+    fill; `hidden` keeps empty ones out of the layout (JS-off included).
+  {%- endcomment -%}
+  <p class="hero__slogan mono reveal" style="--d:2" data-hero-slogan{% unless d.slogan %} hidden{% endunless %}>{{ d.slogan }}</p>
+
+  {%- comment -%}
+    Only the art and the subject share the 2-column split (art left, subject
+    right); it stacks (art on top) on small screens. The eyebrow/caption/slogan
+    above and the links below stay full-width.
+  {%- endcomment -%}
+  <div class="hero__subrow{% if d.art %} is-split{% endif %}" data-hero-layout>
+    <div class="hero__media reveal" style="--d:3" data-hero-media{% unless d.art %} hidden{% endunless %}>
+      <span class="hero__art{% if d.art contains 'symbolic' %} hero__art--symbolic{% endif %}" data-hero-art{% if d.art contains 'symbolic' %} style="--icon:url('{{ d.art }}')"{% endif %}>
+        {%- if d.art %}{% unless d.art contains 'symbolic' %}<img src="{{ d.art }}" alt="" decoding="async">{% endunless %}{% endif -%}
+      </span>
+    </div>
+
+    <div class="hero__subject-col reveal" style="--d:3">
+      <p class="hero__subject" data-hero-subject{% unless d.subject %} hidden{% endunless %}><span data-hero-subject-text>{{ d.subject }}</span>{% if inline_link %} <a class="hero__arrow-link" data-hero-inline-arrow href="{{ inline_link }}" aria-label="Open link">↗</a>{% else %} <a class="hero__arrow-link" data-hero-inline-arrow hidden aria-label="Open link">↗</a>{% endif %}</p>
+
+      <ul class="hero__daylinks" data-hero-daylinks{% unless day_links %} hidden{% endunless %}>
+        {%- if day_links %}{% for l in day_links %}<li><a href="{{ l.link }}">{{ l.text | default: 'Open' }} <span class="hero__arrow-icon" aria-hidden="true">↗</span></a></li>{% endfor %}{% endif -%}
+      </ul>
+    </div>
+  </div>
+
+  {%- comment -%} Client-side pick: visitor's weekday + date overrides. {%- endcomment -%}
+  <script>
+  (function () {
+    var HERO = {{ site.data.hero | jsonify }} || {};
+    var days = (HERO && HERO.days) || [];
+    if (!days.length) return;
+    var dates = (HERO && HERO.dates) || [];
+
+    var now = new Date();
+    var iso = ((now.getDay() + 6) % 7) + 1;           // 1=Mon … 7=Sun
+    var p = function (n) { return (n < 10 ? "0" : "") + n; };
+    var ymd = now.getFullYear() + "-" + p(now.getMonth() + 1) + "-" + p(now.getDate());
+    var md  = p(now.getMonth() + 1) + "." + p(now.getDate());   // mm.dd (recurring)
+
+    function pick(i) {                                 // 1-based, clamped
+      i = i < 1 ? 1 : (i > days.length ? days.length : i);
+      return days[i - 1] || {};
+    }
+
+    var entry = pick(iso);                             // last entry fills extra days
+
+    var ov = null, k;                                  // exact date wins over recurring
+    for (k = 0; k < dates.length; k++) if (dates[k].on === ymd) { ov = dates[k]; break; }
+    if (!ov) for (k = 0; k < dates.length; k++) if (dates[k].every === md) { ov = dates[k]; break; }
+
+    var F = ["caption", "slogan", "subject", "eyebrow", "art", "link"];
+    var out = {};
+    F.forEach(function (f) { out[f] = entry[f]; });
+    if (ov) {
+      if (ov.use) { var u = pick(ov.use); out = {}; F.forEach(function (f) { out[f] = u[f]; }); }
+      F.forEach(function (f) { if (ov[f] != null) out[f] = ov[f]; });
+    }
+
+    var WD = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    var MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+    function fill(sel, val, canHide) {
+      var n = document.querySelector(sel); if (!n) return;
+      var v = (val == null ? "" : String(val));
+      n.textContent = v;
+      if (canHide) n.hidden = (v === "");
+    }
+    fill("[data-hero-caption]", out.caption, false);
+    fill("[data-hero-slogan]",  out.slogan,  true);
+
+    // eyebrow: only appears when today matched a `dates` override (a special
+    // occasion) — normal weekdays show no date line at all
+    var eyebrowEl = document.querySelector("[data-hero-eyebrow]");
+    if (eyebrowEl) {
+      if (ov) {
+        var dateStr = WD[iso - 1] + " · " + now.getDate() + " " + MO[now.getMonth()] + " " + now.getFullYear();
+        eyebrowEl.textContent = out.eyebrow || dateStr;
+        eyebrowEl.hidden = false;
+      } else {
+        eyebrowEl.hidden = true;
+      }
+    }
+
+    // subject text (kept separate so the inline arrow survives the swap)
+    var subjEl = document.querySelector("[data-hero-subject]");
+    var subjText = document.querySelector("[data-hero-subject-text]");
+    if (subjText) subjText.textContent = out.subject || "";
+    if (subjEl) subjEl.hidden = !(out.subject && String(out.subject).trim());
+
+    // link: a string → inline ↗ on the subject; a list → labelled ↗ links row
+    var raw = out.link;
+    var inlineUrl = (typeof raw === "string" && raw.trim()) ? raw.trim() : null;
+    var list = (Object.prototype.toString.call(raw) === "[object Array]")
+      ? raw.filter(function (x) { return x && x.link; }) : [];
+
+    var arrow = document.querySelector("[data-hero-inline-arrow]");
+    if (arrow) {
+      if (inlineUrl) { arrow.href = inlineUrl; arrow.hidden = false; }
+      else { arrow.removeAttribute("href"); arrow.hidden = true; }
+    }
+    var daylinks = document.querySelector("[data-hero-daylinks]");
+    if (daylinks) {
+      if (list.length) {
+        daylinks.innerHTML = list.map(function (x) {
+          return '<li><a href="' + esc(x.link) + '">' + esc(x.text || "Open") +
+                 ' <span class="hero__arrow-icon" aria-hidden="true">\u2197</span></a></li>';
+        }).join("");
+        daylinks.hidden = false;
+      } else { daylinks.innerHTML = ""; daylinks.hidden = true; }
+    }
+
+    // art → 2-column split (art left, text right)
+    var art = document.querySelector("[data-hero-art]");
+    if (art) {
+      if (!out.art) { art.innerHTML = ""; art.classList.remove("hero__art--symbolic"); art.style.removeProperty("--icon"); }
+      else if (/symbolic/.test(out.art)) { art.innerHTML = ""; art.classList.add("hero__art--symbolic"); art.style.setProperty("--icon", "url('" + out.art + "')"); }
+      else { art.classList.remove("hero__art--symbolic"); art.style.removeProperty("--icon"); art.innerHTML = '<img src="' + out.art + '" alt="" decoding="async">'; }
+    }
+    var media = document.querySelector("[data-hero-media]");
+    var layout = document.querySelector("[data-hero-layout]");
+    if (media) media.hidden = !out.art;
+    if (layout) layout.classList.toggle("is-split", !!out.art);
+  })();
+  </script>
+</section>
+
+{%- comment -%}
+  Live GitHub activity — a one-at-a-time ticker of recent public events that
+  quietly signals the portfolio is alive. Hidden until activity.js loads data,
+  so it never shows an empty shell (or anything at all if the API is offline).
+{%- endcomment -%}
+<section class="activity inset" data-activity hidden aria-live="polite" aria-label="GitHub activity">
+  <span class="activity__status" data-activity-status>
+    <span class="activity__dot"></span>
+    <span class="activity__label mono" data-activity-label hidden></span>
+  </span>
+  <a class="activity__event" data-activity-link href="https://github.com/khensolomon" rel="noopener" target="_blank">
+    <span class="activity__verb" data-activity-verb></span>
+    <span class="activity__prep" data-activity-prep></span>
+    <span class="activity__repo" data-activity-repo></span>
+    <span class="activity__time mono" data-activity-time></span>
+  </a>
+</section>
+
+{% if page.apps %}
+{% include showcase.html items=page.apps heading=page.apps_heading base_delay=5 %}
+{% endif %}
+
+{% if page.tools %}
+{%- assign tools_delay = page.apps | size | plus: 6 -%}
+{% include showcase.html items=page.tools heading=page.tools_heading base_delay=tools_delay %}
+{% endif %}
+
+{% if page.links %}
+<nav class="profile-links inset reveal-on-scroll" aria-label="Elsewhere">
+  <ul>
+    {% for link in page.links %}
+    <li class="profile-links__item" style="--i: {{ forloop.index0 }}">
+      <a href="{{ link.url }}">
+        <span class="profile-links__badge{% if link.image %} profile-links__badge--img{% else %} mono{% endif %}" aria-hidden="true">
+          {%- if link.image -%}
+          <img src="{{ link.image }}" alt="" loading="lazy" decoding="async">
+          {%- else -%}
+          {{ link.label | slice: 0 }}
+          {%- endif -%}
+        </span>
+        <span class="profile-links__text">
+          <span class="profile-links__label">{{ link.label }}</span>
+          <span class="mono muted profile-links__url">{{ link.url | remove: 'https://' }}</span>
+        </span>
+        <span class="profile-links__arrow" aria-hidden="true">↗</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+
+{% if content != "" %}
+<section class="portfolio-body prose inset reveal-on-scroll">
+  {{ content }}
+</section>
+{% endif %}
+
+{% include footer.html minimal=true %}

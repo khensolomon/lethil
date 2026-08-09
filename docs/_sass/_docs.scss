@@ -1,0 +1,9 @@
+/* ===========================================================================
+   DOCS  — single column; the sidebar is global now
+   =========================================================================== */
+.docs { padding-block: clamp(1.5rem, 4vh, 2.5rem) 4rem; }
+
+.docs__content { min-width: 0; container-type: inline-size; }
+.docs__head { margin-bottom: 2rem; }
+.docs__head h1 { margin: .3rem 0 0; font-size: clamp(1.9rem, 5vw, 2.6rem); letter-spacing: -.025em; }
+.docs__lede { color: var(--muted); font-size: 1.1rem; margin: .8rem 0 0; }

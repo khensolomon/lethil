@@ -1,0 +1,90 @@
+# ============================================================================
+#  Hero content — rotates by weekday, with optional date overrides.
+# ----------------------------------------------------------------------------
+#  The homepage hero (caption / slogan / subject / eyebrow) is picked from this
+#  file. Selection happens in the visitor's browser, so it changes day to day
+#  without rebuilding the site; a build-day copy is also rendered server-side so
+#  it still works with JavaScript off.
+#
+#  days:  index 1 = Monday, 2 = Tuesday … 6 = Saturday, 7 = Sunday.
+#         Fewer than 7 entries is fine — the LAST entry fills the rest.
+#         (Two entries → #1 is Monday, #2 covers Tuesday–Sunday.)
+#
+#  Each entry:
+#    caption   the big headline (was hero__name)
+#    slogan    the mono line under it (was hero__role)
+#    subject   the paragraph (was hero__tagline)
+#    eyebrow   optional; overrides the default "Weekday · date" line
+#    art       optional logo/image URL shown beside the text. Present → the
+#              hero splits into two columns (art left, text right) that stack on
+#              small screens. "symbolic" in the name paints it in the text
+#              colour (theme-adaptive); anything else shows as-is.
+#    link      optional. A single URL string → a small ↗ is appended inline to
+#              the end of the subject. OR a list of { link, text } → a row of
+#              labelled ↗ links below the subject.
+# ============================================================================
+days:
+  # 1 · Monday
+  - caption: "Khen Solomon Lethil"
+    slogan:  "Independent open-source developer"
+    subject: "I build open-source tools and platforms that help preserve, modernize, and freely share language, scripts, and music for the next generation."
+
+  # 2 · Tuesday
+  - caption: "Dictionary"
+    slogan:  "Myanmar dictionary online"
+    subject: "I maintain MyOrdbok — a modern online dictionary helping thousands of people learn, search, and preserve the Myanmar language every day."
+    art:     "https://raw.githubusercontent.com/laisiangtho/dictionary/master/myordbok.png"
+    link:    "https://myordbok.com"
+
+  # 3 · Wednesday   (draft — edit to taste)
+  - caption: "Music"
+    slogan:  "Preserving a fading sound"
+    subject: "I run Zaideih, a streaming platform that keeps tribal music from the 70s, 80s, and 90s alive and playable for a new generation."
+
+  # 4 · Thursday    (draft — edit to taste)
+  - caption: "Scripture"
+    slogan:  "Scripture in tribal scripts"
+    subject: "I build Lai Siangtho, organizing the Bible in tribal scripts so communities can read, search, and share it on any device."
+
+  # 5 · Friday      (draft — edit to taste)
+  - caption: "The desktop"
+    slogan:  "GNOME Shell, refined"
+    subject: "I write Lesion, a GNOME Shell extension that reshapes the Linux desktop around the way people actually work."
+    art:     "https://raw.githubusercontent.com/khensolomon/lesion/refs/heads/master/icon/hornbill-symbolic.svg"
+    link:
+      - link: "https://github.com/khensolomon/lesion"
+        text: "Source"
+      - link: "https://extensions.gnome.org"
+        text: "GNOME Extensions"
+
+  # 6 · Saturday    (draft — edit to taste)
+  - caption: "Infrastructure"
+    slogan:  "Self-hosted, end to end"
+    subject: "I design and run the self-hosted infrastructure — containers, tunnels, and tooling — that keeps these projects online without the big platforms."
+
+  # 7 · Sunday      (draft — edit to taste)
+  - caption: "Open by default"
+    slogan:  "Built to be shared"
+    subject: "Everything I make is open source: tools and platforms meant to preserve language, scripts, and music, and to be freely built upon."
+
+# ----------------------------------------------------------------------------
+#  dates: optional overrides. On a matching date the chosen content shows,
+#  whatever the weekday. Match with:
+#    on:     "YYYY-MM-DD"   a single specific date (full ISO date)
+#    every:  "mm.dd"        recurs every year — month.day, e.g. "01.01" = Jan 1,
+#                           "12.25" = Dec 25 (always two digits, dot separator)
+#  Then EITHER give inline caption/slogan/subject/eyebrow, OR reuse one of the
+#  `days` above with `use: N` (1-based). Any inline field layers on top of it.
+#  An exact `on` wins over a recurring `every`.
+# ----------------------------------------------------------------------------
+dates:
+  - every: "01.01"
+    caption: "Happy New Year"
+    slogan:  "New year, same mission"
+    subject: "Another year of building open tools that preserve language, scripts, and music — thanks for stopping by."
+    eyebrow: "New Year's Day"
+
+  # Example of reusing a weekday entry on a fixed date:
+  # - on: "2026-12-25"
+  #   use: 7
+  #   eyebrow: "Merry Christmas"

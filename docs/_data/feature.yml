@@ -1,0 +1,16 @@
+# ============================================================================
+#  Feature — the single "current / recent focus" banner at the top of the hero.
+# ----------------------------------------------------------------------------
+#  Kept here (not in index.md) so highlighting what you're working on doesn't
+#  disturb the project list. Blank the fields — or delete this file — and no
+#  banner renders (no empty box, no reserved gap).
+#
+#    label   the small pill (e.g. "Working")
+#    name    the bold subject
+#    text    optional trailing text after the name
+#    url     where the banner links
+# ============================================================================
+label: "Working"
+name:  "Lesion"
+text:  "a GNOME Shell extension"
+url:   "https://github.com/khensolomon/lesion"

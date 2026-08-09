@@ -1,0 +1,297 @@
+/* ===========================================================================
+   ACTIVITY — live GitHub ticker between the hero and the first showcase
+   =========================================================================== */
+.activity {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  min-height: 1.6rem;
+  margin-block: 1.5rem;          /* even rhythm above and below, not 0.5/2.5 */
+  font-size: .92rem;
+  opacity: 0;
+  transition: opacity .5s var(--ease);
+}
+.activity.is-ready { opacity: 1; }
+.activity[hidden] { display: none; }
+
+.activity__status { display: inline-flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+.activity__label { font-size: .78rem; color: var(--muted); letter-spacing: .01em; }
+.activity__label[hidden] { display: none; }
+.activity__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-hover); flex-shrink: 0; }
+
+/* One keyframe, reused by every tier: each tier sets its own --pulse-rgb
+   (glow colour) and --pulse-dur (speed) as custom properties, so the ring
+   colour and pace both track that ring's own dot colour without needing a
+   separate @keyframes block per tier. */
+@keyframes activity-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--pulse-rgb, 41,167,69), .45); }
+  70%  { box-shadow: 0 0 0 7px rgba(var(--pulse-rgb, 41,167,69), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--pulse-rgb, 41,167,69), 0); }
+}
+
+/* The dot reflects the age of whichever event is CURRENTLY on screen — not a
+   separate "last active overall" stat — so it can never disagree with the
+   "x ago" text beside it: they always describe the same event. As an event
+   ages from fresh to old, the dot cools from a fast vivid-green pulse down
+   through calmer, paler greens, into a slow grey pulse, and finally a still
+   grey with no pulse at all — six steps mapped in activity.js. */
+.activity__status.tier-fresh     .activity__dot { background: #22c55e; --pulse-rgb: 34,197,94;   --pulse-dur: 1.1s; }
+.activity__status.tier-today     .activity__dot { background: #29a745; --pulse-rgb: 41,167,69;   --pulse-dur: 2.4s; }
+.activity__status.tier-week      .activity__dot { background: #7bc596; --pulse-rgb: 123,197,150; --pulse-dur: 3.4s; }
+.activity__status.tier-fortnight .activity__dot { background: #9a9d97; --pulse-rgb: 154,157,151; --pulse-dur: 4.6s; }
+.activity__status.tier-month     .activity__dot { background: #c3c5c0; --pulse-rgb: 195,197,192; --pulse-dur: 6s; }
+.activity__status.tier-quiet     .activity__dot { background: var(--border-hover); }
+
+.activity__status.tier-fresh .activity__dot,
+.activity__status.tier-today .activity__dot,
+.activity__status.tier-week .activity__dot,
+.activity__status.tier-fortnight .activity__dot,
+.activity__status.tier-month .activity__dot {
+  animation: activity-pulse var(--pulse-dur, 2.4s) ease-out infinite;
+}
+/* tier-quiet intentionally gets no animation — a still dot for old activity */
+
+@media (prefers-reduced-motion: reduce) {
+  .activity__dot { animation: none !important; box-shadow: none !important; }
+}
+
+/* ---- rotation reveal ---------------------------------------------------
+   On each rotation the whole line re-enters as one orchestrated sweep: the
+   dot gives a small "ping", then verb → prep → repo → time cascade in with a
+   short stagger. Driven by the .is-in class on .activity__event; the parts
+   share one keyframe and differ only by animation-delay, so they stay in sync
+   no matter the tier or content. */
+@keyframes activity-part-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes activity-dot-ping {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.55); }
+  100% { transform: scale(1); }
+}
+
+.activity__event {
+  display: inline-flex; align-items: baseline; gap: .35rem;
+  min-width: 0;
+  color: var(--text); text-decoration: none;
+}
+/* parts start hidden; .is-in plays the cascade */
+.activity__verb,
+.activity__prep,
+.activity__repo,
+.activity__time { opacity: 0; }
+.activity__event.is-in .activity__verb,
+.activity__event.is-in .activity__prep,
+.activity__event.is-in .activity__repo,
+.activity__event.is-in .activity__time {
+  animation: activity-part-in .34s var(--ease) both;
+}
+.activity__event.is-in .activity__verb { animation-delay: .00s; }
+.activity__event.is-in .activity__prep { animation-delay: .06s; }
+.activity__event.is-in .activity__repo { animation-delay: .12s; }
+.activity__event.is-in .activity__time { animation-delay: .20s; }
+/* the dot also "pings" (a quick scale) on each rotation, in sync with the
+   line cascade. That's driven from JS via the Web Animations API rather than a
+   CSS class, so it composites independently of the continuous box-shadow pulse
+   above instead of overriding it. Keyframe kept here for reference/reuse. */
+
+.activity__verb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* "to"/"in" is a connector, not part of the destination — it stays muted and
+   never underlines, even though the whole row is one large click target */
+.activity__prep { color: var(--muted); }
+.activity__prep:empty { display: none; }
+.activity__repo { color: var(--accent); white-space: nowrap; }
+.activity__event:hover .activity__repo { text-decoration: underline; text-underline-offset: 2px; }
+.activity__time { color: var(--muted); font-size: .78rem; flex-shrink: 0; }
+
+/* reduced-motion: no cascade or ping — parts are simply shown */
+@media (prefers-reduced-motion: reduce) {
+  .activity__verb, .activity__prep, .activity__repo, .activity__time { opacity: 1 !important; animation: none !important; }
+  .activity__status.is-ping .activity__dot { animation: none !important; }
+}
+
+@media (max-width: #{$bp-narrow}) {
+  .activity { font-size: .86rem; gap: .55rem; }
+  .activity__event { gap: .3rem; }
+}
+/* touch: pad the ticker link vertically so it's comfortably tappable, without
+   shifting the visible baseline (negative margin absorbs the padding) */
+@media (hover: none) and (pointer: coarse) {
+  .activity__event { padding-block: .6rem; margin-block: -.6rem; }
+}
+
+.portfolio-body { margin-block: 2rem 4rem; max-width: var(--measure); }
+
+/* --- top highlight (optional, portfolio) --------------------------------- */
+.feature {
+  display: inline-flex;
+  align-items: center;
+  gap: .9rem;
+  margin-bottom: 1.6rem;
+  padding: 1.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  font-size: .9rem;
+  transition: border-color .2s, transform .2s var(--ease), box-shadow .2s;
+}
+.feature:hover { border-color: var(--border-hover); transform: translateY(-1px); box-shadow: var(--shadow); }
+
+.feature__link { display: inline-flex; align-items: center; gap: .7rem; color: inherit; text-decoration: none; }
+.feature__label {
+  flex-shrink: 0;
+  padding: .18rem .55rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 7px;
+  font-size: .72rem;
+  letter-spacing: .02em;
+}
+.feature__body { color: var(--text); }
+.feature__body strong { font-weight: 550; }
+.feature__arrow { flex-shrink: 0; color: var(--muted); padding-right: .35rem; }
+
+/* a second, independent click target — opens the repo's star page. GitHub
+   gives no way to star with one click from off-site, so this is honestly just
+   a fast, clearly-labelled door to the real button, not a fake "star" action. */
+.feature__star {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  flex-shrink: 0;
+  padding-left: .9rem;
+  margin-left: .1rem;
+  border-left: 1px solid var(--border);
+  color: var(--muted);
+  text-decoration: none;
+  transition: color .2s;
+}
+.feature__star[hidden] { display: none; }
+.feature__star-icon { width: 16px; height: 16px; transition: transform .3s var(--ease), fill .2s, color .2s; }
+.feature__star:hover { color: #d9922b; }
+.feature__star:hover .feature__star-icon,
+.feature__star:focus-visible .feature__star-icon { fill: #d9922b; transform: scale(1.15) rotate(-8deg); }
+/* only applied when the count is re-checked on return and genuinely rose —
+   never a guess, so this only ever fires on confirmed, real feedback */
+.feature__star.just-rose .feature__star-icon { fill: #d9922b; color: #d9922b; animation: star-pop .5s var(--ease); }
+.feature__star.just-rose .feature__star-count { color: #d9922b; }
+@keyframes star-pop { 0% { transform: scale(1); } 40% { transform: scale(1.35) rotate(-10deg); } 100% { transform: scale(1); } }
+.feature__star-count { font-size: .78rem; min-width: 1ch; }
+
+/* Small screens: the pill can't hold label + body on one line. Stack the
+   feature into: the label pill on its own line, then a row holding the body
+   and the star together — so the star sits WITH the content rather than
+   stranded as a full-width bar at the bottom with dead space beside it. */
+@media (max-width: #{$bp-narrow}) {
+  .feature {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .7rem;
+    width: 100%;
+    padding: 1.3rem;
+  }
+  /* the link stacks too: label pill above, body beneath, with real breathing
+     room between them (was cramped because the link stayed a centered row) */
+  .feature__link {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .55rem;
+  }
+  .feature__body  { text-align: left; line-height: 1.45; }
+  .feature__arrow { display: none; }
+  /* star sits on its own line, but pulled to the start and compact — no
+     full-width stretch, so there's no empty gutter to its right */
+  .feature__star {
+    align-self: flex-start;
+    padding: .5rem .7rem;
+    margin-left: 0;
+    border-left: none;
+    background: var(--surface-2);
+    border-radius: 8px;
+    color: var(--text);
+  }
+}
+
+/* --- showcase: apps + tools share one card grid -------------------------- */
+.showcase { padding-block: clamp(1.5rem, 4vh, 2.5rem); }
+.showcase__heading {
+  margin: 0 0 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  font-size: .72rem;
+}
+.showcase__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  max-width: 58rem;
+}
+.card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "art name"
+    "art blurb"
+    "art links";
+  align-content: start;
+  column-gap: 1rem;
+  row-gap: .3rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color .2s, transform .2s var(--ease), box-shadow .2s;
+}
+.card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: var(--shadow); }
+.card__art {
+  grid-area: art;
+  align-self: start;
+  flex-shrink: 0;
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  border-radius: 11px;
+  overflow: hidden;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.card__art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card__art-mark { font-size: 1rem; color: var(--accent); }
+/* symbolic (GNOME) icons: monochrome glyphs painted with currentColor via a
+   mask so they track the theme instead of rendering as flat black */
+.card__art--symbolic {
+  color: var(--text);
+}
+.card__art--symbolic::before {
+  content: "";
+  width: 62%; height: 62%;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+          mask: var(--icon) center / contain no-repeat;
+}
+.card__name  { grid-area: name;  align-self: center; min-width: 0; font-weight: 500; letter-spacing: -.01em; }
+.card__blurb { grid-area: blurb; margin: 0; font-size: .88rem; line-height: 1.5; color: var(--muted); }
+.card__links { grid-area: links; margin: .1rem 0 0; font-size: .82rem; }
+.card__links a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; transition: opacity .15s; }
+.card__links a:hover { opacity: .7; }
+.card__sep { margin-inline: .5rem; color: var(--muted); opacity: .5; }
+.card__arrow { text-decoration: none; }
+
+/* Phones: the art no longer spans the whole card height (which left dead space
+   beneath a short icon). Instead it pairs with the name on the top row, and the
+   blurb + links run full width beneath — a tidy header-then-body layout. */
+@media (max-width: #{$bp-narrow}) {
+  .card {
+    grid-template-areas:
+      "art name"
+      "blurb blurb"
+      "links links";
+    align-items: center;
+    row-gap: .55rem;
+  }
+  .card__art { align-self: center; width: 44px; height: 44px; }
+}

@@ -1,0 +1,88 @@
+# ===========================================================================
+# Docs build & cross-repo deploy
+#
+# The Jekyll source for the site lives in this repository under docs/. This
+# workflow builds it and pushes the generated static site to the SEPARATE
+# repository `khensolomon/khensolomon.github.io`, which GitHub serves at
+#   https://khensolomon.github.io/
+#
+# WHY A DEPLOY KEY (and not the built-in GITHUB_TOKEN):
+#   The automatic GITHUB_TOKEN is scoped to THIS repo only — it cannot push to
+#   another repository. To write into khensolomon.github.io we authenticate
+#   with an SSH deploy key: the PUBLIC half is added to khensolomon.github.io
+#   (with write access), the PRIVATE half is stored here as a secret. See the
+#   one-time setup in README.md.
+#
+# TRIGGER:
+#   Runs on push to main, but only actually deploys when the commit message
+#   starts with "docs update:" — e.g.
+#       git commit -m "docs update: rewrite the server guide"
+#   Any other message pushes to main without touching the live site, so
+#   ordinary commits and local work stay cheap. A manual run is also available
+#   from the Actions tab (workflow_dispatch), which always deploys.
+# ===========================================================================
+name: docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}          # manual deploy from the Actions tab, no commit needed
+
+# Only one deploy at a time; a newer one supersedes an in-flight one.
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    # Gate: deploy only on "docs update:" commits (manual dispatch always runs).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.head_commit.message, 'docs update:')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout lethil (docs source)
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          # cache bundler downloads; keyed on docs/Gemfile.lock when present
+          bundler-cache: true
+          working-directory: docs
+
+      - name: Build the site
+        # Source is the docs/ folder; output goes to ./_site at the repo root.
+        # JEKYLL_ENV=production enables prod-only behaviour (e.g. minification
+        # if configured) and drops development-only output.
+        run: |
+          cd docs
+          bundle exec jekyll build --source . --destination "$GITHUB_WORKSPACE/_site"
+        env:
+          JEKYLL_ENV: production
+
+      - name: Deploy to khensolomon.github.io
+        # peaceiris/actions-gh-pages pushes a built directory to another repo
+        # over SSH using the deploy key. external_repository + deploy_key is the
+        # cross-repo path; publish_branch is that repo's served branch.
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.DEPLOY_KEY }}
+          external_repository: khensolomon/khensolomon.github.io
+          publish_branch: main
+          publish_dir: ./_site
+          # We push ALREADY-BUILT HTML. This action writes a .nojekyll file by
+          # default, which tells GitHub Pages to serve the files as-is instead
+          # of trying to run Jekyll on them again (which would break _-prefixed
+          # paths and re-processing). Left at the default (true) on purpose.
+          enable_jekyll: false
+          # A user site serves the repo root, so publish the whole _site as-is.
+          # keep_files: false (default) — the target mirrors the built output,
+          # so files deleted from the source are removed from the live site too.
+          # CNAME: uncomment and set if a custom domain is ever added.
+          # cname: example.com
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_message: "deploy: ${{ github.event.head_commit.message }}"

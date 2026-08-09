@@ -1,0 +1,16 @@
+/* ===========================================================================
+   FOOTERS
+   =========================================================================== */
+/* Footers sit quietly at the very bottom, so their text is dimmer than the
+   usual muted colour — a dedicated --footer-dim token per theme (defined in
+   _tokens.scss) rather than opacity, so the Jekyll link can still shift to the
+   accent colour on hover without any parent-opacity compounding. */
+.portfoot { padding-block: 2.5rem 2rem; color: var(--footer-dim); display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .7rem; }
+.portfoot__updated[hidden] { display: none; }
+.portfoot__updated { font-size: .82rem; }
+.docfoot  { margin-top: auto; border-top: 1px solid var(--border); padding-block: 1.5rem; }
+.docfoot__inner { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; justify-content: space-between; color: var(--footer-dim); }
+.docfoot__built { display: inline-flex; align-items: center; gap: .35rem; }
+.docfoot__jekyll { display: inline-flex; color: inherit; transition: color .15s; }
+.docfoot__jekyll:hover { color: var(--accent); }
+.docfoot__jekyll svg { display: block; width: 15px; height: 15px; }

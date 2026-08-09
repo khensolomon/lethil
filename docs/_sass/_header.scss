@@ -1,0 +1,136 @@
+/* ===========================================================================
+   HEADER  (sticky inside the shell — the sidebar stands beside it, not under)
+   =========================================================================== */
+.topbar {
+  position: sticky;
+  top: 0;
+  /* `position: sticky` creates its OWN stacking context unconditionally, in
+     every major browser, regardless of whether z-index is set — unlike
+     relative/absolute, which only do that when z-index isn't auto. That
+     means anything nested inside .topbar (like .search) is permanently
+     capped at .topbar's own rank when compared to anything OUTSIDE .topbar,
+     no matter what z-index .search itself has. So to let the search box
+     escape the dim overlay below, .topbar itself has to out-rank it — there
+     is no way to do this from a descendant alone. This does mean topbar now
+     also out-ranks .sidebar (z-index 50); the only visible cost is during
+     the brief mobile open/close slide, where topbar may render over the
+     sidebar's edge mid-transition instead of under it. */
+  z-index: $z-topbar;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-inline: var(--gutter);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar__cluster {
+  display: flex;
+  align-items: center;
+  gap: clamp(.45rem, 1.6vw, .9rem);
+  min-width: 0;
+}
+
+.brand { display: inline-flex; align-items: center; gap: .5rem; font-weight: 550; white-space: nowrap; }
+.brand-mark { font-family: var(--font-mono); color: var(--accent); }
+.brand-name { letter-spacing: -.01em; }
+.brand__icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted); }
+.brand:hover .brand__icon { color: var(--accent); }
+
+/* --- icon buttons share one footprint ------------------------------------ */
+.theme-toggle,
+.navbtn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--btn); height: var(--btn);
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--muted);
+  border-radius: var(--radius-btn);
+  transition: color .2s, border-color .2s, background .2s;
+}
+/* on touch devices, grow the tap area to the 44px comfort minimum without
+   enlarging the visible icon — the extra size is invisible padding around the
+   same bars. Negative margin keeps it optically aligned in the cluster. */
+@media (hover: none) and (pointer: coarse) {
+  .navbtn { width: 44px; height: 44px; margin-left: -.7rem; }
+}
+
+.theme-toggle {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.theme-toggle:hover { color: var(--text); border-color: var(--border-hover); }
+.theme-toggle .ico { width: 18px; height: 18px; display: none; }
+:root[data-theme-pref="light"] .ico-light,
+:root[data-theme-pref="dark"]  .ico-dark,
+:root[data-theme-pref="auto"]  .ico-auto { display: block; }
+
+/* menu button — no background or border at all; it lives as part of the brand
+   cluster and expresses everything through the bars themselves (colour + a
+   characterful spring on hover). This is a button people will see constantly,
+   so it's built to feel alive rather than boxed. */
+.navbtn {
+  background: transparent;
+  border: none;
+  margin-left: -.45rem;             /* optically align icon with the gutter */
+  -webkit-tap-highlight-color: transparent;
+}
+.navbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-btn); }
+body[data-nav="open"] .navbtn { color: var(--accent); }
+
+/* hamburger ↔ X, driven by body[data-nav]. Three real bars in a flex column
+   (even 14px box) so the stack is internally symmetric. The hover motions are
+   deliberately *legible* — they read as what the button does rather than as an
+   abstract flourish: closed, the tidy hamburger leans toward the drawer it
+   opens; open, the X pulls inward like a "dismiss". */
+.navbtn__icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 18px; height: 14px;
+  transition: transform var(--dur-nav) var(--spring);
+}
+.navbtn__bar {
+  width: 18px; height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  transform-origin: center;
+  transition:
+    transform var(--dur-nav) var(--spring),
+    width .28s var(--ease),
+    opacity calc(var(--dur-nav) / 2) var(--ease),
+    background-color .25s var(--ease);
+}
+.navbtn:hover .navbtn__bar { background: var(--accent); }
+
+/* CLOSED + hover: the three bars stay a clean, equal, aligned hamburger — no
+   fanning, no uneven "ladder". The whole icon simply scales up a touch and
+   warms to the accent: the universal, unambiguous "this is interactive" cue.
+   The lift is a single confident gesture rather than three fussy ones. */
+body:not([data-nav="open"]) .navbtn:hover .navbtn__icon { transform: scale(1.12); }
+
+/* OPEN: hamburger becomes an X. translateY(6px) meets centre from 0; -6px from 12. */
+body[data-nav="open"] .navbtn__bar:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+body[data-nav="open"] .navbtn__bar:nth-child(2) { opacity: 0; transform: scaleX(.4); }
+body[data-nav="open"] .navbtn__bar:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* OPEN + hover: the X pulls inward — both arms shorten and the icon contracts
+   slightly, a "collapse / dismiss" gesture that reads as closing rather than an
+   abstract spin. */
+body[data-nav="open"] .navbtn:hover .navbtn__icon { transform: scale(.9); }
+body[data-nav="open"] .navbtn:hover .navbtn__bar:nth-child(1) { width: 15px; transform: translateY(6px) rotate(45deg); }
+body[data-nav="open"] .navbtn:hover .navbtn__bar:nth-child(3) { width: 15px; transform: translateY(-6px) rotate(-45deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .navbtn__bar { transition: opacity .2s, background-color .2s; }
+  .navbtn__icon { transition: none; }
+  .navbtn:hover .navbtn__bar { transform: none !important; width: 18px !important; }
+  .navbtn:hover .navbtn__icon { transform: none !important; }
+  /* keep the open X arms in place even under reduced-motion */
+  body[data-nav="open"] .navbtn:hover .navbtn__bar:nth-child(1) { transform: translateY(6px) rotate(45deg) !important; }
+  body[data-nav="open"] .navbtn:hover .navbtn__bar:nth-child(3) { transform: translateY(-6px) rotate(-45deg) !important; }
+}

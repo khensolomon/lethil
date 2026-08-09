@@ -1,0 +1,66 @@
+{%- comment -%}
+  Resolves [[wiki-links]] in include.text into anchor tags.
+
+  Supported forms:
+    [[Environment setup]]          -> match by title (case-insensitive)
+    [[Environment setup|setup]]    -> match by title, custom display text
+    [[python/setup]]               -> match by section-key/slug path
+
+  A resolved link becomes <a class="wikilink" href="…">display</a>.
+  An unresolved one becomes <span class="wikilink wikilink--broken">…</span>
+  (same as Obsidian showing a broken link). Requires `page_index` in scope
+  (include page-index.html first).
+
+  Splitting on "[[" then "]]" avoids any regex (Liquid has none). Each odd
+  segment after the first split is link-or-tail; we cut it at "]]".
+{%- endcomment -%}
+{%- assign wl_out = "" -%}
+{%- assign wl_parts = include.text | split: "[[" -%}
+{%- for wl_part in wl_parts -%}
+  {%- if forloop.first -%}
+    {%- assign wl_out = wl_part -%}
+  {%- else -%}
+    {%- assign wl_bits = wl_part | split: "]]" -%}
+    {%- assign wl_token = wl_bits | first -%}
+    {%- assign wl_tail = wl_part | remove_first: wl_token | remove_first: "]]" -%}
+
+    {%- comment -%} split off optional |display {%- endcomment -%}
+    {%- assign wl_target = wl_token -%}
+    {%- assign wl_display = wl_token -%}
+    {%- if wl_token contains "|" -%}
+      {%- assign wl_dd = wl_token | split: "|" -%}
+      {%- assign wl_target = wl_dd | first | strip -%}
+      {%- assign wl_display = wl_dd | last | strip -%}
+    {%- endif -%}
+
+    {%- comment -%} find a matching page in page_index {%- endcomment -%}
+    {%- assign wl_href = "" -%}
+    {%- assign wl_targ_down = wl_target | downcase -%}
+    {%- for row in page_index -%}
+      {%- assign fields = row | split: "|" -%}
+      {%- assign r_title = fields[1] -%}
+      {%- assign r_url = fields[2] -%}
+      {%- assign r_key = fields[0] -%}
+      {%- comment -%} URLs end in "/", so split gives a trailing "" — filter
+          empties out, then the last real segment is the slug. {%- endcomment -%}
+      {%- assign r_segs = r_url | split: "/" -%}
+      {%- assign r_slug = "" -%}
+      {%- for seg in r_segs -%}{%- if seg != "" -%}{%- assign r_slug = seg -%}{%- endif -%}{%- endfor -%}
+      {%- assign path_form = r_key | append: "/" | append: r_slug -%}
+      {%- assign r_title_down = r_title | downcase -%}
+      {%- if r_title_down == wl_targ_down or path_form == wl_targ_down -%}
+        {%- assign wl_href = r_url -%}
+        {%- break -%}
+      {%- endif -%}
+    {%- endfor -%}
+
+    {%- if wl_href != "" -%}
+      {%- capture wl_link -%}<a class="wikilink" href="{{ wl_href | relative_url }}">{{ wl_display }}</a>{%- endcapture -%}
+    {%- else -%}
+      {%- capture wl_link -%}<span class="wikilink wikilink--broken" title="No page named &quot;{{ wl_target }}&quot;">{{ wl_display }}</span>{%- endcapture -%}
+    {%- endif -%}
+
+    {%- assign wl_out = wl_out | append: wl_link | append: wl_tail -%}
+  {%- endif -%}
+{%- endfor -%}
+{{ wl_out }}

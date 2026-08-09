@@ -1,0 +1,23 @@
+---
+# This front matter (even empty) is what tells Jekyll to run this file through
+# the SCSS converter and emit /assets/css/style.css. The two dashes must stay.
+---
+
+// Compile-time variables first (breakpoints, z-index scale) so every partial
+// below can reference them, then the runtime theme tokens, then everything
+// else in cascade order. `@use`/`@forward` would be more modern, but the
+// github-pages gem pins an older sass-converter, so @import is what's
+// guaranteed to build identically on GitHub's servers.
+@import "variables";
+@import "tokens";
+@import "base";
+@import "layout";
+@import "header";
+@import "hero";
+@import "activity";
+@import "docs";
+@import "graph";
+@import "search";
+@import "prose";
+@import "footer";
+@import "motion";

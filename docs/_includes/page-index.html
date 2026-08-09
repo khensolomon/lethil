@@ -1,0 +1,24 @@
+{%- comment -%}
+  Builds `page_index` — a flat list of every in-nav docs page across all
+  sections, each as "section::title::url", so other templates can resolve
+  [[wiki-links]] and build the graph without re-walking every collection.
+
+  Usage: include this file, then read the `page_index` array.
+  Each entry is a string "key|title|url|section_label" (| is safe: titles
+  don't contain it). Kept as strings because Liquid can't build hashes.
+{%- endcomment -%}
+{%- assign page_index = "" -%}
+{%- for meta in site.data.sections -%}
+  {%- assign sect_docs = site[meta.key] | where: "in_nav", true -%}
+  {%- for doc in sect_docs -%}
+    {%- if doc.title -%}
+      {%- capture row -%}{{ meta.key }}|{{ doc.title }}|{{ doc.url }}|{{ meta.label }}{%- endcapture -%}
+      {%- if page_index == "" -%}
+        {%- assign page_index = row -%}
+      {%- else -%}
+        {%- assign page_index = page_index | append: "§" | append: row -%}
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endfor -%}
+{%- assign page_index = page_index | split: "§" -%}

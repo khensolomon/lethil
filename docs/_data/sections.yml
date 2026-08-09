@@ -1,0 +1,53 @@
+# ============================================================================
+#  Docs sections registry — drives the home sidebar (Obsidian-style directory).
+# ----------------------------------------------------------------------------
+#    key         must match the collection name in _config.yml (e.g. "python")
+#    label       display name
+#    badge       1–2 chars for the square mark (defaults to first letter)
+#    blurb       optional one-liner shown under the label (the "snap info")
+#    highlight   optional; true paints a small accent dot on the item
+#
+#  Fixed items (Graph View, the Docs index) are added by the sidebar template
+#  itself, above this list — they are not sections and don't belong here.
+# ============================================================================
+- key: docs
+  label: "Docs"
+  badge: "D"
+  blurb: "Building & running this site"
+  highlight: true
+
+- key: server
+  label: "Server"
+  badge: "Sv"
+  blurb: "Self-hosted infrastructure"
+  highlight: true
+
+- key: linux
+  label: "Linux"
+  badge: "Lx"
+  blurb: "System administration"
+
+- key: python
+  label: "Python"
+  badge: "Py"
+  blurb: "Scripts & tooling"
+
+- key: sql
+  label: "SQL"
+  badge: "Sq"
+  blurb: "Queries & schema"
+
+- key: plex
+  label: "Plex"
+  badge: "Px"
+  blurb: "Media server"
+
+- key: note
+  label: "Notes"
+  badge: "N"
+  blurb: "Working notes"
+
+- key: quote
+  label: "Quotes"
+  badge: "Q"
+  blurb: "Collected quotes"

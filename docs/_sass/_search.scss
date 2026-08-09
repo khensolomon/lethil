@@ -1,0 +1,241 @@
+/* ===========================================================================
+   SEARCH — one design, identical on home and docs.
+   ---------------------------------------------------------------------------
+   Desktop : an always-visible box (leading icon + input); the results join it
+             into one continuous, shadowed box. Fluid width — wider on big
+             screens, never a fixed size that fights the layout on resize.
+   Phones  : the box is a single icon that opens a full-screen overlay.
+   =========================================================================== */
+.search {
+  position: relative;
+  z-index: $z-search;   /* lifts the WHOLE box (bar + panel) above the search-dim
+                    overlay and the sidebar; a z-index on the panel alone
+                    doesn't help since .search__bar itself has no stacking
+                    elevation and would still be painted over */
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* --- the input box ------------------------------------------------------- */
+.search__bar {
+  display: flex;
+  align-items: center;
+  gap: .15rem;
+  height: var(--btn);
+  width: clamp(13rem, 26vw, 28rem);      /* fluid: grows with the viewport */
+  padding-left: .5rem;
+  background: var(--surface);            /* SAME colour as the results panel */
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  transition: border-color .2s, box-shadow .2s;
+}
+.search__bar:hover { border-color: var(--border-hover); }
+.search__bar:focus-within { border-color: var(--border-hover); box-shadow: var(--shadow); }
+
+.search__toggle {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.6rem; height: 1.6rem;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: text;
+}
+.search__toggle svg { width: 16px; height: 16px; }
+
+.search__field { display: flex; align-items: center; flex: 1; min-width: 0; padding-right: .4rem; }
+
+/* discoverable shortcut hint: "/" or Ctrl+K — hidden once the box has focus
+   or a value. Two separate <kbd> chips (not one span of text) so each key
+   reads as its own distinct, pressable-looking key, same convention as
+   command palettes elsewhere (VS Code, Linear, GitHub's own search). */
+/* The shortcut hint is only meaningful with a physical keyboard, which tracks
+   desktop width — below the desktop breakpoint (iPad and down) it just looks
+   like clutter, so hide it there. It's still additionally hidden on focus/typing
+   at any size (below). */
+.search__hint {
+  display: none;
+  user-select: none;            /* decorative affordance — not text to select/copy */
+  -webkit-user-select: none;
+}
+@media (min-width: #{$bp-desk}) {
+  .search__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    flex-shrink: 0;
+    margin-left: .3rem;
+    font-size: .72rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+}
+.search__hint kbd {
+  padding: .08rem .4rem;
+  font-family: var(--font-mono);
+  line-height: 1.35;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.search__hint-sep { font-size: .68rem; }
+.search__hint-plus { font-size: .68rem; margin: 0 -.05rem; }
+.search__bar:focus-within .search__hint,
+.search__input:not(:placeholder-shown) ~ .search__hint { display: none; }
+.search__back  { display: none; }        /* only appears in the phone overlay */
+
+.search__input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  height: 100%;
+  padding: 0 .7rem 0 .2rem;
+  color: var(--text);
+  background: var(--surface);
+  border: none;
+  border-radius: inherit;
+}
+.search__input:focus { outline: none; }
+.search__input::placeholder { color: var(--muted); }
+
+/* --- results panel: joins the bar into one box --------------------------- */
+.search__panel {
+  position: absolute;
+  top: 100%;                             /* touches the bar — no gap, no overlap */
+  left: 0; right: 0;                     /* exactly the bar's width */
+  background: var(--surface);            /* SAME colour as the bar */
+  border: 1px solid var(--border-hover);
+  border-top: none;                      /* the bar's bottom edge is the divider */
+  border-radius: 0 0 var(--radius-btn) var(--radius-btn);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  z-index: $z-search;
+}
+
+/* active: bar + panel read as a single continuous, shadowed box — the top of
+   the panel and the bottom of the bar are flat where they meet, the outer
+   corners stay round, and the shadow wraps the whole thing (the seam sits
+   hidden between the two opaque surfaces). */
+.search.has-results .search__bar {
+  border-color: var(--border-hover);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: var(--shadow);
+}
+
+/* --- result rows --------------------------------------------------------- */
+.search__results { list-style: none; margin: 0; padding: .35rem; max-height: 60vh; overflow-y: auto; }
+.search__results li { border-radius: var(--radius-sm); }
+.search__results a { display: block; padding: .6rem .7rem; }
+.search__results a:hover, .search__results a.is-focused { background: var(--surface-2); }
+.search__rtitle { font-weight: 550; }
+.search__rcat   { font-family: var(--font-mono); font-size: .7rem; color: var(--accent); }
+.search__rsnip  { color: var(--muted); font-size: .85rem; margin-top: .15rem;
+                  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.search__rsnip mark { background: var(--accent-soft); color: var(--text); border-radius: 3px; padding: 0 .1em; }
+.search__empty { padding: 1rem .8rem; color: var(--muted); font-size: .9rem; }
+
+/* --- phones: single icon → full-screen overlay --------------------------- */
+@media (max-width: #{$bp-phone}) {
+  .search__bar {
+    width: auto;
+    height: var(--btn);
+    padding: 0;
+    background: none;
+    border: 1px solid transparent;
+  }
+  .search__field { display: none; }      /* only the icon shows in the header */
+  .search__toggle {
+    width: var(--btn); height: var(--btn);
+    border-radius: var(--radius-btn);
+    cursor: pointer;
+  }
+  .search__toggle svg { width: 17px; height: 17px; }
+
+  .search.is-open {
+    position: fixed;
+    inset: 0;
+    height: 100dvh;
+    z-index: $z-search-overlay;
+    display: block;
+    background: var(--bg);
+  }
+  .search.is-open .search__bar {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    width: auto;
+    height: var(--topbar-h);
+    padding-inline: var(--gutter);
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--bg);
+  }
+  .search.is-open .search__toggle { display: none; }
+  .search.is-open .search__field { display: flex; flex: 1; }
+  .search.is-open .search__back {
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: var(--btn); height: var(--btn);
+    margin-left: -.4rem;
+    color: var(--text);
+    background: none; border: none;
+    border-radius: var(--radius-btn);
+    cursor: pointer;
+  }
+  .search.is-open .search__back:hover { background: var(--surface-2); }
+  .search.is-open .search__back svg { width: 22px; height: 22px; }
+  .search.is-open .search__input {
+    height: 42px;
+    padding: 0 .9rem;
+    background: var(--surface);           /* filled field, no border on phones */
+    border: none;
+    border-radius: var(--radius-btn);
+  }
+  .search.is-open .search__panel {
+    position: static;
+    display: block;
+    width: 100%;
+    height: calc(100dvh - var(--topbar-h));
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--bg);
+    overflow-y: auto;
+  }
+  .search.is-open .search__results { max-height: none; padding: .5rem; }
+  .search.is-open .search__results a { padding: .8rem .7rem; }
+}
+body.search-lock { overflow: hidden; }
+
+/* dims the sidebar and ordinary page content while results are open on
+   desktop — a fixed, always-present, non-interactive layer so it can fade
+   smoothly instead of popping in; phones skip this (their overlay is already
+   an opaque full-screen surface). Because .topbar sits ABOVE this layer (see
+   the comment on .topbar), its own chrome — brand, nav button, theme toggle —
+   needs a second, separate rule below to dim in step with everything else. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: $z-dim;
+  background: rgba(10, 12, 16, .4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s var(--ease);
+}
+body.search-dim::before { opacity: 1; }
+
+/* the search box's own siblings within the topbar (brand, nav button, theme
+   toggle) — everything in the header EXCEPT the search box itself */
+body.search-dim .topbar__cluster > :not(.search) {
+  opacity: .4;
+  pointer-events: none;
+  transition: opacity .25s var(--ease);
+}

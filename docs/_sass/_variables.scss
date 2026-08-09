@@ -1,0 +1,31 @@
+// ===========================================================================
+// SCSS COMPILE-TIME VARIABLES
+// ---------------------------------------------------------------------------
+// Runtime, themeable design values (colours, sizes, radii, motion) live as CSS
+// custom properties in _tokens.scss, because they must change live when the
+// light/dark theme flips — Sass variables can't do that (they're resolved at
+// build time, before the browser ever sees them).
+//
+// What belongs HERE instead: values that are constant across themes and are
+// useful to reference symbolically at build time — breakpoints (so every
+// media query agrees on one number) and the z-index scale (previously a set
+// of scattered magic numbers whose ordering was easy to break, which is
+// exactly what caused the search-dim stacking bug).
+// ===========================================================================
+
+// --- breakpoints -----------------------------------------------------------
+$bp-phone:   699.98px;   // at/below: phone layout (search overlay, stacked nav)
+$bp-narrow:  560px;      // at/below: tighter spacing tweaks
+$bp-desk:    900px;      // at/above: sidebar sits beside content
+
+// --- z-index scale ---------------------------------------------------------
+// One ordered ladder so relative ordering is obvious and hard to break.
+// The search box (bar + panel) must out-rank the dim overlay; the header must
+// out-rank the search box so a sticky-created stacking context can't trap it
+// below the overlay (see the comment on .topbar). The phone search overlay
+// sits above everything.
+$z-sidebar:        50;
+$z-dim:            55;
+$z-search:         60;
+$z-topbar:         65;
+$z-search-overlay: 200;

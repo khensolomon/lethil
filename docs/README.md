@@ -1,75 +1,46 @@
-# Getting started
+# khensolomon.github.io
 
-## 1. VM
+Portfolio (Home) + documentation (Docs), one Jekyll site.
 
-```bash
-> ~/.ssh/known_hosts
-sudo python ~/dev/lethil/me/vm/create.py
-```
-
-## 2. Secrets
-
-... [more info](secrets.md)
+## Local
 
 ```bash
-cd /app?
-python3 ~/dev/lethil/script/secrets.py --push
-python3 ~/dev/lethil/script/secrets.py --update
+sudo apt update
+sudo apt install ruby-full ruby-bundler build-essential
+
+bundle install
+bundle exec jekyll serve --livereload
+# http://localhost:4000
 ```
 
-## 3. Setup
+## Deploy
 
-...[more info](setup.md)
+Pushes to `main` deploy **only** when the commit message starts with `deploy:`:
 
 ```bash
-python3 ~/dev/lethil/server/setup.py --show-command
-
-cd ~/
-wget https://raw.githubusercontent.com/khensolomon/lethil/master/server/setup.py
-curl -O https://raw.githubusercontent.com/khensolomon/lethil/master/server/setup.py
-
-python3 -c "import urllib.request as r,os,sys;u=sys.argv[1];r.urlretrieve(u,os.path.basename(u))" https://raw.githubusercontent.com/khensolomon/lethil/master/server/setup.py
-
-python3 -c "import sys,urllib.request as r;r.urlretrieve(u:=sys.argv[1],u.split('/')[-1])" https://raw.githubusercontent.com/khensolomon/lethil/master/server/setup.py
+git commit -m "deploy: header + sidebar rework"
+git push
 ```
 
-## 4. rclone config
+Any other commit message pushes without touching the live site. A manual
+deploy is also available from the Actions tab (`workflow_dispatch`).
 
-```bash
-rclone copy r2:storage/zaideih/mysql/ /opt/bucket/storage/zaideih/mysql/
-rclone copy r2:storage/zaideih/store/ /opt/bucket/storage/zaideih/store/
-rclone copy r2:storage/myordbok/mysql/ /opt/bucket/storage/myordbok/mysql/
-# see more at rclone.md
-```
+One-time repo setting: **Settings → Pages → Source → "GitHub Actions"**.
 
-> For local VM the "rclone config" is not needed, as the "vm/create.py" done linking it.
+## Layout behavior
 
-## Export and Import DB
+- One global sidebar (`_includes/sidebar.html`), full viewport height, never
+  under the header. Hidden by default on Home; open by default on Docs at
+  desktop/tablet width (the choice is remembered per tab while browsing docs).
+- Opening the sidebar **resizes** the content at >= 700px (no horizontal
+  scrollbar) and **pushes** it off-canvas below 700px.
+- Search: always-visible input in the left header cluster on Docs; icon-only
+  on Home until clicked. Escape or clicking away (empty query) collapses it.
+- Nav state lives on `body[data-nav]`; theme on `html[data-theme]`. Both are
+  resolved by inline scripts before first paint, so nothing flashes or
+  animates on load.
 
-```bash
-python3 /opt/apps/swarm/db.py export zaideih
-python3 /opt/apps/swarm/db.py import zaideih
-cd zaideih
-python3 /opt/apps/swarm/db.py list
+## Adding a docs page
 
-cd ~/dev/zaideih
-python3 ~/dev/lethil/apps/swarm/db.py list
-python3 ~/dev/lethil/apps/swarm/db.py exec ~/dev/zaideih/assets/queries/test.v01.sql
-```
-
-## Management command
-
-```bash
-cd ~/
-python3 ~/dev/lethil/apps/swarm/django.py ~/dev/zaideih healthcheck
-cd ~/dev/zaideih
-python3 ~/dev/lethil/apps/swarm/django.py healthcheck
-```
-
-## Hash
-
-```bash
-python3 ~/dev/lethil/script/hash.py
-python3 ~/dev/lethil/script/hash.py -s "test"
-python3 ~/dev/lethil/script/hash.py -s "test" -t 21
-```
+`docs/*.md` with `title`, `description`, `category`, `nav_order` front
+matter — layout, sidebar entry, and search index all follow automatically.

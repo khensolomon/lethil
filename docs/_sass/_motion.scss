@@ -1,0 +1,25 @@
+/* ===========================================================================
+   MOTION
+   =========================================================================== */
+@keyframes fade-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.reveal { animation: fade-up .7s var(--ease) both; animation-delay: calc(var(--d, 0) * 90ms); }
+
+.js-reveal .reveal-on-scroll { opacity: 0; transform: translateY(18px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+.js-reveal .reveal-on-scroll.is-visible { opacity: 1; transform: none; }
+
+/* profile-link items cascade in when the nav reveals — each <li> starts hidden
+   and eases up with a stagger keyed to its --i index, so the list assembles
+   itself the way the hero elements do, rather than appearing all at once. */
+.js-reveal .profile-links.reveal-on-scroll .profile-links__item {
+  opacity: 0; transform: translateY(12px);
+  transition: opacity .5s var(--ease), transform .5s var(--ease);
+}
+.js-reveal .profile-links.reveal-on-scroll.is-visible .profile-links__item {
+  opacity: 1; transform: none;
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0 !important; transition-duration: .001ms !important; }
+  .reveal, .reveal-on-scroll, .profile-links__item { opacity: 1 !important; transform: none !important; }
+}

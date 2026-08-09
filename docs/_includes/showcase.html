@@ -1,0 +1,47 @@
+{%- comment -%}
+  Generic card grid for apps AND tools/extensions. Driven by front-matter data
+  so markdown files stay markup-free.
+
+  Called from portfolio.html twice: once for the apps list, once for the
+  tools list, each time passing that list as items and a heading string.
+
+  Per item:
+    name   (required)  → links to repo
+    repo   (required)  destination for the name + art
+    blurb  (optional)
+    image  (optional)  — absent → a monospace "[+]" tile is shown instead.
+                         "symbolic" in the filename → rendered as a themed mask.
+    stores (optional)  array of {label,url}; absent → a "Source ↗" link.
+
+  Card children are FLAT (art, name, blurb, links) so CSS grid-template-areas
+  can reflow them: art beside stacked meta on wide screens, art+name on one row
+  with full-width blurb/links on phones (no wasted space under the art).
+{%- endcomment -%}
+<section class="showcase inset" aria-label="{{ include.heading | default: 'Work' }}">
+  {%- assign base = include.base_delay | default: 0 -%}
+  {% if include.heading %}<h2 class="showcase__heading mono muted reveal" style="--d:{{ base }}">{{ include.heading }}</h2>{% endif %}
+  <ul class="showcase__grid">
+    {% for item in include.items %}
+    <li class="card reveal" style="--d:{{ forloop.index | plus: base }}">
+      <a class="card__art{% if item.image contains 'symbolic' %} card__art--symbolic{% endif %}"
+         href="{{ item.repo }}" aria-label="{{ item.name }} source"
+         {% if item.image contains 'symbolic' %}style="--icon:url('{{ item.image }}')"{% endif %}>
+        {% if item.image %}
+          {% unless item.image contains 'symbolic' %}<img src="{{ item.image }}" alt="" loading="lazy" decoding="async">{% endunless %}
+        {% else %}
+          <span class="card__art-mark mono">[+]</span>
+        {% endif %}
+      </a>
+      <a class="card__name" href="{{ item.repo }}">{{ item.name }}</a>
+      {% if item.blurb %}<p class="card__blurb">{{ item.blurb }}</p>{% endif %}
+      {% if item.stores %}
+      <p class="card__links">
+        {% for store in item.stores %}<a href="{{ store.url }}">{{ store.label }}</a>{% unless forloop.last %}<span class="card__sep" aria-hidden="true">·</span>{% endunless %}{% endfor %}
+      </p>
+      {% else %}
+      <p class="card__links"><a href="{{ item.repo }}">Source&#8239;<span class="card__arrow" aria-hidden="true">&#8599;</span></a></p>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>

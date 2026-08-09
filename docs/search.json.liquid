@@ -1,15 +1,27 @@
 ---
 permalink: /search.json
 ---
+{%- comment -%}
+  Search index across ALL docs sections (docs, python, linux, …). Each section
+  is a collection; site.data.sections lists them, and site[key] is that
+  collection's docs. The `category` falls back to the section label so results
+  group sensibly even if a page omits its own category.
+{%- endcomment -%}
 [
-  {% assign filtered_pages = site.pages | where_exp: "item", "item.url" %}
-  {% for page in filtered_pages %}
-    {% unless page.url contains '.json' or page.url contains '.xml' or page.url contains 'assets/' %}
-    {
-      "title": {{ page.title | default: page.name | jsonify }},
-      "url": {{ page.url | relative_url | jsonify }},
-      "content": {{ page.content | strip_html | strip_newlines | escape | jsonify }}
-    }{% unless forloop.last %},{% endunless %}
-    {% endunless %}
-  {% endfor %}
+  {%- assign first = true -%}
+  {%- for meta in site.data.sections -%}
+    {%- assign sect_docs = site[meta.key] | where: "in_nav", true | sort: "nav_order" -%}
+    {%- for doc in sect_docs -%}
+      {%- if doc.title -%}
+        {%- unless first %},{% endunless -%}{%- assign first = false -%}
+  {
+    "title": {{ doc.title | jsonify }},
+    "url": {{ doc.url | relative_url | jsonify }},
+    "category": {{ doc.category | default: meta.label | jsonify }},
+    "section": {{ meta.label | jsonify }},
+    "content": {{ doc.content | strip_html | strip_newlines | jsonify }}
+  }
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endfor -%}
 ]

@@ -1,0 +1,39 @@
+{%- comment -%}
+  One search component, identical on home and docs. Desktop: an always-visible
+  box — a leading icon + input — with results that join directly beneath it as
+  one box. Phones: the box collapses to a single icon that opens a full-screen
+  overlay (back button + input on top, results filling the screen).
+  JS toggles .is-open (overlay) and .has-results (connected box) on [data-search].
+{%- endcomment -%}
+<div class="search" data-search>
+  <div class="search__bar">
+    <button type="button" class="search__toggle" data-search-toggle aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="11" cy="11" r="6.5"/><path d="M20.5 20.5 16 16"/>
+      </svg>
+    </button>
+    <div class="search__field">
+      <button type="button" class="search__back" data-search-close aria-label="Close search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 5l-7 7 7 7"/>
+        </svg>
+      </button>
+      <input
+        type="search"
+        class="search__input"
+        placeholder="Search"
+        aria-label="Search"
+        autocomplete="off"
+        spellcheck="false"
+        data-search-input>
+      <span class="search__hint" data-search-hint aria-hidden="true" title="Press / or Ctrl+K to search">
+        <kbd>/</kbd>
+        <span class="search__hint-sep">or</span>
+        <kbd data-search-hint-mod>Ctrl</kbd><span class="search__hint-plus">+</span><kbd>K</kbd>
+      </span>
+    </div>
+  </div>
+  <div class="search__panel" data-search-panel hidden>
+    <ul class="search__results" data-search-results role="listbox"></ul>
+  </div>
+</div>

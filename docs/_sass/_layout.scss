@@ -1,0 +1,183 @@
+/* ===========================================================================
+   SHELL + SIDEBAR PUSH
+   ---------------------------------------------------------------------------
+   body
+   ├─ .sidebar   fixed, full viewport height (top:0 → bottom:0), so the
+   │             sticky header can never overlap it
+   └─ .shell     everything else; moves when the sidebar opens:
+                   ≥700px  margin-left grows  → content RESIZES, no h-scroll
+                   <700px  translateX          → content is PUSHED off-canvas
+   =========================================================================== */
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  transition: margin-left var(--dur-nav) var(--ease),
+              transform   var(--dur-nav) var(--ease);
+}
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;               /* top:0 bottom:0 left:0 — full height */
+  width: var(--side-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  box-shadow: inset -15px 0 7px -15px var(--border-hover);
+  transform: translateX(-100%);
+  visibility: hidden;                       /* off the tab order when closed */
+  transition: transform var(--dur-nav) var(--ease),
+              visibility 0s linear var(--dur-nav);
+  z-index: $z-sidebar;
+}
+
+body[data-nav="open"] .sidebar {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--dur-nav) var(--ease);
+}
+
+/* desktop & tablet: shell resizes beside the sidebar — no horizontal scroll */
+@media (min-width: 700px) {
+  body[data-nav="open"] .shell { margin-left: var(--side-w); }
+}
+
+/* mobile: shell is pushed as one piece; clip the off-screen part */
+@media (max-width: #{$bp-phone}) {
+  body { --side-w: min(78vw, 17rem); }
+  html, body { overflow-x: hidden; }
+  body[data-nav="open"] .shell { transform: translateX(var(--side-w)); }
+
+  /* the header's own theme toggle has no room on phones; the sidebar head's
+     toggle (always present) covers it instead. */
+  .topbar .theme-toggle { display: none; }
+}
+
+/* sidebar internals */
+.sidebar__head {
+  height: var(--topbar-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding-inline: 1.1rem;
+}
+.sidebar__head .brand { flex: 1; min-width: 0; }        /* brand takes column 1 */
+.sidebar__body { flex: 1; overflow-y: auto; padding: 1rem .8rem 1.5rem; }
+
+/* icon-only theme toggle sitting in the head beside the brand (column 2) */
+.theme-toggle--icon {
+  flex-shrink: 0;
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  border-radius: var(--radius-sm);
+  background: transparent;              /* ghost — override the base bordered box */
+  border: 1px solid transparent;
+  color: var(--muted);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.theme-toggle--icon:hover { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+.theme-toggle--icon .ico { width: 18px; height: 18px; }
+
+.sidebar__foot { flex-shrink: 0; }
+.sidebar__foot[hidden] { display: none; }
+
+.sidebar__title {
+  padding: .2rem .6rem .55rem;
+  margin: 0 0 .45rem;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar__nav { display: grid; gap: .15rem; }
+.sidebar__link {
+  display: flex; align-items: baseline; gap: .55rem;
+  padding: .45rem .6rem; border-radius: var(--radius-sm);
+  color: var(--muted); transition: background .15s, color .15s;
+}
+.sidebar__link:hover { background: var(--surface-2); color: var(--text); }
+.sidebar__link.is-active { color: var(--text); background: var(--accent-soft); }
+.sidebar__prefix { color: var(--accent); }
+
+/* --- home sidebar: collapsible section groups (native <details>) --------- */
+.sidebar__title + .sidebar__sections { margin-bottom: 1.4rem; }
+.sidebar__sections { display: grid; gap: .1rem; }
+
+.sidebar-sect { border-radius: var(--radius-sm); }
+.sidebar-sect__summary {
+  display: flex; align-items: center; gap: .45rem;
+  padding: .45rem .55rem; border-radius: var(--radius-sm);
+  cursor: pointer; list-style: none;
+  transition: background .15s;
+}
+.sidebar-sect__summary::-webkit-details-marker { display: none; }   /* drop the default triangle */
+.sidebar-sect__summary:hover { background: var(--surface-2); }
+
+/* chevron leads the row (file-tree style), rotates down when open */
+.sidebar-sect__chevron {
+  width: 15px; height: 15px; flex-shrink: 0; color: var(--muted);
+  transition: transform .2s var(--ease);
+}
+.sidebar-sect[open] > .sidebar-sect__summary .sidebar-sect__chevron { transform: rotate(90deg); }
+
+.sidebar-sect__text { display: flex; flex-direction: column; gap: .05rem; min-width: 0; flex: 1; }
+.sidebar-sect__label { color: var(--text); line-height: 1.2; font-weight: 550; }
+.sidebar-sect__blurb {
+  font-size: .72rem; color: var(--muted); line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* page previews as a file tree: a vertical rail drops from beneath the chevron
+   and each item gets a short horizontal connector, so the sub-items visually
+   hang off the parent's arrow. The rail sits at the chevron's optical centre
+   (summary padding .55rem + half the 15px chevron ≈ 1rem from the edge). */
+.sidebar-sect__pages {
+  display: grid; gap: .05rem;
+  margin-left: 1rem;                 /* rail position = chevron centre */
+  padding: .1rem 0 .35rem;
+  border-left: 1.5px solid var(--border);
+}
+.sidebar-sect__page,
+.sidebar-sect__more {
+  position: relative;
+  margin-left: .55rem;               /* clear the connector tick */
+  padding: .3rem .5rem;
+  border-radius: var(--radius-sm);
+  font-size: .88rem; color: var(--muted);
+  transition: background .15s, color .15s;
+}
+/* the horizontal connector from the rail to each item */
+.sidebar-sect__page::before,
+.sidebar-sect__more::before {
+  content: "";
+  position: absolute;
+  left: -.55rem; top: 50%;
+  width: .5rem; height: 1.5px;
+  background: var(--border);
+}
+.sidebar-sect__page:hover,
+.sidebar-sect__more:hover { background: var(--surface-2); color: var(--text); }
+.sidebar-sect__page.is-active { color: var(--text); background: var(--accent-soft); }
+/* the active item's connector + a segment of rail glow in the accent */
+.sidebar-sect__page.is-active::before { background: var(--accent); }
+.sidebar-sect__more { color: var(--accent); }
+
+/* --- home sidebar: fixed overview items (Graph View, Documentation) ------ */
+.sidebar__fixed { display: grid; gap: .1rem; margin-bottom: .5rem; }
+.sidebar__fixed-item {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem .55rem; border-radius: var(--radius-sm);
+  color: var(--text); transition: background .15s;
+}
+.sidebar__fixed-item:hover { background: var(--surface-2); }
+.sidebar__fixed-icon { display: grid; place-items: center; flex-shrink: 0; width: 1.6rem; height: 1.6rem; color: var(--muted); }
+.sidebar__fixed-icon svg { width: 17px; height: 17px; }
+.sidebar__fixed-item:hover .sidebar__fixed-icon { color: var(--accent); }
+.sidebar__fixed-label { font-weight: 550; }
+
+.sidebar__divider { height: 1px; background: var(--border); margin: .35rem .3rem .8rem; }
+
+/* accent dot marking a highlighted section (replaces the old pinned group) */
+.sidebar-sect__dot {
+  display: inline-block; width: 6px; height: 6px; margin-left: .4rem;
+  border-radius: 50%; background: var(--accent);
+  vertical-align: middle;
+}

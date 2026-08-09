@@ -1,0 +1,28 @@
+---
+layout: default
+---
+{%- comment -%}
+  The sidebar is global now (rendered by default.html), so this layout is
+  just the article column.
+{%- endcomment -%}
+<div class="docs inset">
+  <article class="docs__content prose">
+    <header class="docs__head">
+      {% if page.category %}<p class="eyebrow mono accent">{{ page.category }}</p>{% endif %}
+      <h1>{{ page.title }}</h1>
+      {% if page.description %}<p class="docs__lede">{{ page.description }}</p>{% endif %}
+    </header>
+
+    {%- comment -%}
+      Resolve [[wiki-links]] in the rendered content. page-index builds the
+      lookup table once; wikilinks rewrites [[…]] into real links. `content`
+      is already HTML here (Markdown ran first), so this only touches the
+      literal [[…]] tokens the author typed.
+    {%- endcomment -%}
+    {% include page-index.html %}
+    {% capture rendered %}{% include wikilinks.html text=content %}{% endcapture %}
+    {{ rendered }}
+  </article>
+</div>
+
+{% include footer.html %}

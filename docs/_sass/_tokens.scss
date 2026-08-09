@@ -1,0 +1,61 @@
+// ===========================================================================
+// TOKENS — themeable design constants as CSS custom properties.
+//
+// These are CSS variables (not Sass variables) ON PURPOSE: they must change
+// live when the theme flips light/dark, which only runtime custom properties
+// can do. Build-time constants (breakpoints, z-index) live in _variables.scss.
+// ===========================================================================
+:root {
+  /* palette (light) */
+  --bg:          #fafaf8;
+  --surface:     #ffffff;
+  --surface-2:   #f3f3ef;
+  --text:        #16181d;
+  --muted:       #6b7078;
+  --footer-dim:  #9a9ea6;   /* dimmer than muted — for the quiet footer line */
+  --border:      #e6e6e0;
+  --border-hover:#d3d3ca;   /* gentle neutral emphasis — not the loud accent */
+  --accent:      #3457e0;
+  --accent-soft: #3457e01a;
+  --shadow:      0 1px 2px rgba(20,22,28,.04), 0 8px 30px rgba(20,22,28,.06);
+
+  /* type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code",
+               Menlo, Consolas, monospace;
+
+  /* rhythm — left-anchored shell, no global centering */
+  --gutter:     clamp(1.25rem, 5vw, 4rem);  /* the shell's left/right inset  */
+  --measure:    44rem;                      /* readable text column          */
+  --side-w:     clamp(13rem, 19vw, 16rem);  /* sidebar width                 */
+  --topbar-h:   3.5rem;                     /* header height; sidebar__head
+                                               matches it so borders align   */
+  --radius:     14px;
+  --radius-sm:  9px;
+  --radius-btn: 8px;    /* shared by theme toggle, menu button, search input */
+  --btn:        35px;   /* icon-button footprint (width & height)           */
+
+  /* motion */
+  --ease:     cubic-bezier(.22, 1, .36, 1);
+  --spring:   cubic-bezier(.34, 1.56, .64, 1);   /* gentle overshoot — playful bar motion */
+  --dur:      .55s;
+  --dur-nav:  .35s;     /* sidebar push + hamburger morph share this clock   */
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg:          #0d0f13;
+  --surface:     #15181e;
+  --surface-2:   #1c2027;
+  --text:        #e9ebf0;
+  --muted:       #8b919c;
+  --footer-dim:  #626873;   /* dimmer than muted — for the quiet footer line */
+  --border:      #262b33;
+  --border-hover:#39404b;   /* a touch lighter than the resting border */
+  --accent:      #7aa0ff;
+  --accent-soft: #7aa0ff1f;
+  --shadow:      0 1px 2px rgba(0,0,0,.4), 0 10px 40px rgba(0,0,0,.5);
+  color-scheme: dark;
+}
