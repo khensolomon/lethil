@@ -1,0 +1,72 @@
+---
+permalink: /graph.json
+---
+{%- comment -%}
+  Graph data for /graph/. Nodes are in-nav docs pages; edges come from
+  [[wiki-links]] found in each page's raw markdown. Resolution mirrors
+  wikilinks.html: match a link target against page titles (case-insensitive)
+  or a section-key/slug path. Built at compile time so the client just draws.
+{%- endcomment -%}
+{%- assign nodes = "" -%}
+{%- assign edges = "" -%}
+{%- for meta in site.data.sections -%}
+  {%- assign sect_docs = site[meta.key] | where: "in_nav", true | sort: "nav_order" -%}
+  {%- for doc in sect_docs -%}
+    {%- if doc.title -%}
+      {%- comment -%} node row: url|title|section_key|section_label|highlight {%- endcomment -%}
+      {%- assign hl = "" -%}{%- if meta.highlight -%}{%- assign hl = "1" -%}{%- endif -%}
+      {%- capture nrow -%}{{ doc.url }}‖{{ doc.title }}‖{{ meta.key }}‖{{ meta.label }}‖{{ hl }}{%- endcapture -%}
+      {%- if nodes == "" -%}{%- assign nodes = nrow -%}{%- else -%}{%- assign nodes = nodes | append: "¶" | append: nrow -%}{%- endif -%}
+
+      {%- comment -%} find [[targets]] in this doc's raw content {%- endcomment -%}
+      {%- assign chunks = doc.content | split: "[[" -%}
+      {%- for chunk in chunks -%}
+        {%- unless forloop.first -%}
+          {%- assign tok = chunk | split: "]]" | first -%}
+          {%- if tok contains "|" -%}{%- assign tok = tok | split: "|" | first -%}{%- endif -%}
+          {%- assign tok = tok | strip | downcase -%}
+          {%- comment -%} resolve target -> url {%- endcomment -%}
+          {%- assign tgt_url = "" -%}
+          {%- for m2 in site.data.sections -%}
+            {%- assign d2s = site[m2.key] | where: "in_nav", true -%}
+            {%- for d2 in d2s -%}
+              {%- if d2.title -%}
+                {%- assign d2segs = d2.url | split: "/" -%}
+                {%- assign d2slug = "" -%}
+                {%- for s in d2segs -%}{%- if s != "" -%}{%- assign d2slug = s -%}{%- endif -%}{%- endfor -%}
+                {%- assign d2path = m2.key | append: "/" | append: d2slug -%}
+                {%- assign d2title = d2.title | downcase -%}
+                {%- if d2title == tok or d2path == tok -%}{%- assign tgt_url = d2.url -%}{%- break -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- if tgt_url != "" -%}{%- break -%}{%- endif -%}
+          {%- endfor -%}
+          {%- if tgt_url != "" -%}
+            {%- capture erow -%}{{ doc.url }}‖{{ tgt_url }}{%- endcapture -%}
+            {%- if edges == "" -%}{%- assign edges = erow -%}{%- else -%}{%- assign edges = edges | append: "¶" | append: erow -%}{%- endif -%}
+          {%- endif -%}
+        {%- endunless -%}
+      {%- endfor -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endfor -%}
+{
+  "nodes": [
+    {%- assign nlist = nodes | split: "¶" -%}
+    {%- for n in nlist -%}
+      {%- assign nf = n | split: "‖" -%}
+      {%- unless forloop.first -%},{%- endunless -%}
+      { "id": {{ nf[0] | jsonify }}, "title": {{ nf[1] | jsonify }}, "section": {{ nf[2] | jsonify }}, "sectionLabel": {{ nf[3] | jsonify }}, "highlight": {% if nf[4] == "1" %}true{% else %}false{% endif %} }
+    {%- endfor -%}
+  ],
+  "edges": [
+    {%- assign elist = edges | split: "¶" -%}
+    {%- for e in elist -%}
+      {%- assign ef = e | split: "‖" -%}
+      {%- if ef.size == 2 -%}
+      {%- unless forloop.first -%},{%- endunless -%}
+      { "source": {{ ef[0] | jsonify }}, "target": {{ ef[1] | jsonify }} }
+      {%- endif -%}
+    {%- endfor -%}
+  ]
+}

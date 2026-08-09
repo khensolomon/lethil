@@ -1,0 +1,76 @@
+# ----------------------------------------------------------------------------
+# Site
+# ----------------------------------------------------------------------------
+title: "Lethil"
+description: "Infrastructure, tooling, and self-hosted systems."
+lang: "en"
+
+# baseurl matters for path correctness.
+#   - user/org page (e.g. username.github.io):   baseurl: ""
+#   - project page  (e.g. .../<repo>/):          baseurl: "/<repo>"
+# Every internal link in this scaffold uses `| relative_url`, so setting this
+# correctly is the ONLY change needed when moving between the two.
+baseurl: ""
+url: "/"
+# name: "naMes"
+# title: "titLes"
+
+# ----------------------------------------------------------------------------
+# Build
+# ----------------------------------------------------------------------------
+permalink: pretty          # docs/getting-started.md -> /docs/getting-started/
+markdown: kramdown
+
+# Sass: partials live in _sass/ (auto-excluded from the build); the entry
+# point assets/css/style.scss compiles to /assets/css/style.css. Expanded
+# output keeps the built CSS readable/diffable; switch to compressed for prod
+# if you'd rather minify.
+sass:
+  sass_dir: _sass
+  style: expanded
+
+exclude:
+  - README.md
+  - Gemfile
+
+# ----------------------------------------------------------------------------
+# Docs sections  (explicit allow-list — nothing auto-discovered)
+# ----------------------------------------------------------------------------
+# Each section is a Jekyll collection. To ADD a section: create the folder as
+# _<name>/ (e.g. _python/), add its markdown pages, register it here, and give
+# it a card in _data/sections.yml. To REMOVE one, delete its entry here.
+# Folders like assets/ and tmp/ are simply never listed, so they're ignored
+# no matter what's in them — the "include/exclude manually" you asked for.
+#
+# Collections output at /<name>/<page>/ (output: true + the permalink below),
+# so /python/, /linux/, etc. behave exactly like /docs/ used to.
+collections_dir: .          # collections live at the repo root, not in a subfolder
+collections:
+  docs:    { output: true, permalink: /docs/:name/ }
+  python:  { output: true, permalink: /python/:name/ }
+  linux:   { output: true, permalink: /linux/:name/ }
+  server:  { output: true, permalink: /server/:name/ }
+  plex:    { output: true, permalink: /plex/:name/ }
+  note:    { output: true, permalink: /note/:name/ }
+  quote:   { output: true, permalink: /quote/:name/ }
+  sql:     { output: true, permalink: /sql/:name/ }
+
+# Auto-assign the docs layout to every page in every section collection, so
+# individual files never repeat `layout: docs`.
+defaults:
+  - scope: { path: "", type: "docs" }
+    values: { layout: "docs", section: "docs" }
+  - scope: { path: "", type: "python" }
+    values: { layout: "docs", section: "python" }
+  - scope: { path: "", type: "linux" }
+    values: { layout: "docs", section: "linux" }
+  - scope: { path: "", type: "server" }
+    values: { layout: "docs", section: "server" }
+  - scope: { path: "", type: "plex" }
+    values: { layout: "docs", section: "plex" }
+  - scope: { path: "", type: "note" }
+    values: { layout: "docs", section: "note" }
+  - scope: { path: "", type: "quote" }
+    values: { layout: "docs", section: "quote" }
+  - scope: { path: "", type: "sql" }
+    values: { layout: "docs", section: "sql" }
