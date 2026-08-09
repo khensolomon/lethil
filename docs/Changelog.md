@@ -10,6 +10,16 @@ nav_order: 99
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.08.03d
+
+- Hardened the docs deploy against a hang. When the deploy step froze at
+  `ssh-add`, the cause was the deploy-key secret (a passphrase on the key, or a
+  truncated / newline-stripped paste makes `ssh-add` wait forever). Added an
+  8-minute job timeout so a bad key fails fast instead of running for hours,
+  rewrote the key-setup instructions to prevent both causes (no-passphrase
+  check, clipboard-piped paste), and documented a token-based alternative that
+  deploys over HTTPS and skips SSH entirely.
+
 ## 26.08.03c
 
 - Fixed the docs deploy build failure. When CI installed gems into

@@ -40,6 +40,10 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       startsWith(github.event.head_commit.message, 'docs update:')
     runs-on: ubuntu-latest
+    # Cap the whole job. If the deploy key is bad, `ssh-add` can HANG waiting for
+    # a passphrase prompt that never comes — this makes it fail in minutes rather
+    # than sitting for the default 6-hour limit.
+    timeout-minutes: 8
 
     steps:
       - name: Checkout lethil (docs source)
@@ -66,12 +70,19 @@ jobs:
           JEKYLL_ENV: production
 
       - name: Deploy to khensolomon.github.io
-        # peaceiris/actions-gh-pages pushes a built directory to another repo
-        # over SSH using the deploy key. external_repository + deploy_key is the
-        # cross-repo path; publish_branch is that repo's served branch.
+        # peaceiris/actions-gh-pages pushes a built directory to another repo.
+        # Default here: an SSH deploy key (repo-scoped, most locked-down).
+        #
+        # If the SSH path ever gives trouble (e.g. ssh-add hangs), swap to a
+        # Personal Access Token — it deploys over HTTPS and never touches
+        # ssh-add, so it can't hang that way. To switch: comment out `deploy_key`
+        # below and use `personal_token: ${{ secrets.PAGES_PAT }}` instead,
+        # where PAGES_PAT is a fine-grained PAT with Contents: read/write on
+        # khensolomon.github.io. Everything else stays the same.
         uses: peaceiris/actions-gh-pages@v4
         with:
           deploy_key: ${{ secrets.PAGES_DEPLOY_KEY }}
+          # personal_token: ${{ secrets.PAGES_PAT }}   # ← HTTPS alternative
           external_repository: khensolomon/khensolomon.github.io
           publish_branch: main
           publish_dir: ./_site
