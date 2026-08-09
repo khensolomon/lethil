@@ -10,6 +10,17 @@ nav_order: 99
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.08.03c
+
+- Fixed the docs deploy build failure. When CI installed gems into
+  docs/vendor/bundle and built from docs/, Jekyll was scanning that folder and
+  trying to render the gems' own Liquid test fixtures as site pages — which
+  failed with "Unknown tag 'when'" pointing into the liquid gem. The build
+  directories (vendor, node_modules, and the caches) are now excluded in
+  _config.yml so only the real site is built.
+- Renamed the deploy secret from DEPLOY_KEY to PAGES_DEPLOY_KEY in the workflow
+  and setup instructions.
+
 ## 26.08.03b
 
 - Redesigned the menu button to match the supplied design. The hamburger is

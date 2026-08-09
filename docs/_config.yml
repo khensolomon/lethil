@@ -32,6 +32,17 @@ sass:
 exclude:
   - README.md
   - Gemfile
+  - Gemfile.lock
+  # Build/tooling dirs. These MUST be excluded: when CI runs `bundle install`
+  # with a path inside docs/ (e.g. docs/vendor/bundle), Jekyll would otherwise
+  # try to render the gems' own Liquid test fixtures as site pages — which fails
+  # with errors like "Unknown tag 'when'" coming from liquid-*/… fixtures.
+  # Jekyll only auto-excludes vendor/ in some setups, so list them explicitly.
+  - vendor
+  - node_modules
+  - .bundle
+  - .sass-cache
+  - .jekyll-cache
 
 # ----------------------------------------------------------------------------
 # Docs sections  (explicit allow-list — nothing auto-discovered)

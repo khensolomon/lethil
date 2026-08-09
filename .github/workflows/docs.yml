@@ -55,11 +55,13 @@ jobs:
 
       - name: Build the site
         # Source is the docs/ folder; output goes to ./_site at the repo root.
-        # JEKYLL_ENV=production enables prod-only behaviour (e.g. minification
-        # if configured) and drops development-only output.
+        # NOTE: bundler installs gems into docs/vendor/bundle (via the caching
+        # above), so _config.yml MUST exclude vendor/ — otherwise Jekyll tries
+        # to render the gems' own Liquid fixtures as pages and the build fails.
+        # --trace prints a full backtrace if anything goes wrong.
         run: |
           cd docs
-          bundle exec jekyll build --source . --destination "$GITHUB_WORKSPACE/_site"
+          bundle exec jekyll build --source . --destination "$GITHUB_WORKSPACE/_site" --trace
         env:
           JEKYLL_ENV: production
 
@@ -69,7 +71,7 @@ jobs:
         # cross-repo path; publish_branch is that repo's served branch.
         uses: peaceiris/actions-gh-pages@v4
         with:
-          deploy_key: ${{ secrets.DEPLOY_KEY }}
+          deploy_key: ${{ secrets.PAGES_DEPLOY_KEY }}
           external_repository: khensolomon/khensolomon.github.io
           publish_branch: main
           publish_dir: ./_site
