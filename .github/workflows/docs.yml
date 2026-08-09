@@ -68,7 +68,7 @@ jobs:
         # cross-repo path; publish_branch is that repo's served branch.
         uses: peaceiris/actions-gh-pages@v4
         with:
-          deploy_key: ${{ secrets.DEPLOY_KEY }}
+          deploy_key: ${{ secrets.PAGES_DEPLOY_KEY }}
           external_repository: khensolomon/khensolomon.github.io
           publish_branch: master
           publish_dir: ./_site
