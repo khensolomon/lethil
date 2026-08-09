@@ -10,6 +10,14 @@ nav_order: 99
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.08.03e
+
+- The deploy now also copies docs/LICENSE and docs/README.md to the root of the
+  khensolomon.github.io repo, as plain files. Both are excluded from the Jekyll
+  build (they aren't page content), so a step after the build drops them into
+  the published output verbatim. If either file is absent the step skips it
+  rather than failing.
+
 ## 26.08.03d
 
 - Hardened the docs deploy against a hang. When the deploy step froze at

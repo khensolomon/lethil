@@ -31,6 +31,7 @@ sass:
 
 exclude:
   - README.md
+  - LICENSE
   - Gemfile
   - Gemfile.lock
   # Build/tooling dirs. These MUST be excluded: when CI runs `bundle install`

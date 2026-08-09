@@ -69,6 +69,21 @@ jobs:
         env:
           JEKYLL_ENV: production
 
+      - name: Add LICENSE + README to the published root
+        # These two live in docs/ but are excluded from the Jekyll build (they're
+        # not page content). Copy them into _site/ so they land at the ROOT of
+        # khensolomon.github.io as plain files, verbatim. `-f` and the existence
+        # guard keep the build from failing if either is ever absent.
+        run: |
+          for f in LICENSE README.md; do
+            if [ -f "docs/$f" ]; then
+              cp -f "docs/$f" "_site/$f"
+              echo "copied docs/$f -> _site/$f"
+            else
+              echo "note: docs/$f not present, skipping"
+            fi
+          done
+
       - name: Deploy to khensolomon.github.io
         # peaceiris/actions-gh-pages pushes a built directory to another repo.
         # Default here: an SSH deploy key (repo-scoped, most locked-down).
