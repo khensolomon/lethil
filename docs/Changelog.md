@@ -10,6 +10,17 @@ nav_order: 99
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.08.03b
+
+- Redesigned the menu button to match the supplied design. The hamburger is
+  now three left-aligned bars of varied length (full, short, medium) with a
+  ragged right edge, rather than three equal lines. On hover the lengths
+  redistribute — the top shrinks, the middle becomes the shortest, and the
+  bottom grows to full — so the icon animates by changing bar lengths instead
+  of fanning or sliding. Open, the bars collapse into a clean centred X; on
+  hovering the X it settles with a calm 8° tilt rather than the previous spin.
+  All of it respects reduced-motion.
+
 ## 26.08.03a
 
 - Restructured into a cross-repo setup. The Jekyll source now lives in the

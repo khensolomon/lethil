@@ -82,55 +82,64 @@
 .navbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-btn); }
 body[data-nav="open"] .navbtn { color: var(--accent); }
 
-/* hamburger ↔ X, driven by body[data-nav]. Three real bars in a flex column
-   (even 14px box) so the stack is internally symmetric. The hover motions are
-   deliberately *legible* — they read as what the button does rather than as an
-   abstract flourish: closed, the tidy hamburger leans toward the drawer it
-   opens; open, the X pulls inward like a "dismiss". */
+/* hamburger ↔ X, driven by body[data-nav]. Three LEFT-ALIGNED bars of varied
+   length (per the provided design): a ragged right edge rather than three equal
+   lines. On hover the lengths redistribute — the character is bars growing and
+   shrinking, not fanning or sliding. Bars collapse into a clean X when open. */
 .navbtn__icon {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  align-items: flex-start;          /* left-align so varied widths read as a ragged edge */
   width: 18px; height: 14px;
-  transition: transform var(--dur-nav) var(--spring);
 }
 .navbtn__bar {
-  width: 18px; height: 2px;
+  height: 2px;
   background: currentColor;
   border-radius: 2px;
-  transform-origin: center;
+  transform-origin: left center;    /* widths animate from the left edge */
   transition:
-    transform var(--dur-nav) var(--spring),
-    width .28s var(--ease),
+    width .3s var(--spring),
+    transform var(--dur-nav) var(--ease),
     opacity calc(var(--dur-nav) / 2) var(--ease),
     background-color .25s var(--ease);
 }
+/* resting widths: full / short / medium (top, middle, bottom) */
+.navbtn__bar:nth-child(1) { width: 18px; }   /* 100% */
+.navbtn__bar:nth-child(2) { width: 11px; }   /*  ~60% */
+.navbtn__bar:nth-child(3) { width: 15px; }   /*  ~85% */
+
 .navbtn:hover .navbtn__bar { background: var(--accent); }
 
-/* CLOSED + hover: the three bars stay a clean, equal, aligned hamburger — no
-   fanning, no uneven "ladder". The whole icon simply scales up a touch and
-   warms to the accent: the universal, unambiguous "this is interactive" cue.
-   The lift is a single confident gesture rather than three fussy ones. */
-body:not([data-nav="open"]) .navbtn:hover .navbtn__icon { transform: scale(1.12); }
+/* CLOSED + hover: the lengths redistribute — top shrinks a little, middle
+   becomes the shortest, bottom grows to full. A tidy, legible "shuffle" of the
+   ragged edge that reads as the icon reacting, without any fan or ladder. */
+body:not([data-nav="open"]) .navbtn:hover .navbtn__bar:nth-child(1) { width: 13px; }
+body:not([data-nav="open"]) .navbtn:hover .navbtn__bar:nth-child(2) { width: 8px; }
+body:not([data-nav="open"]) .navbtn:hover .navbtn__bar:nth-child(3) { width: 18px; }
 
-/* OPEN: hamburger becomes an X. translateY(6px) meets centre from 0; -6px from 12. */
+/* OPEN: the three bars collapse into a clean, centred X. Widths normalise to
+   full so both strokes are equal, and the bars rotate ±45° about the icon
+   centre. (transform-origin switches to centre for the rotation to land right.) */
+body[data-nav="open"] .navbtn__bar {
+  width: 18px;
+  transform-origin: center;
+}
 body[data-nav="open"] .navbtn__bar:nth-child(1) { transform: translateY(6px) rotate(45deg); }
 body[data-nav="open"] .navbtn__bar:nth-child(2) { opacity: 0; transform: scaleX(.4); }
 body[data-nav="open"] .navbtn__bar:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
-/* OPEN + hover: the X pulls inward — both arms shorten and the icon contracts
-   slightly, a "collapse / dismiss" gesture that reads as closing rather than an
-   abstract spin. */
-body[data-nav="open"] .navbtn:hover .navbtn__icon { transform: scale(.9); }
-body[data-nav="open"] .navbtn:hover .navbtn__bar:nth-child(1) { width: 15px; transform: translateY(6px) rotate(45deg); }
-body[data-nav="open"] .navbtn:hover .navbtn__bar:nth-child(3) { width: 15px; transform: translateY(-6px) rotate(-45deg); }
+/* OPEN + hover: a calm, legible "close" cue — the whole X rotates a gentle 8°
+   and the strokes deepen to accent. No spin, no shrink-jitter; it just settles
+   with a small confident tilt, like a control acknowledging the cursor. */
+body[data-nav="open"] .navbtn:hover .navbtn__icon { transform: rotate(8deg); }
 
 @media (prefers-reduced-motion: reduce) {
   .navbtn__bar { transition: opacity .2s, background-color .2s; }
   .navbtn__icon { transition: none; }
-  .navbtn:hover .navbtn__bar { transform: none !important; width: 18px !important; }
-  .navbtn:hover .navbtn__icon { transform: none !important; }
-  /* keep the open X arms in place even under reduced-motion */
-  body[data-nav="open"] .navbtn:hover .navbtn__bar:nth-child(1) { transform: translateY(6px) rotate(45deg) !important; }
-  body[data-nav="open"] .navbtn:hover .navbtn__bar:nth-child(3) { transform: translateY(-6px) rotate(-45deg) !important; }
+  /* no width shuffle or tilt under reduced-motion; keep resting widths + X */
+  body:not([data-nav="open"]) .navbtn:hover .navbtn__bar:nth-child(1) { width: 18px; }
+  body:not([data-nav="open"]) .navbtn:hover .navbtn__bar:nth-child(2) { width: 11px; }
+  body:not([data-nav="open"]) .navbtn:hover .navbtn__bar:nth-child(3) { width: 15px; }
+  body[data-nav="open"] .navbtn:hover .navbtn__icon { transform: none; }
 }
