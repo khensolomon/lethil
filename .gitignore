@@ -1,6 +1,8 @@
 # Custom
 *.v[0-9]*
 tmp
+Gemfile.lock
+/docs/_site/
 
 # Secrets — never commit. Source of truth for local development; synced
 # to GitHub Secrets via script/secrets.py.
