@@ -84,6 +84,21 @@ jobs:
             fi
           done
 
+      - name: Compose deploy commit message
+        # The source commit is like "docs update: testing"; the deploy commit on
+        # khensolomon.github.io should read just "testing". Strip the leading
+        # "docs update:" (and surrounding space). Manual runs have no source
+        # commit, so fall back to a generic message.
+        id: msg
+        run: |
+          raw='${{ github.event.head_commit.message }}'
+          # take only the first line, then strip a leading "docs update:" prefix
+          first=$(printf '%s\n' "$raw" | head -n1)
+          clean=$(printf '%s' "$first" | sed -E 's/^[[:space:]]*docs update:[[:space:]]*//')
+          [ -z "$clean" ] && clean="site update"
+          echo "message=$clean" >> "$GITHUB_OUTPUT"
+          echo "deploy message -> $clean"
+
       - name: Deploy to khensolomon.github.io
         # peaceiris/actions-gh-pages pushes a built directory to another repo.
         # Default here: an SSH deploy key (repo-scoped, most locked-down).
@@ -113,4 +128,4 @@ jobs:
           # cname: example.com
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
-          commit_message: "deploy: ${{ github.event.head_commit.message }}"
+          commit_message: ${{ steps.msg.outputs.message }}

@@ -87,15 +87,28 @@ body[data-nav="open"] .sidebar {
   margin: 0 0 .45rem;
   border-bottom: 1px solid var(--border);
 }
-.sidebar__nav { display: grid; gap: .15rem; }
+.sidebar__nav { display: grid; gap: .1rem; }
 .sidebar__link {
-  display: flex; align-items: baseline; gap: .55rem;
-  padding: .45rem .6rem; border-radius: var(--radius-sm);
+  display: flex; align-items: center; gap: .6rem;
+  padding: .4rem .6rem; border-radius: var(--radius-sm);
   color: var(--muted); transition: background .15s, color .15s;
 }
+/* a small round marker leads each item; it's a hollow ring at rest, fills with
+   the accent on hover, and becomes a solid accent dot for the active page —
+   a calm, legible status cue in place of the old [*]/[+] brackets */
+.sidebar__marker {
+  flex-shrink: 0;
+  width: 6px; height: 6px; border-radius: 50%;
+  border: 1.5px solid var(--border-hover);
+  background: transparent;
+  transition: background .15s, border-color .15s, transform .15s;
+}
+.sidebar__link-text { min-width: 0; }
 .sidebar__link:hover { background: var(--surface-2); color: var(--text); }
-.sidebar__link.is-active { color: var(--text); background: var(--accent-soft); }
-.sidebar__prefix { color: var(--accent); }
+.sidebar__link:hover .sidebar__marker { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 35%, transparent); }
+/* active: solid accent dot + accent text, no heavy filled background */
+.sidebar__link.is-active { color: var(--text); }
+.sidebar__link.is-active .sidebar__marker { background: var(--accent); border-color: var(--accent); transform: scale(1.15); }
 
 /* --- home sidebar: collapsible section groups (native <details>) --------- */
 .sidebar__title + .sidebar__sections { margin-bottom: 1.4rem; }

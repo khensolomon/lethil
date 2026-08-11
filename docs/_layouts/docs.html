@@ -8,7 +8,7 @@ layout: default
 <div class="docs inset">
   <article class="docs__content prose">
     <header class="docs__head">
-      {% if page.category %}<p class="eyebrow mono accent">{{ page.category }}</p>{% endif %}
+      {% if page.category %}<a class="eyebrow mono accent docs__category" href="{{ '/directory/' | relative_url }}#category={{ page.category | url_encode }}">{{ page.category }}</a>{% endif %}
       <h1>{{ page.title }}</h1>
       {% if page.description %}<p class="docs__lede">{{ page.description }}</p>{% endif %}
     </header>
@@ -22,6 +22,15 @@ layout: default
     {% include page-index.html %}
     {% capture rendered %}{% include wikilinks.html text=content %}{% endcapture %}
     {{ rendered }}
+
+    {%- if page.tags and page.tags.size > 0 -%}
+    <footer class="docs__tags" aria-label="Tags">
+      <span class="docs__tags-label mono muted">Tagged</span>
+      {%- for t in page.tags -%}
+        <a class="docs__tag mono" href="{{ '/directory/' | relative_url }}#tag={{ t | url_encode }}">{{ t }}</a>
+      {%- endfor -%}
+    </footer>
+    {%- endif -%}
   </article>
 </div>
 

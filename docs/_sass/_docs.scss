@@ -7,3 +7,23 @@
 .docs__head { margin-bottom: 2rem; }
 .docs__head h1 { margin: .3rem 0 0; font-size: clamp(1.9rem, 5vw, 2.6rem); letter-spacing: -.025em; }
 .docs__lede { color: var(--muted); font-size: 1.1rem; margin: .8rem 0 0; }
+
+/* the category eyebrow is a link to the pre-filtered Browse page */
+.docs__category { text-decoration: none; transition: opacity .15s; }
+.docs__category:hover { opacity: .7; text-decoration: underline; text-underline-offset: 3px; }
+
+/* clickable tags row beneath the article; each jumps to Browse pre-filtered */
+.docs__tags {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .45rem;
+  margin-top: 2.5rem; padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.docs__tags-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; margin-right: .2rem; }
+.docs__tag {
+  font-size: .78rem; color: var(--muted);
+  padding: .2rem .6rem;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+  text-decoration: none;
+  transition: border-color .15s, color .15s;
+}
+.docs__tag:hover { border-color: var(--accent); color: var(--accent); }

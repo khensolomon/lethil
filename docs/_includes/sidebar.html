@@ -21,7 +21,7 @@
       <span class="brand-name">Home</span>
     </a>
     {% else %}
-    <a class="brand" href="{{ '/' | relative_url }}">
+    <a class="brand" href="{{ '/docs/' | relative_url }}">
       <svg class="brand__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H12v16H5.5A1.5 1.5 0 0 1 4 18.5Z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H12v16h6.5a1.5 1.5 0 0 0 1.5-1.5Z"/>
       </svg>
@@ -60,8 +60,8 @@
         {%- if doc.title -%}
         <a class="sidebar__link{% if page.url == doc.url %} is-active{% endif %}"
            href="{{ doc.url | relative_url }}">
-          <span class="mono sidebar__prefix">{% if page.url == doc.url %}[*]{% else %}[+]{% endif %}</span>
-          {{ doc.title }}
+          <span class="sidebar__marker" aria-hidden="true"></span>
+          <span class="sidebar__link-text">{{ doc.title }}</span>
         </a>
         {%- endif -%}
       {%- endfor -%}
@@ -91,6 +91,22 @@
           </svg>
         </span>
         <span class="sidebar__fixed-label">Documentation</span>
+      </a>
+      <a class="sidebar__fixed-item" href="{{ '/directory/' | relative_url }}">
+        <span class="sidebar__fixed-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>
+          </svg>
+        </span>
+        <span class="sidebar__fixed-label">Directory</span>
+      </a>
+      <a class="sidebar__fixed-item" href="{{ '/tags/' | relative_url }}">
+        <span class="sidebar__fixed-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12V5a1 1 0 0 1 1-1h7l8 8-8 8z"/><circle cx="8.5" cy="8.5" r="1.3"/>
+          </svg>
+        </span>
+        <span class="sidebar__fixed-label">Tags</span>
       </a>
     </nav>
 

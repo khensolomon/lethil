@@ -10,6 +10,91 @@ nav_order: 99
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.08.03k
+
+- Renamed the Directory page's internals from "browse" to "directory" so the
+  naming is consistent end to end. The script (directory.js), the styles
+  (_directory.scss), and the data feed (/directory.json) are renamed, along
+  with every CSS class (.directory__*), the data- hooks (data-directory-*), and
+  the DIRECTORY_URL global. No behaviour or visual change — purely a rename for
+  clarity.
+
+## 26.08.03j
+
+- Reworked the Directory filter chips. Category and tag chips now look
+  different — tag chips are smaller and lighter, giving the two facets a clear
+  visual hierarchy. Chip counts are abbreviated for large numbers (1200 shows
+  as "1.2k", with the full value on hover), so busy facets stay tidy.
+- The filter panel stays compact. Each facet group collapses to about two rows
+  with a "Show all (N)" toggle that only appears when the chips actually
+  overflow — so a section with dozens of tags no longer makes the panel huge,
+  but everything is one click away.
+- Removed border-colour hover effects throughout the Directory. Chips, cards,
+  tags, the pager, and the clear button now respond to hover with a background
+  or lift instead of a border tint.
+
+## 26.08.03i
+
+- Renamed the Browse page to Directory. The page heading, the sidebar entry,
+  and the URL are now "Directory" / /directory/ — a plainer, more fitting name.
+  The category and tag deep-links from doc pages and the tag/category index
+  pages all point at the new path. (The internal data feed keeps its name.)
+- Cleaned up the filter panel copy. It repeated "Filter by" and "pick any" for
+  both facets; now there's a single "Filter" heading with the hint once, then
+  plain "Categories" and "Tags" labels.
+- Eased the facet chip label weight back to normal — the count badge already
+  carries the label/count distinction, so the label no longer needs to be bold.
+
+## 26.08.03h
+
+- Redesigned the facet chips so the label and count read as different things.
+  The label (what you filter by) is now the prominent text, and the count (how
+  many pages have it) sits in its own small rounded badge beside it — on a
+  selected chip the badge inverts to a translucent capsule. No more "Guide 1"
+  reading as one run-on token.
+- Added numbered pagination to Browse. Results render 36 per page with a
+  Prev / 1 2 3 / Next control that collapses to ellipses for long ranges
+  (e.g. "1 … 6 7 8 … 12"). Changing a filter returns to page 1, and the pager
+  hides itself whenever everything fits on one page. This keeps the page fast
+  even when the library grows to hundreds of docs, since only the current
+  page's cards are in the DOM.
+- Updated the Browse subtitle, which still mentioned search, to "Every page,
+  filterable by category and tag."
+
+## 26.08.03g
+
+- Reworked the Browse page layout and filtering. Removed the search box and
+  the awkward two-column split; the category and tag facets now sit together in
+  one full-width panel with proper phrase labels ("Filter by category", "Filter
+  by tag") instead of bare words. Both facets are multi-select now — you can
+  pick Plex and Server together (categories combine with OR to broaden; tags
+  combine with AND to narrow). A "Clear filters" button appears once anything is
+  selected, and the current filters are reflected in the URL so a filtered view
+  can be shared or bookmarked.
+- Tags and categories are clickable everywhere now. On a Browse card, clicking a
+  tag adds it to the filter (rather than opening the page). On a doc page, the
+  category eyebrow links to a pre-filtered Browse, and a "Tagged" row of the
+  page's tags sits beneath the article, each linking into Browse.
+
+## 26.08.03f
+
+- Added a taxonomy and an interactive index. Pages keep two kinds of metadata:
+  a single `category` (the page's primary kind) and many `tags` (cross-cutting
+  topics). A new Browse page at /browse/ lists every page as a filterable card
+  grid — filter by a live search box, one category, or any number of tags (tags
+  combine with AND). New /tags/ and /categories/ index pages list every tag and
+  category with counts, each deep-linking into a pre-filtered Browse. Browse,
+  Browse-all, and Tags are now in the sidebar overview nav. All of it is
+  client-side over a generated /browse.json, no build plugins.
+- Redesigned the section links in the sidebar. The [*]/[+] brackets and the
+  filled active background are gone; each item now leads with a small marker
+  that is a hollow ring at rest, fills on hover, and becomes a solid accent dot
+  for the current page — a calmer, clearer status cue.
+- Fixed the sidebar "Library" link, which pointed at Home; it now opens the
+  documentation index.
+- The deploy commit message on khensolomon.github.io is now trimmed: a source
+  commit "docs update: testing" deploys as just "testing".
+
 ## 26.08.03e
 
 - The deploy now also copies docs/LICENSE and docs/README.md to the root of the

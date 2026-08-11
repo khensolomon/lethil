@@ -1,0 +1,17 @@
+{%- comment -%}
+  Gathers every navigable doc across all section collections into one array,
+  `all_docs`, that downstream templates can loop over. No plugins — walks the
+  section registry (site.data.sections) and concatenates each collection's
+  in-nav docs. `concat` is a standard Liquid filter (unlike `push`), so this
+  builds identically on GitHub Pages.
+
+  Consumers read `all_docs` (and, if they included this for tags/categories,
+  can derive those by looping). Each entry is a full document object, so
+  doc.title / doc.url / doc.description / doc.category / doc.tags / doc.section
+  are all available.
+{%- endcomment -%}
+{%- assign all_docs = "" | split: "" -%}
+{%- for meta in site.data.sections -%}
+  {%- assign sect_docs = site[meta.key] | where: "in_nav", true -%}
+  {%- assign all_docs = all_docs | concat: sect_docs -%}
+{%- endfor -%}
