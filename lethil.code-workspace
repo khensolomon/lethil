@@ -1,0 +1,35 @@
+{
+	"folders": [
+		{
+			"name": "myordbok",
+			"path": "../myordbok"
+		},
+		{
+			"name": "zaideih",
+			"path": "../zaideih"
+		},
+		{
+			"name": "lesion",
+			"path": "../lesion"
+		},
+		{
+			"name": "lethil",
+			"path": "../lethil"
+		},
+		{
+			"name": "notes",
+			"path": "."
+		},
+		{
+			"name": "tmp",
+			"path": "../tmp"
+		},
+		{
+			"name": "khensolomon.github.io",
+			"path": "../khensolomon.github.io"
+		}
+	],
+	"settings": {
+		"editor.tabSize": 2
+	}
+}
