@@ -18,15 +18,7 @@
 		},
 		{
 			"name": "notes",
-			"path": "."
-		},
-		{
-			"name": "tmp",
-			"path": "../tmp"
-		},
-		{
-			"name": "khensolomon.github.io",
-			"path": "../khensolomon.github.io"
+			"path": "../notes"
 		}
 	],
 	"settings": {
