@@ -66,9 +66,9 @@ SETUP_TASKS = [
     },
     {
         "name": "GNOME Extension",
-        "prompt": "Install custom GNOME extension 'lesion'?",
+        "prompt": "Install custom GNOME extension 'hornbill'?",
         "type": "python_url",
-        "url": "https://raw.githubusercontent.com/khensolomon/lesion/master/install.py",
+        "url": "https://raw.githubusercontent.com/khensolomon/hornbill/master/install.py",
     },
     {
         "name": "Autostart Applications",

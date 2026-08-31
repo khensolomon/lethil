@@ -26,45 +26,45 @@
 days:
   # 1 · Monday
   - caption: "Khen Solomon Lethil"
-    slogan:  "Independent open-source developer"
+    slogan: "Independent open-source developer"
     subject: "I build open-source tools and platforms that help preserve, modernize, and freely share language, scripts, and music for the next generation."
 
   # 2 · Tuesday
   - caption: "Dictionary"
-    slogan:  "Myanmar dictionary online"
+    slogan: "Myanmar dictionary online"
     subject: "I maintain MyOrdbok — a modern online dictionary helping thousands of people learn, search, and preserve the Myanmar language every day."
-    art:     "https://raw.githubusercontent.com/laisiangtho/dictionary/master/myordbok.png"
-    link:    "https://myordbok.com"
+    art: "https://raw.githubusercontent.com/laisiangtho/dictionary/master/myordbok.png"
+    link: "https://myordbok.com"
 
   # 3 · Wednesday   (draft — edit to taste)
   - caption: "Music"
-    slogan:  "Preserving a fading sound"
+    slogan: "Preserving a fading sound"
     subject: "I run Zaideih, a streaming platform that keeps tribal music from the 70s, 80s, and 90s alive and playable for a new generation."
 
   # 4 · Thursday    (draft — edit to taste)
   - caption: "Scripture"
-    slogan:  "Scripture in tribal scripts"
+    slogan: "Scripture in tribal scripts"
     subject: "I build Lai Siangtho, organizing the Bible in tribal scripts so communities can read, search, and share it on any device."
 
   # 5 · Friday      (draft — edit to taste)
   - caption: "The desktop"
-    slogan:  "GNOME Shell, refined"
-    subject: "I write Lesion, a GNOME Shell extension that reshapes the Linux desktop around the way people actually work."
-    art:     "https://raw.githubusercontent.com/khensolomon/lesion/refs/heads/master/icon/hornbill-symbolic.svg"
+    slogan: "GNOME Shell, refined"
+    subject: "I write Hornbill, a GNOME Shell extension that reshapes the Linux desktop around the way people actually work."
+    art: "https://raw.githubusercontent.com/khensolomon/hornbill/refs/heads/master/icon/hornbill-symbolic.svg"
     link:
-      - link: "https://github.com/khensolomon/lesion"
+      - link: "https://github.com/khensolomon/hornbill"
         text: "Source"
       - link: "https://extensions.gnome.org"
         text: "GNOME Extensions"
 
   # 6 · Saturday    (draft — edit to taste)
   - caption: "Infrastructure"
-    slogan:  "Self-hosted, end to end"
+    slogan: "Self-hosted, end to end"
     subject: "I design and run the self-hosted infrastructure — containers, tunnels, and tooling — that keeps these projects online without the big platforms."
 
   # 7 · Sunday      (draft — edit to taste)
   - caption: "Open by default"
-    slogan:  "Built to be shared"
+    slogan: "Built to be shared"
     subject: "Everything I make is open source: tools and platforms meant to preserve language, scripts, and music, and to be freely built upon."
 
 # ----------------------------------------------------------------------------
@@ -80,7 +80,7 @@ days:
 dates:
   - every: "01.01"
     caption: "Happy New Year"
-    slogan:  "New year, same mission"
+    slogan: "New year, same mission"
     subject: "Another year of building open tools that preserve language, scripts, and music — thanks for stopping by."
     eyebrow: "New Year's Day"
 

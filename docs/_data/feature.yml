@@ -11,6 +11,6 @@
 #    url     where the banner links
 # ============================================================================
 label: "Working"
-name:  "Lesion"
-text:  "a GNOME Shell extension"
-url:   "https://github.com/khensolomon/lesion"
+name: "Hornbill"
+text: "a GNOME Shell extension"
+url: "https://github.com/khensolomon/hornbill"

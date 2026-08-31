@@ -125,7 +125,7 @@ TASK_MANIFEST = [
     },
     {"apps": ["virtualization-stack"]},
     {"apps": ["docker"]},
-    {"apps": ["lesion-extension"]},
+    {"apps": ["hornbill-extension"]},
 ]
 
 # Tasks with no installable "app" behind them (desktop config, not

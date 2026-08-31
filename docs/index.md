@@ -55,8 +55,8 @@ apps:
 # the source. Symbolic SVGs (filename contains "symbolic") adapt to the theme.
 tools_heading: "Extensions & packages"
 tools:
-  - name:  "Lesion"
+  - name:  "Hornbill"
     blurb: "A GNOME Shell extension."
-    repo:  "https://github.com/khensolomon/lesion"
-    image: "https://raw.githubusercontent.com/khensolomon/lesion/refs/heads/master/icon/hornbill-symbolic.svg"
+    repo:  "https://github.com/khensolomon/hornbill"
+    image: "https://raw.githubusercontent.com/khensolomon/hornbill/refs/heads/master/icon/hornbill-symbolic.svg"
 ---
