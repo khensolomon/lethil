@@ -7,6 +7,7 @@ Gemfile.lock
 # Secrets — never commit. Source of truth for local development; synced
 # to GitHub Secrets via script/secrets.py.
 .env
+vendor/
 
 # Per-app build outputs. apps/<name>/dist/ is what gets deployed; it's
 # generated, not source.

@@ -25,6 +25,13 @@ The exception: deploying static apps from `apps/` is a generic operation (build 
 ## Quick start
 
 ```bash
+bundle config set --local path 'vendor/bundle'
+bundle install
+sudo apt update
+sudo apt install ruby3.3-dev build-essential
+```
+
+```bash
 # 1. Clone
 git clone https://github.com/khensolomon/lethil
 cd lethil

@@ -1,10 +1,9 @@
 ---
-title: "Utility"
-description: "Shipping small CLI tools."
+title: "Python utilities"
+description: "Small helper scripts kept around between projects."
 category: "Python"
-nav_order: 1
-in_nav: true
-tags: [python, packaging, cli]
+nav_order: 3
+tags: [python, utility, cli]
 ---
 
 ## XYZ

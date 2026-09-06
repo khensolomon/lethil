@@ -1,23 +1,25 @@
 {%- comment -%}
-  Builds `page_index` — a flat list of every in-nav docs page across all
-  sections, each as "section::title::url", so other templates can resolve
-  [[wiki-links]] and build the graph without re-walking every collection.
+  Builds `page_index` — every navigable page across every section, in sidebar
+  order, so other templates can resolve [[wiki-links]] and build the graph
+  without re-walking the collections.
 
-  Usage: include this file, then read the `page_index` array.
-  Each entry is a string "key|title|url|section_label" (| is safe: titles
-  don't contain it). Kept as strings because Liquid can't build hashes.
+  Each entry is a string "key|title|url|section_label" (| is safe: titles don't
+  contain it). Kept as strings because Liquid cannot build hashes.
+
+  Navigability, title fallback, and ordering all come from nav-docs.html, so a
+  wiki-link resolves against exactly the pages the sidebar shows — including
+  pages whose title is inferred from the filename.
 {%- endcomment -%}
 {%- assign page_index = "" -%}
 {%- for meta in site.data.sections -%}
-  {%- assign sect_docs = site[meta.key] | where: "in_nav", true -%}
-  {%- for doc in sect_docs -%}
-    {%- if doc.title -%}
-      {%- capture row -%}{{ meta.key }}|{{ doc.title }}|{{ doc.url }}|{{ meta.label }}{%- endcapture -%}
-      {%- if page_index == "" -%}
-        {%- assign page_index = row -%}
-      {%- else -%}
-        {%- assign page_index = page_index | append: "§" | append: row -%}
-      {%- endif -%}
+  {%- include nav-docs.html key=meta.key -%}
+  {%- for row in nav_rows -%}
+    {%- assign pi_f = row | split: "‖" -%}
+    {%- capture pi_entry -%}{{ meta.key }}|{{ pi_f[2] }}|{{ pi_f[3] }}|{{ meta.label }}{%- endcapture -%}
+    {%- if page_index == "" -%}
+      {%- assign page_index = pi_entry -%}
+    {%- else -%}
+      {%- assign page_index = page_index | append: "§" | append: pi_entry -%}
     {%- endif -%}
   {%- endfor -%}
 {%- endfor -%}

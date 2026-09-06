@@ -52,18 +52,73 @@
   <div class="sidebar__body">
     {% if include.is_docs %}
     {%- comment -%} ---- Mode 1: pages within the active section ---- {%- endcomment -%}
-    {%- assign meta = site.data.sections | where: "key", include.active_section | first -%}
-    <p class="sidebar__title mono muted">{{ meta.label | default: include.active_section }}</p>
+    {%- comment -%}
+      No section title here: the brand above already names the section, and
+      repeating it put the same word twice in the same column.
+    {%- endcomment -%}
     <nav class="sidebar__nav" aria-label="Section pages">
-      {%- assign sect_docs = site[include.active_section] | where: "in_nav", true | sort: "nav_order" -%}
-      {%- for doc in sect_docs -%}
-        {%- if doc.title -%}
-        <a class="sidebar__link{% if page.url == doc.url %} is-active{% endif %}"
-           href="{{ doc.url | relative_url }}">
-          <span class="sidebar__marker" aria-hidden="true"></span>
-          <span class="sidebar__link-text">{{ doc.title }}</span>
+      {%- comment -%}
+        Sections whose index is a real page (not a redirect to the first doc)
+        get an Overview link above the page list. Detected by the
+        `section_overview` flag rather than by section name, so this stays
+        general — every other section index redirects, and linking to one would
+        just bounce the reader to a page already in the list below.
+      {%- endcomment -%}
+      {%- assign sect_overview = site[include.active_section] | where: "section_overview", true | first -%}
+      {%- if sect_overview -%}
+        <a class="sidebar__link sidebar__link--overview{% if page.url == sect_overview.url %} is-active{% endif %}"
+           href="{{ sect_overview.url | relative_url }}">
+          <span class="sidebar__link-text" data-text="Overview">Overview</span>
+        </a>
+      {%- endif -%}
+      {%- include nav-docs.html key=include.active_section -%}
+
+      {%- comment -%}
+        Pages may declare a `group:` in front matter. Groups are rendered as
+        headed blocks so a section holding several unrelated tracks (a server
+        runbook, notes about this site, general reference) reads as separate
+        things rather than one long undifferentiated list.
+
+        Two passes. The first collects group names in the order their first
+        page appears, so group order follows nav_order without needing a
+        separate registry. The second emits each group's pages. This keeps
+        groups contiguous even when their nav_order values are interleaved,
+        and pages with no group simply render first, unheaded.
+      {%- endcomment -%}
+      {%- assign sb_groups = "" -%}
+      {%- for row in nav_rows -%}
+        {%- assign f = row | split: "‖" -%}
+        {%- assign g = f[5] | default: "" -%}
+        {%- if g != "" -%}
+          {%- assign probe = sb_groups | append: "§" -%}
+          {%- assign needle = g | append: "§" -%}
+          {%- unless probe contains needle -%}
+            {%- assign sb_groups = sb_groups | append: g | append: "§" -%}
+          {%- endunless -%}
+        {%- endif -%}
+      {%- endfor -%}
+
+      {%- comment -%} ungrouped pages first, no heading {%- endcomment -%}
+      {%- for row in nav_rows -%}
+        {%- assign f = row | split: "‖" -%}
+        {%- if f[5] == "" or f[5] == nil -%}
+        <a class="sidebar__link{% if page.url == f[3] %} is-active{% endif %}" href="{{ f[3] | relative_url }}">
+          <span class="sidebar__link-text" data-text="{{ f[2] | escape }}">{{ f[2] }}</span>
         </a>
         {%- endif -%}
+      {%- endfor -%}
+
+      {%- assign sb_group_list = sb_groups | split: "§" -%}
+      {%- for grp in sb_group_list -%}
+        <p class="sidebar__group mono">{{ grp }}</p>
+        {%- for row in nav_rows -%}
+          {%- assign f = row | split: "‖" -%}
+          {%- if f[5] == grp -%}
+          <a class="sidebar__link{% if page.url == f[3] %} is-active{% endif %}" href="{{ f[3] | relative_url }}">
+            <span class="sidebar__link-text" data-text="{{ f[2] | escape }}">{{ f[2] }}</span>
+          </a>
+          {%- endif -%}
+        {%- endfor -%}
       {%- endfor -%}
     </nav>
 
@@ -83,6 +138,14 @@
           </svg>
         </span>
         <span class="sidebar__fixed-label">Graph View</span>
+      </a>
+      <a class="sidebar__fixed-item" href="{{ '/todo/' | relative_url }}">
+        <span class="sidebar__fixed-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 6.5 6 8.5 9.5 5"/><path d="M4 17.5 6 19.5 9.5 16"/><path d="M13 7h7M13 18h7"/>
+          </svg>
+        </span>
+        <span class="sidebar__fixed-label">Todo</span>
       </a>
       <a class="sidebar__fixed-item" href="{{ '/docs/' | relative_url }}">
         <span class="sidebar__fixed-icon" aria-hidden="true">

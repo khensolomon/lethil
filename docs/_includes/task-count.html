@@ -1,0 +1,38 @@
+{%- comment -%}
+  Counts markdown task checkboxes in a page.
+
+      {% include task-count.html doc=item %}
+
+  Sets `task_total`, `task_done`, and `task_pct` (0 when there are no tasks).
+
+  Both representations are counted and summed. `doc.content` is rendered HTML
+  by the time most templates see it — kramdown turns `- [ ]` into
+  <input type="checkbox"> with a `task-list-item-checkbox` class — but whether
+  a given document has been rendered yet depends on build order, and that
+  differs between Jekyll versions. Only one representation can be present in
+  any single document, so adding both is safe and works either way.
+
+  Caveat: Ruby's split drops trailing empty strings, so a count would be short
+  by one if the content ended exactly at a delimiter. Every delimiter here is
+  always followed by more markup or text, so that cannot happen in practice.
+{%- endcomment -%}
+{%- assign tc_src = include.doc.content | default: "" -%}
+
+{%- comment -%} rendered form {%- endcomment -%}
+{%- assign tc_html_total = tc_src | split: '<input type="checkbox"' | size | minus: 1 -%}
+{%- assign tc_html_done  = tc_src | split: 'checked="checked"'      | size | minus: 1 -%}
+
+{%- comment -%} raw markdown form (also catches indented sub-tasks) {%- endcomment -%}
+{%- assign tc_raw_open  = tc_src | split: "- [ ]" | size | minus: 1 -%}
+{%- assign tc_raw_lower = tc_src | split: "- [x]" | size | minus: 1 -%}
+{%- assign tc_raw_upper = tc_src | split: "- [X]" | size | minus: 1 -%}
+
+{%- assign task_done  = tc_html_done | plus: tc_raw_lower | plus: tc_raw_upper -%}
+{%- assign tc_raw_all = tc_raw_open  | plus: tc_raw_lower | plus: tc_raw_upper -%}
+{%- assign task_total = tc_html_total | plus: tc_raw_all -%}
+
+{%- if task_total > 0 -%}
+  {%- assign task_pct = task_done | times: 100 | divided_by: task_total -%}
+{%- else -%}
+  {%- assign task_pct = 0 -%}
+{%- endif -%}

@@ -40,12 +40,11 @@
   {%- assign redirect_target = "" -%}
   {%- if page.redirect_to_first_doc -%}
     {%- comment -%}
-      An index page redirects to the first in-nav page of ITS OWN section.
-      site.<section> is the collection docs; filter to in_nav, sort, take first.
+      An index page redirects to the first navigable page of ITS OWN section.
+      nav-docs.html decides both which pages count and what "first" means.
     {%- endcomment -%}
-    {%- assign sect_docs = site[page.section] | where: "in_nav", true | sort: "nav_order" -%}
-    {%- assign first_doc = sect_docs | first -%}
-    {%- assign redirect_target = first_doc.url -%}
+    {%- include nav-docs.html key=page.section -%}
+    {%- assign redirect_target = nav_first_url -%}
   {%- elsif page.redirect_to -%}
     {%- assign redirect_target = page.redirect_to -%}
   {%- endif -%}
@@ -114,7 +113,6 @@
         <a class="brand" href="{{ '/' | append: active_section | append: '/' | relative_url }}">
           <span class="brand-name">{{ topbar_meta.label | default: active_section }}</span>
         </a>
-        {% include search.html %}
         {% else %}
         <a class="brand" href="{{ '/' | relative_url }}">
           <span class="brand-name">{{ site.title }}</span>
@@ -122,8 +120,14 @@
         {% endif %}
       </div>
 
+      {%- comment -%}
+        Search sits in the trailing cluster on every page. It used to be in the
+        leading cluster on docs pages, which left-aligned it there and right-
+        aligned it on home — the same control in two places depending on where
+        you were.
+      {%- endcomment -%}
       <div class="topbar__cluster">
-        {% unless is_docs %}{% include search.html %}{% endunless %}
+        {% include search.html %}
       </div>
     </header>
 

@@ -1,0 +1,91 @@
+---
+layout: default
+---
+{%- comment -%}
+  Landing page for a section that has no hand-written one.
+
+  This replaces the old redirect indexes. A redirect meant /server/ existed but
+  could never be looked at: the back button bounced you forward again, a shared
+  link always landed somewhere else than intended, and there was nowhere to see
+  what a section actually contained without opening a page first.
+
+  The listing is generated from nav-docs.html, so it stays correct as pages are
+  added, reordered, or grouped — same source as the sidebar, so the two can
+  never disagree.
+{%- endcomment -%}
+{%- assign sec_meta = site.data.sections | where: "key", page.section | first -%}
+{%- include nav-docs.html key=page.section -%}
+
+<div class="section-index">
+  <header class="section-index__head">
+    <h1 class="section-index__title">{{ sec_meta.label | default: page.title }}</h1>
+    {%- if sec_meta.blurb %}
+    <p class="section-index__lede">{{ sec_meta.blurb }}</p>
+    {%- endif %}
+    <p class="section-index__count mono muted">
+      {{ nav_docs | size }} page{% if nav_docs.size != 1 %}s{% endif %}
+    </p>
+  </header>
+
+  {%- comment -%}
+    Same two-pass grouping the sidebar uses: collect group names in the order
+    their first page appears, then emit each group. Ungrouped pages come first
+    with no heading.
+  {%- endcomment -%}
+  {%- assign si_groups = "" -%}
+  {%- for doc in nav_docs -%}
+    {%- assign g = doc.group | default: "" -%}
+    {%- if g != "" -%}
+      {%- assign probe = si_groups | append: "§" -%}
+      {%- assign needle = g | append: "§" -%}
+      {%- unless probe contains needle -%}
+        {%- assign si_groups = si_groups | append: g | append: "§" -%}
+      {%- endunless -%}
+    {%- endif -%}
+  {%- endfor -%}
+
+  {%- assign ungrouped = nav_docs | where_exp: "d", "d.group == nil" -%}
+  {%- if ungrouped.size > 0 -%}
+  <ul class="section-index__list">
+    {%- for doc in ungrouped -%}
+      {%- include doc-title.html doc=doc -%}
+      <li class="section-index__item">
+        <a class="section-index__link" href="{{ doc.url | relative_url }}">
+          <span class="section-index__name">{{ doc_title }}</span>
+          {%- if doc.description %}
+          <span class="section-index__desc">{{ doc.description }}</span>
+          {%- endif -%}
+        </a>
+      </li>
+    {%- endfor -%}
+  </ul>
+  {%- endif -%}
+
+  {%- assign si_group_list = si_groups | split: "§" -%}
+  {%- for grp in si_group_list -%}
+  <section class="section-index__group">
+    <h2 class="section-index__group-title mono">{{ grp }}</h2>
+    <ul class="section-index__list">
+      {%- for doc in nav_docs -%}
+        {%- if doc.group == grp -%}
+          {%- include doc-title.html doc=doc -%}
+        <li class="section-index__item">
+          <a class="section-index__link" href="{{ doc.url | relative_url }}">
+            <span class="section-index__name">{{ doc_title }}</span>
+            {%- if doc.description %}
+            <span class="section-index__desc">{{ doc.description }}</span>
+            {%- endif -%}
+          </a>
+        </li>
+        {%- endif -%}
+      {%- endfor -%}
+    </ul>
+  </section>
+  {%- endfor -%}
+
+  {%- if nav_docs.size == 0 -%}
+  <p class="section-index__empty">No pages in this section yet.</p>
+  {%- endif -%}
+</div>
+
+{% include footer.html %}

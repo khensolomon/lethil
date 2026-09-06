@@ -92,6 +92,11 @@ body[data-nav="open"] .navbtn { color: var(--accent); }
   justify-content: space-between;
   align-items: flex-start;          /* left-align so varied widths read as a ragged edge */
   width: 18px; height: 14px;
+  /* The open-state hover transform below animates from here. Without this the
+     icon jumped straight to its hovered position — the closed state had a
+     spring on bar widths while the open state had no transition at all, which
+     is why one felt considered and the other felt like nothing. */
+  transition: transform .4s var(--spring);
 }
 .navbtn__bar {
   height: 2px;
@@ -129,17 +134,23 @@ body[data-nav="open"] .navbtn__bar:nth-child(1) { transform: translateY(6px) rot
 body[data-nav="open"] .navbtn__bar:nth-child(2) { opacity: 0; transform: scaleX(.4); }
 body[data-nav="open"] .navbtn__bar:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
-/* OPEN + hover: a calm, legible "close" cue — the whole X rotates a gentle 8°
-   and the strokes deepen to accent. No spin, no shrink-jitter; it just settles
-   with a small confident tilt, like a control acknowledging the cursor. */
-body[data-nav="open"] .navbtn:hover .navbtn__icon { transform: rotate(8deg); }
+/* OPEN + hover: a quarter turn inward. An X is symmetric under 90°, so the
+   mark lands exactly on itself — the motion reads as a complete, deliberate
+   rotation rather than a nudge that stops somewhere arbitrary (the old 8°
+   tilt, which had no resting logic and no transition to carry it). The slight
+   scale-down is the "collapse" half of the gesture: the icon draws inward,
+   matching what clicking it does. Spring easing gives it the same character
+   as the width shuffle in the closed state. */
+body[data-nav="open"] .navbtn:hover .navbtn__icon {
+  transform: rotate(90deg) scale(.9);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .navbtn__bar { transition: opacity .2s, background-color .2s; }
-  .navbtn__icon { transition: none; }
   /* no width shuffle or tilt under reduced-motion; keep resting widths + X */
   body:not([data-nav="open"]) .navbtn:hover .navbtn__bar:nth-child(1) { width: 18px; }
   body:not([data-nav="open"]) .navbtn:hover .navbtn__bar:nth-child(2) { width: 11px; }
   body:not([data-nav="open"]) .navbtn:hover .navbtn__bar:nth-child(3) { width: 15px; }
   body[data-nav="open"] .navbtn:hover .navbtn__icon { transform: none; }
+  .navbtn__icon { transition: none; }
 }

@@ -1,0 +1,102 @@
+---
+layout: default
+---
+{%- comment -%}
+  Layout for Todo items. Shares the docs article column, but frames the page as
+  a work item rather than a reference document:
+
+    · a "back to the board" link, since the board is the section's real home
+    · the status as a header band rather than a small pill
+    · a task progress bar, counted from the page's own checkboxes
+    · prev / next in board order, so items can be walked through
+
+  The status here is the EFFECTIVE one — an explicit `status:` if set, or one
+  derived from the task checkboxes — so the page and the board can never
+  disagree about which column an item is in.
+{%- endcomment -%}
+{%- include todo-status.html doc=page -%}
+
+<div class="docs inset">
+  <article class="docs__content prose">
+
+    <a class="todopage__back mono" href="{{ '/todo/' | relative_url }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 6l-6 6 6 6"/>
+      </svg>
+      Board
+    </a>
+
+    <header class="docs__head todopage__head" data-status="{{ todo_status }}">
+      {%- include doc-title.html doc=page -%}
+      <h1>{{ doc_title }}</h1>
+      {% if page.description %}<p class="docs__lede">{{ page.description }}</p>{% endif %}
+
+      <div class="todopage__meta">
+        <span class="todopage__status">
+          <span class="todopage__status-pip" aria-hidden="true"></span>
+          <span class="mono">{{ todo_status }}</span>
+        </span>
+
+        {%- if task_total > 0 -%}
+        <span class="todopage__tasks" role="img"
+              aria-label="{{ task_done }} of {{ task_total }} tasks done">
+          <span class="todopage__taskbar">
+            <span class="todopage__taskfill" style="width: {{ task_pct }}%"></span>
+          </span>
+          <span class="mono muted">{{ task_done }} / {{ task_total }} tasks</span>
+        </span>
+        {%- endif -%}
+      </div>
+    </header>
+
+    {% include page-index.html %}
+    {% capture rendered %}{% include wikilinks.html text=content %}{% endcapture %}
+    {{ rendered }}
+
+    {%- if page.tags and page.tags.size > 0 -%}
+    <footer class="docs__tags" aria-label="Tags">
+      <span class="docs__tags-label mono muted">Tagged</span>
+      {%- for t in page.tags -%}
+        <a class="docs__tag mono" href="{{ '/directory/' | relative_url }}#tag={{ t | url_encode }}">{{ t }}</a>
+      {%- endfor -%}
+    </footer>
+    {%- endif -%}
+
+    {%- comment -%}
+      Prev / next in board order. nav-docs gives the section's pages already
+      sorted, so this is a single walk recording the row either side of the
+      current url.
+    {%- endcomment -%}
+    {%- include nav-docs.html key="todo" -%}
+    {%- assign prev_row = "" -%}
+    {%- assign next_row = "" -%}
+    {%- assign seen = false -%}
+    {%- for row in nav_rows -%}
+      {%- assign rf = row | split: "‖" -%}
+      {%- if seen and next_row == "" -%}{%- assign next_row = row -%}{%- endif -%}
+      {%- if rf[3] == page.url -%}{%- assign seen = true -%}{%- endif -%}
+      {%- unless seen -%}{%- assign prev_row = row -%}{%- endunless -%}
+    {%- endfor -%}
+
+    {%- if prev_row != "" or next_row != "" -%}
+    <nav class="todopage__nav" aria-label="Other items">
+      {%- if prev_row != "" -%}
+        {%- assign pf = prev_row | split: "‖" -%}
+        <a class="todopage__nav-link todopage__nav-link--prev" href="{{ pf[3] | relative_url }}">
+          <span class="mono muted">Previous</span>
+          <span class="todopage__nav-title">{{ pf[2] }}</span>
+        </a>
+      {%- endif -%}
+      {%- if next_row != "" -%}
+        {%- assign nf = next_row | split: "‖" -%}
+        <a class="todopage__nav-link todopage__nav-link--next" href="{{ nf[3] | relative_url }}">
+          <span class="mono muted">Next</span>
+          <span class="todopage__nav-title">{{ nf[2] }}</span>
+        </a>
+      {%- endif -%}
+    </nav>
+    {%- endif -%}
+  </article>
+</div>
+
+{% include footer.html %}

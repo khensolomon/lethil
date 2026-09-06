@@ -1,9 +1,9 @@
 ---
 title: "Deployment guide"
 description: "Provision a production server from a fresh Ubuntu/Debian host to an automated Docker Swarm deploy pipeline."
+group: "Server"
 category: "Guide"
 nav_order: 2
-in_nav: true
 tags: [deployment]
 ---
 

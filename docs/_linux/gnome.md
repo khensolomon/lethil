@@ -1,9 +1,8 @@
 ---
 title: "GNOME"
 description: "GNOME guide"
-category: "linux"
+category: "Linux"
 nav_order: 4
-in_nav: true
 tags: [gnome]
 ---
 

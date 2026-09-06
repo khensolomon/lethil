@@ -11,3 +11,6 @@ start:
 
 build:
 	cd docs && JEKYLL_ENV=production bundle exec jekyll build
+
+check:
+	cd docs && bash check-install.sh

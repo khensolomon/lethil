@@ -10,6 +10,12 @@
 #  Fixed items (Graph View, the Docs index) are added by the sidebar template
 #  itself, above this list — they are not sections and don't belong here.
 # ============================================================================
+- key: todo
+  label: "Todo"
+  badge: "T"
+  blurb: "What's next, in progress, and shipped"
+  highlight: true
+
 - key: docs
   label: "Docs"
   badge: "D"
@@ -31,6 +37,12 @@
   label: "Python"
   badge: "Py"
   blurb: "Scripts & tooling"
+
+- key: mobile
+  label: "Mobile"
+  badge: "M"
+  blurb: "Android & Flutter toolchain"
+  highlight: false
 
 - key: sql
   label: "SQL"

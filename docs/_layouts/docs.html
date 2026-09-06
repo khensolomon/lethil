@@ -9,7 +9,20 @@ layout: default
   <article class="docs__content prose">
     <header class="docs__head">
       {% if page.category %}<a class="eyebrow mono accent docs__category" href="{{ '/directory/' | relative_url }}#category={{ page.category | url_encode }}">{{ page.category }}</a>{% endif %}
-      <h1>{{ page.title }}</h1>
+      {%- comment -%} Same title fallback the nav uses, so an untitled page still gets a heading. {%- endcomment -%}
+      {%- include doc-title.html doc=page -%}
+      <h1>{{ doc_title }}</h1>
+      {%- comment -%}
+        `status` is optional and only Todo pages set it today, but nothing here
+        is section-specific — any page can carry one. Unknown values still
+        render, so a typo shows up on the page instead of failing silently.
+      {%- endcomment -%}
+      {%- if page.status %}
+      <p class="docs__status" data-status="{{ page.status }}">
+        <span class="docs__status-pip" aria-hidden="true"></span>
+        <span class="docs__status-text mono">{{ page.status }}</span>
+      </p>
+      {%- endif -%}
       {% if page.description %}<p class="docs__lede">{{ page.description }}</p>{% endif %}
     </header>
 

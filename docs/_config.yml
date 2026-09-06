@@ -30,6 +30,8 @@ sass:
   style: expanded
 
 exclude:
+  - Makefile
+  - check-install.sh
   - README.md
   - LICENSE
   - Gemfile
@@ -59,6 +61,8 @@ exclude:
 collections_dir: .          # collections live at the repo root, not in a subfolder
 collections:
   docs:    { output: true, permalink: /docs/:name/ }
+  todo:    { output: true, permalink: /todo/:name/ }
+  mobile:  { output: true, permalink: /mobile/:name/ }
   python:  { output: true, permalink: /python/:name/ }
   linux:   { output: true, permalink: /linux/:name/ }
   server:  { output: true, permalink: /server/:name/ }
@@ -72,6 +76,10 @@ collections:
 defaults:
   - scope: { path: "", type: "docs" }
     values: { layout: "docs", section: "docs" }
+  - scope: { path: "", type: "todo" }
+    values: { layout: "todo", section: "todo" }
+  - scope: { path: "", type: "mobile" }
+    values: { layout: "docs", section: "mobile" }
   - scope: { path: "", type: "python" }
     values: { layout: "docs", section: "python" }
   - scope: { path: "", type: "linux" }

@@ -13,7 +13,8 @@ body_class: "is-taxonomy"
 {%- endcomment -%}
 {%- assign tag_rows = "" -%}
 {%- for meta in site.data.sections -%}
-  {%- assign sect_docs = site[meta.key] | where: "in_nav", true -%}
+  {%- include nav-docs.html key=meta.key -%}
+  {%- assign sect_docs = nav_docs -%}
   {%- for doc in sect_docs -%}
     {%- for t in doc.tags -%}
       {%- assign tag_rows = tag_rows | append: t | append: "|" -%}
@@ -33,7 +34,8 @@ body_class: "is-taxonomy"
       {%- if t != "" -%}
         {%- assign count = 0 -%}
         {%- for meta in site.data.sections -%}
-          {%- assign sd = site[meta.key] | where: "in_nav", true -%}
+          {%- include nav-docs.html key=meta.key -%}
+          {%- assign sd = nav_docs -%}
           {%- for doc in sd -%}
             {%- if doc.tags contains t -%}{%- assign count = count | plus: 1 -%}{%- endif -%}
           {%- endfor -%}

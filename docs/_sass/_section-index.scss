@@ -1,0 +1,72 @@
+// ===========================================================================
+// SECTION INDEX — the generated landing page at /<section>/.
+//
+// Deliberately plainer than the Todo board: this is a table of contents, so
+// the page titles carry the weight and everything else recedes.
+// ===========================================================================
+
+.section-index {
+  max-width: var(--measure);
+  padding: 2.4rem var(--gutter) 3rem;
+}
+
+.section-index__head { margin-bottom: 1.6rem; }
+.section-index__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  letter-spacing: -.02em;
+}
+.section-index__lede {
+  margin: .35rem 0 0;
+  color: var(--muted);
+  font-size: .95rem;
+}
+.section-index__count { margin: .5rem 0 0; font-size: .72rem; }
+
+.section-index__group { margin-top: 2rem; }
+.section-index__group-title {
+  margin: 0 0 .5rem;
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .75;
+}
+
+.section-index__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+.section-index__item { border-bottom: 1px solid var(--border); }
+
+.section-index__link {
+  display: block;
+  padding: .7rem .2rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--dur-nav) var(--ease);
+
+  &:hover { background: var(--surface-2); }
+}
+.section-index__name {
+  display: block;
+  font-size: .95rem;
+  font-weight: 500;
+}
+.section-index__link:hover .section-index__name { color: var(--accent); }
+.section-index__desc {
+  display: block;
+  margin-top: .15rem;
+  font-size: .8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.section-index__empty { color: var(--muted); font-size: .9rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .section-index__link { transition: none; }
+}

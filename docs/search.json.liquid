@@ -10,18 +10,18 @@ permalink: /search.json
 [
   {%- assign first = true -%}
   {%- for meta in site.data.sections -%}
-    {%- assign sect_docs = site[meta.key] | where: "in_nav", true | sort: "nav_order" -%}
+    {%- include nav-docs.html key=meta.key -%}
+    {%- assign sect_docs = nav_docs -%}
     {%- for doc in sect_docs -%}
-      {%- if doc.title -%}
+      {%- include doc-title.html doc=doc -%}
         {%- unless first %},{% endunless -%}{%- assign first = false -%}
   {
-    "title": {{ doc.title | jsonify }},
+    "title": {{ doc_title | jsonify }},
     "url": {{ doc.url | relative_url | jsonify }},
     "category": {{ doc.category | default: meta.label | jsonify }},
     "section": {{ meta.label | jsonify }},
     "content": {{ doc.content | strip_html | strip_newlines | jsonify }}
   }
-      {%- endif -%}
     {%- endfor -%}
   {%- endfor -%}
 ]

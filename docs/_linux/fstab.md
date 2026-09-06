@@ -3,7 +3,6 @@ title: "Managing fstab"
 description: "Declarative mounts."
 category: "Linux"
 nav_order: 1
-in_nav: true
 tags: [linux, storage, mergerfs]
 ---
 

@@ -1,0 +1,20 @@
+{%- comment -%}
+  Resolves a page's display title, so `title:` in front matter is optional.
+
+      {% include doc-title.html doc=doc %}   ->  sets `doc_title`
+
+  Falls back to the URL slug, de-slugified: /linux/my-first-page/ becomes
+  "My first page". That keeps an untitled file visible in the sidebar, search,
+  the graph, and the directory instead of silently vanishing from all of them.
+
+  Deriving from the URL rather than the filename means the fallback always
+  matches the address the page is actually served at, including when a page
+  sets its own `permalink`.
+{%- endcomment -%}
+{%- assign dt_segs = include.doc.url | split: "/" -%}
+{%- assign dt_slug = "" -%}
+{%- for dt_seg in dt_segs -%}
+  {%- if dt_seg != "" -%}{%- assign dt_slug = dt_seg -%}{%- endif -%}
+{%- endfor -%}
+{%- assign dt_fallback = dt_slug | replace: "-", " " | replace: "_", " " | capitalize -%}
+{%- assign doc_title = include.doc.title | default: dt_fallback -%}

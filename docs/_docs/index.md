@@ -1,14 +1,12 @@
 ---
-layout: docs
+layout: section
 permalink: /docs/
-redirect_to_first_doc: true
 title: "Docs"
-description: "Redirecting to the first guide."
+section: "docs"
+# A real landing page, not a redirect. in_nav keeps it out of the page list
+# (it is reached by the Overview link instead); section_overview puts that
+# link at the top of the sidebar.
+in_nav: false
+section_overview: true
 sitemap: false
 ---
-
-Redirecting…
-
-If nothing happens, use the sidebar on the left — this page exists so `/docs/`
-never 404s; it always forwards to whichever page is first in the sidebar
-(sorted by `nav_order`), so it stays correct as pages are added or reordered.

@@ -11,21 +11,23 @@ sitemap: false
 {%- endcomment -%}
 [
   {%- assign first = true -%}
+  {%- assign empty_tags = "" | split: "" -%}
   {%- for meta in site.data.sections -%}
-    {%- assign sect_docs = site[meta.key] | where: "in_nav", true | sort: "nav_order" -%}
+    {%- include nav-docs.html key=meta.key -%}
+    {%- assign sect_docs = nav_docs -%}
     {%- for doc in sect_docs -%}
-      {%- if doc.title -%}
+      {%- include doc-title.html doc=doc -%}
         {%- unless first %},{% endunless -%}{%- assign first = false -%}
   {
-    "title": {{ doc.title | jsonify }},
+    "title": {{ doc_title | jsonify }},
     "url": {{ doc.url | relative_url | jsonify }},
     "description": {{ doc.description | default: "" | jsonify }},
     "section": {{ meta.label | jsonify }},
     "sectionKey": {{ meta.key | jsonify }},
     "category": {{ doc.category | default: meta.label | jsonify }},
-    "tags": {{ doc.tags | jsonify }}
+    "tags": {{ doc.tags | default: empty_tags | jsonify }},
+    "status": {{ doc.status | default: "" | jsonify }}
   }
-      {%- endif -%}
     {%- endfor -%}
   {%- endfor -%}
 ]

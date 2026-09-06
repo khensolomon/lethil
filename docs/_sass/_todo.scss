@@ -1,0 +1,445 @@
+// ===========================================================================
+// TODO — the status board at /todo/, plus the status pill that any page can
+// carry in its header.
+//
+// The board deliberately does NOT reuse the directory's card grid. Todo items
+// are a short, ordered, status-grouped list you read top to bottom, not a
+// filterable library you browse — so it reads as a list with grouped headers,
+// which is what makes the section feel unlike the rest of the site.
+// ===========================================================================
+
+// --- shared: resolve a status keyword to its colour ------------------------
+// Every status-bearing element sets --status-c from its data-status, so the
+// pip, the pill, and the group header all tint from one place.
+[data-status="active"]  { --status-c: var(--status-active); }
+[data-status="planned"] { --status-c: var(--status-planned); }
+[data-status="blocked"] { --status-c: var(--status-blocked); }
+[data-status="done"]    { --status-c: var(--status-done); }
+
+// --- the page-header pill (docs layout) ------------------------------------
+.docs__status {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  margin: .55rem 0 0;
+  padding: .2rem .6rem .2rem .5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  // Fall back to muted so an unrecognised status still renders legibly
+  // instead of inheriting a null custom property.
+  --status-c: var(--muted);
+}
+.docs__status-pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-c);
+  flex: none;
+}
+.docs__status-text {
+  font-size: .74rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--status-c);
+}
+
+// --- board ------------------------------------------------------------------
+.todo {
+  max-width: var(--measure);
+  padding: 2.4rem var(--gutter) 3rem;
+  // Columns need more room than a reading column; the list view keeps the
+  // narrower measure so item text stays comfortable to read.
+  &[data-board-view="kanban"] { max-width: 76rem; }
+}
+
+.todo__head { margin-bottom: 2rem; }
+.todo__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  letter-spacing: -.02em;
+}
+.todo__lede { margin: .4rem 0 0; font-size: .85rem; }
+
+// --- progress ---------------------------------------------------------------
+.todo__progress {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  margin-top: 1.1rem;
+}
+.todo__progress-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.todo__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--status-active);
+  // Width is set inline from Liquid; animate it so a rebuild that moves the
+  // number reads as motion rather than a jump.
+  transition: width var(--dur) var(--ease);
+}
+.todo__progress-text { margin: 0; font-size: .74rem; flex: none; }
+
+// --- groups -----------------------------------------------------------------
+.todo__group {
+  margin-top: 2.1rem;
+  --status-c: var(--muted);
+}
+.todo__group-head { margin-bottom: .7rem; }
+
+.todo__group-title {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0;
+  font-size: .95rem;
+  letter-spacing: -.01em;
+}
+.todo__pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-c);
+  flex: none;
+}
+.todo__group-count {
+  font-size: .72rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: .05rem .45rem;
+}
+.todo__group-blurb {
+  margin: .15rem 0 0;
+  padding-left: 1rem;   // clears the pip, so the blurb hangs under the label
+  font-size: .74rem;
+}
+
+// --- items ------------------------------------------------------------------
+.todo__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+.todo__item {
+  display: flex;
+  align-items: baseline;
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding: .7rem .2rem;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  transition: background var(--dur-nav) var(--ease);
+}
+// No per-item status stripe. Items already sit under a status heading with a
+// coloured pip, so a coloured edge on every row repeated what position had
+// already said — and it put a ragged colour column down the left of a list
+// whose text was otherwise flush. Status still shows where it carries new
+// information: the group heading, and the per-item task bar.
+// Hover lifts with a fill, matching the directory's no-border-tint rule.
+.todo__item:hover { background: var(--surface-2); }
+
+.todo__item-link {
+  flex: 1 1 14rem;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+.todo__item-title {
+  display: block;
+  font-size: .93rem;
+  font-weight: 500;
+}
+.todo__item-link:hover .todo__item-title { color: var(--accent); }
+.todo__item-desc {
+  display: block;
+  margin-top: .12rem;
+  font-size: .78rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+// Done items recede — the board should read as "what's left" at a glance.
+[data-status="done"] .todo__item-title {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--border-hover);
+}
+
+.todo__item-tags {
+  display: flex;
+  gap: .3rem;
+  flex-wrap: wrap;
+  flex: none;
+}
+.todo__item-tag {
+  font-size: .68rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: .1rem .45rem;
+  text-decoration: none;
+  transition: background var(--dur-nav) var(--ease);
+}
+.todo__item-tag:hover { background: var(--surface-3); }
+
+.todo__empty { color: var(--muted); font-size: .9rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .todo__progress-fill,
+  .todo__item,
+  .todo__item-tag { transition: none; }
+}
+
+// ===========================================================================
+// BOARD LAYOUTS — columns vs list.
+//
+// Both come from identical markup; only these rules differ. That keeps the
+// two views permanently in sync and means the toggle is instant, with no
+// re-render and nothing to reload.
+// ===========================================================================
+
+.todo__head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+// --- view toggle ------------------------------------------------------------
+.todo__views {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  flex: none;
+}
+.todo__view {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .3rem .55rem;
+  border: 0;
+  border-radius: calc(var(--radius-btn) - 2px);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: .76rem;
+  cursor: pointer;
+  transition: background var(--dur-nav) var(--ease), color var(--dur-nav) var(--ease);
+
+  svg { width: 14px; height: 14px; }
+  &:hover { color: var(--text); }
+  // aria-pressed is the state, so the styling keys off it directly rather than
+  // a parallel class that could drift out of sync with the accessible state.
+  &[aria-pressed="true"] {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow);
+  }
+}
+
+// --- columns ----------------------------------------------------------------
+[data-board-view="kanban"] {
+  .todo__groups {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+  .todo__group {
+    margin-top: 1.6rem;
+    min-width: 0;
+  }
+  .todo__list {
+    border-top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  // In columns each item is a card, so the shared row borders come off and the
+  // status stripe moves to a full left edge.
+  .todo__item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: .65rem .7rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .45rem;
+  }
+  .todo__item:hover { background: var(--surface-2); border-color: var(--border-hover); }
+  .todo__group-blurb { display: none; }   // too cramped beside three neighbours
+}
+
+// --- list -------------------------------------------------------------------
+[data-board-view="list"] {
+  // An empty heading in a vertical list is noise; in columns the empty lane
+  // is load-bearing, so it only disappears here.
+  .todo__group.is-empty { display: none; }
+  .todo__item--placeholder { display: none; }
+}
+
+.todo__item--placeholder {
+  justify-content: center;
+  font-size: .74rem;
+  border-style: dashed;
+  background: transparent;
+}
+
+// --- per-item task progress -------------------------------------------------
+.todo__item-tasks {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  flex: none;
+}
+.todo__item-taskbar {
+  width: 46px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+  flex: none;
+}
+.todo__item-taskfill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--status-c, var(--muted));
+}
+.todo__item-taskcount { font-size: .68rem; color: var(--muted); }
+
+// Below the point where four lanes stop being readable, fall back to two, then
+// to a single stacked column — at which point it is the list view in all but
+// name, so the empty groups hide too.
+@media (max-width: 1100px) {
+  [data-board-view="kanban"] .todo__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  [data-board-view="kanban"] {
+    .todo__groups { grid-template-columns: 1fr; }
+    .todo__group.is-empty { display: none; }
+    .todo__item--placeholder { display: none; }
+  }
+}
+
+// ===========================================================================
+// TODO PAGE — the item view (_layouts/todo.html).
+// ===========================================================================
+.todopage__back {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  margin-bottom: .9rem;
+  font-size: .76rem;
+  color: var(--muted);
+  text-decoration: none;
+
+  svg { width: 14px; height: 14px; }
+  &:hover { color: var(--accent); }
+}
+
+// The status band: a tinted left edge on the whole header, which is a much
+// louder signal than the small pill the docs layout uses.
+.todopage__head {
+  --status-c: var(--muted);
+  border-left: 3px solid var(--status-c);
+  padding-left: 1rem;
+  margin-left: -1rem;
+}
+
+.todopage__meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: .8rem;
+}
+.todopage__status {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .74rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--status-c);
+}
+.todopage__status-pip {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--status-c);
+}
+.todopage__tasks {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .74rem;
+}
+.todopage__taskbar {
+  width: 90px; height: 5px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.todopage__taskfill {
+  display: block; height: 100%;
+  border-radius: inherit;
+  background: var(--status-c);
+  transition: width var(--dur) var(--ease);
+}
+
+// --- prev / next ------------------------------------------------------------
+.todopage__nav {
+  display: flex;
+  gap: .75rem;
+  margin-top: 2.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border);
+}
+.todopage__nav-link {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  padding: .6rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
+  font-size: .74rem;
+  transition: border-color var(--dur-nav) var(--ease), background var(--dur-nav) var(--ease);
+
+  &:hover { background: var(--surface-2); border-color: var(--border-hover); }
+}
+.todopage__nav-link--next { text-align: right; }
+.todopage__nav-title {
+  font-size: .86rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Task lists inside the prose column: kramdown emits real checkboxes, so drop
+// the bullet and pull them back into alignment with the text above.
+.prose .task-list-item { list-style: none; margin-left: -1.2em; }
+.prose .task-list-item-checkbox { margin-right: .5em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .todo__view,
+  .todopage__taskfill,
+  .todopage__nav-link { transition: none; }
+}

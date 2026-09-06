@@ -1,14 +1,210 @@
 ---
-layout: docs
+# Lives in the _docs collection so it is indexed by search, the graph, and the
+# directory like any other page — but keeps its own permalink, so the public
+# URL stays /changelog/ rather than moving to /docs/changelog/.
 permalink: /changelog/
-in_nav: true
 title: "Changelog"
 description: "Notable changes, newest first."
+group: "Documentations"
 category: "Reference"
 nav_order: 99
 ---
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
+
+## 26.09.06e
+
+- Fixed the menu button's close animation. `.navbtn__icon` had no `transition`
+  declared, so the open-state hover transform applied instantly — the closed
+  state sprang its bar widths while the open state simply snapped, which is why
+  one felt considered and the other did not. The reduced-motion block was
+  already disabling a transition that never existed.
+- Reworked that hover into a quarter turn inward. An X is symmetric under 90°,
+  so the mark lands exactly on itself and the motion reads as complete rather
+  than stopping at an arbitrary angle, as the previous 8° tilt did. A slight
+  scale-down carries the "collapse" half of the gesture, on the same spring as
+  the closed state.
+- Added the GitHub avatar to the home page links.
+- Removed the status stripe from Todo board items. Items already sit under a
+  status heading with a coloured pip, so a coloured edge on every row repeated
+  what position had already said, and it ran a ragged colour column down the
+  left of otherwise flush text. In columns it also fought the card border it
+  sat inside. Status still appears where it carries new information: the group
+  heading and the per-item task bar.
+
+## 26.09.06d
+
+- Sidebar page links are a step smaller than the brand above them, so the
+  brand reads as the column's heading and the pages as its contents.
+- The active page is bold again, without the label reflowing when it changes.
+  Weighting every item highlights nothing; weighting only the active one moves
+  the text, because bold glyphs are wider. Each label now carries its own text
+  in `data-text`, and a zero-height hidden copy is rendered at the bold weight
+  inside the same box — it contributes width but no height, so the box is
+  always as wide as its bold version and toggling the weight moves nothing.
+- Fixed the connector ticks disappearing from the home sidebar. Truncating long
+  titles needs `overflow: hidden`, which clipped the ticks because they were
+  drawn in a negative margin outside the box. They are left padding now, inside
+  it.
+- Leaving home for a section page starts the destination with the sidebar
+  collapsed. The home sidebar is a directory of the whole site and a section
+  sidebar is a list of one section's pages; carrying the open state across that
+  boundary landed you in a different-looking panel mid-navigation. The state is
+  written before navigating and read before the next page paints, so there is
+  no flash. Moving between section pages still remembers the choice.
+- Search sits in the trailing topbar cluster on every page. It was in the
+  leading cluster on docs pages, so the same control was left-aligned there and
+  right-aligned on home.
+- Reworded the Todo section blurb.
+
+## 26.09.06c
+
+- Section indexes are now real landing pages instead of redirects. `/server/`,
+  `/linux/` and the rest list every page in the section with its description,
+  grouped the same way the sidebar groups them. The listing is generated from
+  the same include the sidebar uses, so the two cannot disagree.
+- Removed the redirect indexes. A redirect meant a section URL existed but
+  could never be looked at: the back button bounced forward again, a shared
+  link always landed somewhere other than intended, and there was no way to see
+  what a section held without opening a page first. The `redirect_to_first_doc`
+  mechanism is still supported for any page that wants it; nothing uses it now.
+- Every section index gained the sidebar "Overview" link, since every one is
+  now worth landing on.
+- Fixed the sidebar's horizontal scrollbar. Long page titles were wider than
+  the column: flex and grid children default to `min-width: auto` and refuse to
+  shrink below their content, so they overflowed instead of truncating. Text
+  nodes now shrink and ellipse, with `overflow-x` on the body as a backstop.
+- Renamed the docs groups to "Server" and "Documentations".
+- The header brand on the home page is text only again, and the sidebar brand
+  uses distinct icons: a house for Home, a book for Library. Nothing referenced
+  the inlined hornbill symbol afterwards, so the sprite include was removed —
+  `assets/logo.svg` is still the favicon, and re-adding the sprite is one line.
+- Deleted `docs/Makefile`; the repository root Makefile covers it.
+
+## 26.09.06b
+
+- Split `getting-started.md` in two. It held a server bring-up runbook and the
+  conventions for authoring this site under one title, which is why the Docs
+  section read as though it were about one specific deployment. The site half
+  is now "Authoring these docs".
+- Section sidebars can group their pages. A page may declare `group:` in front
+  matter; the sidebar renders each group under a heading, so a section holding
+  several unrelated tracks reads as separate things. Group order follows the
+  nav_order of each group's first page, so no separate registry is needed, and
+  pages with no group render first without a heading.
+- Removed the section title from the sidebar. The brand above it already names
+  the section, so the same word appeared twice in the same column.
+- Reworked the section page list to match the home sidebar rather than use a
+  second visual language. The leading dot markers are gone; the active page is
+  marked by a rail on the left edge, which keeps every label starting on the
+  same vertical line and lets the list read as a column of text. The rail is a
+  pseudo-element, so text does not shift when a page becomes active.
+- Added Todo to the home sidebar's Overview list, under Graph View.
+- Added a `check` target to the Makefile, and moved `check-install.sh` into the
+  repository so it runs from a checkout.
+- Excluded `Makefile`, `check-install.sh`, `README.md`, `LICENSE` and the
+  Gemfiles from the build. Jekyll had been copying repo tooling into `_site`.
+
+## 26.09.06
+
+- Imported 43 notes from the old Obsidian vault, reorganised into sections and
+  rewritten as short descriptions with commands rather than prose. Overlapping
+  notes were merged: four Docker notes became installation, Compose and Swarm
+  pages; four Cloudflare notes became tunnel and Access pages; `commands.md`,
+  which was 324 lines of six unrelated topics, was split across the pages each
+  part belonged to.
+- **Redacted two live credentials** that were in the vault unmasked: a GitHub
+  personal access token and a Cloudflare API token. Both must be treated as
+  compromised and rotated. Also replaced a home public IP, a droplet public IP,
+  a tunnel UUID, an Access client ID, container IDs and personal usernames with
+  placeholders.
+- Added a **Mobile** section for the Android and Flutter toolchain, which fit
+  neither infrastructure nor Linux desktop.
+- Added an "Overview" link to the top of the section sidebar for sections whose
+  index is a real page rather than a redirect. Driven by a `section_overview`
+  flag, so it stays general instead of naming Todo.
+- Notes that were plans became Todo items (the GCE migration, domain transfers,
+  disposable subsystems); notes that were history became `_note/` pages (the
+  infrastructure log, running costs). Empty stubs were dropped.
+
+## 26.09.05b
+
+- Fixed section indexes being unreachable. The "All N pages →" link in the home
+  sidebar only rendered for sections with more than six pages, so every smaller
+  section had no route to its own index at all. Harmless while every index was
+  a redirect to the first page — and invisible until the Todo board became an
+  index worth landing on. It now always links, reading "Open <section> →" for
+  short sections.
+- Todo items now carry real task progress, counted from the `- [ ]` checkboxes
+  in the page itself. Kramdown renders these as real checkbox inputs, so both
+  the board and the item page can count them with no plugin.
+- Status is now derived when not stated. An explicit `status:` still wins; with
+  none set, a page is `done` when every task is ticked, `active` when some are,
+  and `planned` otherwise. `blocked` stays manual — no checkbox can express
+  waiting on something else. This keeps the board honest without reintroducing
+  the hand-maintained bookkeeping removed earlier today.
+- The board now offers two layouts, columns and list, toggled in its header and
+  remembered in localStorage. Both render from identical markup with only CSS
+  differing, so they cannot drift apart and the toggle needs no reload. With
+  JavaScript off the board stays on columns and remains fully usable.
+- Todo items get their own layout instead of borrowing the docs one: a link
+  back to the board, the status as a tinted header band rather than a small
+  pill, a task progress bar, and previous/next in board order.
+
+## 26.09.05
+
+- Pages no longer need index bookkeeping. `in_nav` is now opt-OUT rather than
+  opt-in, `nav_order` is optional, and `title` and `category` fall back to the
+  filename and the section label. A new page needs an empty front matter block
+  and nothing else; it still lands in the sidebar, search, the graph, and the
+  directory. Pages that set `nav_order` sort first in that order, and
+  everything else follows alphabetically, so ordering is total and never
+  depends on filesystem order. Set `in_nav: false` to hide a draft.
+- Consolidated the seven copies of "which pages are navigable, and in what
+  order" into one include, `_includes/nav-docs.html`. The sidebar, search feed,
+  graph feed, directory feed, tag and category indexes, and the section
+  redirects all read from it, so they can no longer disagree. Removed
+  `_includes/all-docs.html`, which nothing referenced.
+- Added a **Todo** section. Unlike every other section index, `/todo/` renders
+  a board: items grouped by a `status` of `active`, `planned`, `blocked`, or
+  `done`, with a completion bar. Anything with a missing or unrecognised status
+  falls into "planned" rather than disappearing. Any page can now carry a
+  `status`, which shows as a pill under its title.
+- Moved the e-book and presenter project spec out of `_note/` and onto the Todo
+  board. It had no front matter, so Jekyll had been treating it as a static
+  file — it was never published, and appeared in no index.
+- Fixed the Linux category splitting in two. Two pages used `category: "linux"`
+  and two used `"Linux"`, which the directory showed as separate facets.
+- Renamed the two pages both titled "Utility" to "Python utilities" and "Linux
+  utilities". Beyond being ambiguous to read, a `[[Utility]]` wiki-link
+  silently resolved to whichever page the resolver reached first. Also replaced
+  the Python page's description and tags, which were copied verbatim from the
+  packaging page, and the Linux page's placeholder description.
+- Moved the changelog into the `_docs` collection so it is indexed by search,
+  the graph, and the directory like any other page. It keeps its own permalink,
+  so the URL is still `/changelog/`.
+- Resolved colliding `nav_order` values in the docs, python, and linux
+  sections. These are now harmless anyway, since ties break alphabetically.
+- Fixed wiki-links being resolved inside code. The resolver runs on rendered
+  HTML, so a page that *wrote about* the syntax — `[[Some page]]` in backticks,
+  or a fenced block showing Obsidian markup — had its examples silently
+  rewritten into real links or broken-link spans. Text inside `<code>` is now
+  passed through verbatim. This will matter during the Obsidian import, where
+  notes about linking are likely.
+- Fixed a build failure on the `github-pages` gem. The Todo board grouped its
+  "planned" items with a single `where_exp` using `and`, which needs Jekyll 4;
+  on Jekyll 3.10 the expression parser stops after the first comparison and
+  raises "Expected end_of_string but found id". Chained single-comparison
+  filters instead, which are equivalent and build on both.
+- Known limitation: the graph feed still scans raw page content for `[[…]]`
+  without the same code guard, so a link inside a code block can add a phantom
+  edge. Nothing in the current content triggers it.
+- The hornbill mark from `assets/logo.svg` replaces the generic house and book
+  icons in the sidebar, and now sits beside the site name in the header. It is
+  defined once per page as an SVG `<symbol>` and referenced with `<use>`, since
+  the path is ~6KB and appears more than once. The file itself gained a
+  `viewBox` — it had only `width`/`height`, so it could not be scaled
+  reliably — and `fill="currentColor"` so it flips with the theme.
 
 ## 26.08.03k
 

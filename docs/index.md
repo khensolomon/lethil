@@ -12,6 +12,7 @@ title: "ZOMI.developer"
 links:
   - label: "GitHub"
     url: "https://github.com/khensolomon"
+    image: "https://avatars.githubusercontent.com/u/1753766"
   - label: "MyOrdbok"
     url: "https://myordbok.com"
     image: "https://raw.githubusercontent.com/laisiangtho/dictionary/master/myordbok.png"

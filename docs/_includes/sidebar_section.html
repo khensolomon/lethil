@@ -7,7 +7,7 @@
   letter badge for a cleaner, more file-tree feel. The optional highlight dot
   and the one-line blurb (snap info) are kept.
 {%- endcomment -%}
-{%- assign sect_docs = site[meta.key] | where: "in_nav", true | sort: "nav_order" -%}
+{%- include nav-docs.html key=meta.key -%}
 <details class="sidebar-sect{% if meta.highlight %} is-highlight{% endif %}"{% if include.open %} open{% endif %}>
   <summary class="sidebar-sect__summary">
     <svg class="sidebar-sect__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -19,14 +19,19 @@
     </span>
   </summary>
   <div class="sidebar-sect__pages">
-    {%- for doc in sect_docs limit: 6 -%}
-      {%- if doc.title -%}
-      <a class="sidebar-sect__page{% if page.url == doc.url %} is-active{% endif %}" href="{{ doc.url | relative_url }}">{{ doc.title }}</a>
-      {%- endif -%}
+    {%- for row in nav_rows limit: 6 -%}
+      {%- assign ss_f = row | split: "‖" -%}
+      <a class="sidebar-sect__page{% if page.url == ss_f[3] %} is-active{% endif %}" href="{{ ss_f[3] | relative_url }}" data-text="{{ ss_f[2] | escape }}">{{ ss_f[2] }}</a>
     {%- endfor -%}
-    {%- assign shown = sect_docs | size -%}
-    {%- if shown > 6 -%}
-      <a class="sidebar-sect__more" href="{{ '/' | append: meta.key | append: '/' | relative_url }}">All {{ shown }} pages →</a>
-    {%- endif -%}
+    {%- comment -%}
+      Always link to the section index. This used to appear only when a section
+      had more than six pages, which meant a small section had NO route to its
+      own index from the home page — invisible for any section whose index is
+      more than a redirect, like the Todo board.
+    {%- endcomment -%}
+    {%- assign shown = nav_rows | size -%}
+    <a class="sidebar-sect__more" href="{{ '/' | append: meta.key | append: '/' | relative_url }}">
+      {%- if shown > 6 -%}All {{ shown }} pages →{%- else -%}Open {{ meta.label }} →{%- endif -%}
+    </a>
   </div>
 </details>

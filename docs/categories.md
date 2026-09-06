@@ -13,7 +13,8 @@ body_class: "is-taxonomy"
 {%- endcomment -%}
 {%- assign cat_rows = "" -%}
 {%- for meta in site.data.sections -%}
-  {%- assign sect_docs = site[meta.key] | where: "in_nav", true -%}
+  {%- include nav-docs.html key=meta.key -%}
+  {%- assign sect_docs = nav_docs -%}
   {%- for doc in sect_docs -%}
     {%- assign c = doc.category | default: meta.label -%}
     {%- assign cat_rows = cat_rows | append: c | append: "|" -%}
@@ -32,7 +33,8 @@ body_class: "is-taxonomy"
       {%- if c != "" -%}
         {%- assign count = 0 -%}
         {%- for meta in site.data.sections -%}
-          {%- assign sd = site[meta.key] | where: "in_nav", true -%}
+          {%- include nav-docs.html key=meta.key -%}
+          {%- assign sd = nav_docs -%}
           {%- for doc in sd -%}
             {%- assign dc = doc.category | default: meta.label -%}
             {%- if dc == c -%}{%- assign count = count | plus: 1 -%}{%- endif -%}

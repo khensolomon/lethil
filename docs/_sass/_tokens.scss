@@ -21,6 +21,13 @@
   --accent-soft: #3457e01a;
   --shadow:      0 1px 2px rgba(20,22,28,.04), 0 8px 30px rgba(20,22,28,.06);
 
+  /* status — Todo board + the page-header pill. Four states, deliberately
+     desaturated so a board full of them stays calm next to the accent. */
+  --status-active:  #1f9d55;   /* in progress */
+  --status-planned: #6b7078;   /* queued — same weight as muted text */
+  --status-blocked: #c2410c;   /* waiting on something else */
+  --status-done:    #7c7f88;   /* shipped — recedes on purpose */
+
   /* type */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                Helvetica, Arial, sans-serif;
@@ -61,5 +68,10 @@
   --accent-hover:#9ab6ff;   /* lighter for hover on accent fills (dark) */
   --accent-soft: #7aa0ff1f;
   --shadow:      0 1px 2px rgba(0,0,0,.4), 0 10px 40px rgba(0,0,0,.5);
+
+  --status-active:  #3ddc84;
+  --status-planned: #8b919c;
+  --status-blocked: #fb8b5a;
+  --status-done:    #6b7079;
   color-scheme: dark;
 }

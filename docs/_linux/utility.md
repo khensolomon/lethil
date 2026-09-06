@@ -1,9 +1,8 @@
 ---
-title: "Utility"
-description: "guide"
-category: "linux"
-nav_order: 4
-in_nav: true
+title: "Linux utilities"
+description: "Desktop tweaks and command-line helpers."
+category: "Linux"
+nav_order: 3
 tags: [utility, customization, UI]
 ---
 

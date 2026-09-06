@@ -1,0 +1,35 @@
+{%- comment -%}
+  Resolves a Todo item's effective status.
+
+      {% include todo-status.html doc=item %}
+
+  Sets `todo_status`, and (via task-count.html) `task_total`, `task_done`
+  and `task_pct`.
+
+  An explicit `status:` in front matter ALWAYS wins. Otherwise the status is
+  derived from the page's task checkboxes, so a page you are actually ticking
+  off moves across the board on its own:
+
+      no tasks at all      -> planned
+      no tasks ticked      -> planned
+      some tasks ticked    -> active
+      every task ticked    -> done
+
+  "blocked" has no derived equivalent — nothing about a checkbox says a thing
+  is waiting on something else — so it is only ever reached by setting the
+  field by hand.
+{%- endcomment -%}
+{%- include task-count.html doc=include.doc -%}
+
+{%- assign ts_explicit = include.doc.status | default: "" -%}
+{%- if ts_explicit != "" -%}
+  {%- assign todo_status = ts_explicit -%}
+{%- elsif task_total == 0 -%}
+  {%- assign todo_status = "planned" -%}
+{%- elsif task_done == task_total -%}
+  {%- assign todo_status = "done" -%}
+{%- elsif task_done > 0 -%}
+  {%- assign todo_status = "active" -%}
+{%- else -%}
+  {%- assign todo_status = "planned" -%}
+{%- endif -%}

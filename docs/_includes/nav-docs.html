@@ -1,0 +1,114 @@
+{%- comment -%}
+  ============================================================================
+  The single source of truth for "which pages are navigable, and in what order".
+  ----------------------------------------------------------------------------
+  Every consumer (sidebar, search, graph, directory, tags, categories, the
+  section redirect) includes this instead of walking a collection itself, so
+  the rules below are defined exactly once.
+
+  Usage:
+      {% include nav-docs.html key=meta.key %}
+
+  Sets three variables (Liquid lets include-assigned variables leak back out):
+
+    nav_docs       filtered document objects — use when you need .content,
+                   .tags, .description, i.e. the whole page.
+    nav_rows       the same pages, SORTED, as delimited strings — use when you
+                   only need to render a link. Fields, split on "‖":
+                       [0] sort key   internal, ignore
+                       [1] sort title internal, ignore
+                       [2] title      resolved (front matter or filename)
+                       [3] url
+                       [4] category   resolved (front matter or section label)
+                       [5] group      optional heading this page sits under, "" if none
+    nav_first_url  url of the first page, for redirect_to_first_doc.
+
+  ---------------------------------------------------------------------------
+  NAVIGABILITY — a page is in the nav unless it opts out.
+  ---------------------------------------------------------------------------
+  This is the inverse of the old rule, which required `in_nav: true` on every
+  file and silently dropped any page that forgot it. Now a plain markdown file
+  dropped into a section folder just works. Two things are excluded:
+
+    in_nav: false            an explicit opt-out (drafts, stubs, includes)
+    redirect_to_first_doc    the section index pages, which are not content
+
+  ---------------------------------------------------------------------------
+  ORDERING — nav_order is optional.
+  ---------------------------------------------------------------------------
+  Pages that set `nav_order` come first, in that order. Everything else follows
+  alphabetically by title. So a curated reading order stays curated, and a file
+  added without any thought lands somewhere sensible instead of at a random
+  position. Ties inside the same nav_order fall back to alphabetical too, so
+  ordering is always total and never depends on filesystem order.
+
+  Implementation note: Liquid cannot sort an array of objects by a computed
+  key, and Jekyll's `sort` filter is not guaranteed stable, so a two-pass
+  sort would scramble the alphabetical fallback. Instead each page is flattened
+  into a string that begins with its sort key, and the strings are sorted — one
+  pass, fully deterministic, no plugin.
+
+  The sort key is `NNNN` + lowercased title, where NNNN is nav_order zero-padded
+  to four digits, or "zzzz" when absent. "0" < "z" in every byte order, so
+  ordered pages sort ahead of unordered ones for free.
+{%- endcomment -%}
+
+{%- assign nav_docs = site[include.key]
+      | where_exp: "d", "d.in_nav != false"
+      | where_exp: "d", "d.redirect_to_first_doc != true" -%}
+
+{%- assign nav_meta = site.data.sections | where: "key", include.key | first -%}
+
+{%- assign nav_rows = "" -%}
+{%- for doc in nav_docs -%}
+
+  {%- comment -%} Title falls back to the slug: linux/my-page/ -> "My page". {%- endcomment -%}
+  {%- include doc-title.html doc=doc -%}
+  {%- assign nd_title = doc_title -%}
+
+  {%- comment -%} Category falls back to the section's label. {%- endcomment -%}
+  {%- assign nd_category = doc.category | default: nav_meta.label | default: include.key -%}
+
+  {%- comment -%} Zero-pad nav_order to 4 chars; "zzzz" sorts last. {%- endcomment -%}
+  {%- if doc.nav_order -%}
+    {%- assign nd_ord = doc.nav_order | prepend: "000" -%}
+    {%- assign nd_ord = nd_ord | slice: -4, 4 -%}
+  {%- else -%}
+    {%- assign nd_ord = "zzzz" -%}
+  {%- endif -%}
+
+  {%- assign nd_group = doc.group | default: "" -%}
+
+  {%- capture nd_row -%}
+{{ nd_ord }}‖{{ nd_title | downcase }}‖{{ nd_title }}‖{{ doc.url }}‖{{ nd_category }}‖{{ nd_group }}
+  {%- endcapture -%}
+
+  {%- if nav_rows == "" -%}
+    {%- assign nav_rows = nd_row -%}
+  {%- else -%}
+    {%- assign nav_rows = nav_rows | append: "¶" | append: nd_row -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- if nav_rows == "" -%}
+  {%- assign nav_rows = "" | split: "" -%}
+  {%- assign nav_first_url = "" -%}
+{%- else -%}
+  {%- assign nav_rows = nav_rows | split: "¶" | sort -%}
+  {%- assign nav_first_row = nav_rows | first | split: "‖" -%}
+  {%- assign nav_first_url = nav_first_row[3] -%}
+
+  {%- comment -%}
+    Re-order the document objects to match the sorted rows, so `nav_docs` and
+    `nav_rows` are always the same pages in the same order — otherwise the
+    feeds would emit pages in raw filesystem order while the sidebar showed
+    nav order. Matching on url is exact (urls are unique per page).
+  {%- endcomment -%}
+  {%- assign nav_sorted = "" | split: "" -%}
+  {%- for nd_row in nav_rows -%}
+    {%- assign nd_rf = nd_row | split: "‖" -%}
+    {%- assign nd_hit = nav_docs | where: "url", nd_rf[3] -%}
+    {%- assign nav_sorted = nav_sorted | concat: nd_hit -%}
+  {%- endfor -%}
+  {%- assign nav_docs = nav_sorted -%}
+{%- endif -%}

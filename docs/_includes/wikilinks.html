@@ -11,56 +11,90 @@
   (same as Obsidian showing a broken link). Requires `page_index` in scope
   (include page-index.html first).
 
+  CODE IS LEFT ALONE. This include runs on already-rendered HTML, so a page
+  that *writes about* wiki-link syntax — `[[Some page]]` in backticks, or a
+  fenced block showing Obsidian markup — would otherwise have its examples
+  silently rewritten into real links. The text is first split on <code, and
+  only the parts outside a <code>…</code> pair are processed; everything inside
+  is passed through verbatim. Kramdown renders both inline code and fenced
+  blocks (<pre><code>) with that tag, so one split covers both.
+
   Splitting on "[[" then "]]" avoids any regex (Liquid has none). Each odd
   segment after the first split is link-or-tail; we cut it at "]]".
 {%- endcomment -%}
-{%- assign wl_out = "" -%}
-{%- assign wl_parts = include.text | split: "[[" -%}
-{%- for wl_part in wl_parts -%}
+{%- assign wl_final = "" -%}
+{%- assign wl_chunks = include.text | split: "<code" -%}
+{%- for wl_chunk in wl_chunks -%}
+
+  {%- comment -%}
+    Split each chunk into a verbatim part (the code element, if this chunk
+    started with one) and the prose part that links may be resolved in.
+  {%- endcomment -%}
   {%- if forloop.first -%}
-    {%- assign wl_out = wl_part -%}
+    {%- assign wl_verbatim = "" -%}
+    {%- assign wl_prose = wl_chunk -%}
   {%- else -%}
-    {%- assign wl_bits = wl_part | split: "]]" -%}
-    {%- assign wl_token = wl_bits | first -%}
-    {%- assign wl_tail = wl_part | remove_first: wl_token | remove_first: "]]" -%}
-
-    {%- comment -%} split off optional |display {%- endcomment -%}
-    {%- assign wl_target = wl_token -%}
-    {%- assign wl_display = wl_token -%}
-    {%- if wl_token contains "|" -%}
-      {%- assign wl_dd = wl_token | split: "|" -%}
-      {%- assign wl_target = wl_dd | first | strip -%}
-      {%- assign wl_display = wl_dd | last | strip -%}
-    {%- endif -%}
-
-    {%- comment -%} find a matching page in page_index {%- endcomment -%}
-    {%- assign wl_href = "" -%}
-    {%- assign wl_targ_down = wl_target | downcase -%}
-    {%- for row in page_index -%}
-      {%- assign fields = row | split: "|" -%}
-      {%- assign r_title = fields[1] -%}
-      {%- assign r_url = fields[2] -%}
-      {%- assign r_key = fields[0] -%}
-      {%- comment -%} URLs end in "/", so split gives a trailing "" — filter
-          empties out, then the last real segment is the slug. {%- endcomment -%}
-      {%- assign r_segs = r_url | split: "/" -%}
-      {%- assign r_slug = "" -%}
-      {%- for seg in r_segs -%}{%- if seg != "" -%}{%- assign r_slug = seg -%}{%- endif -%}{%- endfor -%}
-      {%- assign path_form = r_key | append: "/" | append: r_slug -%}
-      {%- assign r_title_down = r_title | downcase -%}
-      {%- if r_title_down == wl_targ_down or path_form == wl_targ_down -%}
-        {%- assign wl_href = r_url -%}
-        {%- break -%}
-      {%- endif -%}
-    {%- endfor -%}
-
-    {%- if wl_href != "" -%}
-      {%- capture wl_link -%}<a class="wikilink" href="{{ wl_href | relative_url }}">{{ wl_display }}</a>{%- endcapture -%}
-    {%- else -%}
-      {%- capture wl_link -%}<span class="wikilink wikilink--broken" title="No page named &quot;{{ wl_target }}&quot;">{{ wl_display }}</span>{%- endcapture -%}
-    {%- endif -%}
-
-    {%- assign wl_out = wl_out | append: wl_link | append: wl_tail -%}
+    {%- assign wl_cbits = wl_chunk | split: "</code>" -%}
+    {%- assign wl_inside = wl_cbits | first -%}
+    {%- assign wl_prose = wl_chunk | remove_first: wl_inside | remove_first: "</code>" -%}
+    {%- capture wl_verbatim -%}<code{{ wl_inside }}</code>{%- endcapture -%}
+    {%- comment -%} Unclosed <code (shouldn't happen): emit it and resolve nothing. {%- endcomment -%}
+    {%- unless wl_chunk contains "</code>" -%}
+      {%- capture wl_verbatim -%}<code{{ wl_chunk }}{%- endcapture -%}
+      {%- assign wl_prose = "" -%}
+    {%- endunless -%}
   {%- endif -%}
+
+  {%- assign wl_out = "" -%}
+  {%- assign wl_parts = wl_prose | split: "[[" -%}
+  {%- for wl_part in wl_parts -%}
+    {%- if forloop.first -%}
+      {%- assign wl_out = wl_part -%}
+    {%- else -%}
+      {%- assign wl_bits = wl_part | split: "]]" -%}
+      {%- assign wl_token = wl_bits | first -%}
+      {%- assign wl_tail = wl_part | remove_first: wl_token | remove_first: "]]" -%}
+
+      {%- comment -%} split off optional |display {%- endcomment -%}
+      {%- assign wl_target = wl_token -%}
+      {%- assign wl_display = wl_token -%}
+      {%- if wl_token contains "|" -%}
+        {%- assign wl_dd = wl_token | split: "|" -%}
+        {%- assign wl_target = wl_dd | first | strip -%}
+        {%- assign wl_display = wl_dd | last | strip -%}
+      {%- endif -%}
+
+      {%- comment -%} find a matching page in page_index {%- endcomment -%}
+      {%- assign wl_href = "" -%}
+      {%- assign wl_targ_down = wl_target | downcase -%}
+      {%- for row in page_index -%}
+        {%- assign fields = row | split: "|" -%}
+        {%- assign r_title = fields[1] -%}
+        {%- assign r_url = fields[2] -%}
+        {%- assign r_key = fields[0] -%}
+        {%- comment -%} URLs end in "/", so split gives a trailing "" — filter
+            empties out, then the last real segment is the slug. {%- endcomment -%}
+        {%- assign r_segs = r_url | split: "/" -%}
+        {%- assign r_slug = "" -%}
+        {%- for seg in r_segs -%}{%- if seg != "" -%}{%- assign r_slug = seg -%}{%- endif -%}{%- endfor -%}
+        {%- assign path_form = r_key | append: "/" | append: r_slug -%}
+        {%- assign r_title_down = r_title | downcase -%}
+        {%- if r_title_down == wl_targ_down or path_form == wl_targ_down -%}
+          {%- assign wl_href = r_url -%}
+          {%- break -%}
+        {%- endif -%}
+      {%- endfor -%}
+
+      {%- if wl_href != "" -%}
+        {%- capture wl_link -%}<a class="wikilink" href="{{ wl_href | relative_url }}">{{ wl_display }}</a>{%- endcapture -%}
+      {%- else -%}
+        {%- capture wl_link -%}<span class="wikilink wikilink--broken" title="No page named &quot;{{ wl_target }}&quot;">{{ wl_display }}</span>{%- endcapture -%}
+      {%- endif -%}
+
+      {%- assign wl_out = wl_out | append: wl_link | append: wl_tail -%}
+    {%- endif -%}
+  {%- endfor -%}
+
+  {%- assign wl_final = wl_final | append: wl_verbatim | append: wl_out -%}
 {%- endfor -%}
-{{ wl_out }}
+{{ wl_final }}

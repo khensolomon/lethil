@@ -82,36 +82,98 @@ body[data-nav="open"] .sidebar {
 .sidebar__foot { flex-shrink: 0; }
 .sidebar__foot[hidden] { display: none; }
 
-.sidebar__title {
-  padding: .2rem .6rem .55rem;
-  margin: 0 0 .45rem;
-  border-bottom: 1px solid var(--border);
-}
-.sidebar__nav { display: grid; gap: .1rem; }
+/* --- section sidebar: page list ------------------------------------------
+   Matches the home sidebar's language rather than inventing a second one.
+   Items are flat rows that fill on hover, exactly like .sidebar__fixed-item;
+   the active page is marked by a rail on the left edge instead of a leading
+   dot, so every label starts on the same vertical line and the list reads as
+   one column of text rather than a bulleted list.                          */
+
+.sidebar__nav { display: grid; gap: .05rem; }
+
 .sidebar__link {
-  display: flex; align-items: center; gap: .6rem;
-  padding: .4rem .6rem; border-radius: var(--radius-sm);
-  color: var(--muted); transition: background .15s, color .15s;
+  position: relative;
+  display: flex; align-items: center;
+  padding: .38rem .6rem .38rem .75rem;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  /* A step below the brand above, so the brand reads as the heading of the
+     column and the pages read as its contents. */
+  font-size: .855rem;
+  transition: background .15s, color .15s;
 }
-/* a small round marker leads each item; it's a hollow ring at rest, fills with
-   the accent on hover, and becomes a solid accent dot for the active page —
-   a calm, legible status cue in place of the old [*]/[+] brackets */
-.sidebar__marker {
-  flex-shrink: 0;
-  width: 6px; height: 6px; border-radius: 50%;
-  border: 1.5px solid var(--border-hover);
-  background: transparent;
-  transition: background .15s, border-color .15s, transform .15s;
+
+/* The active rail. A pseudo-element rather than a border so the text does not
+   shift by a pixel when a page becomes active. */
+.sidebar__link::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 50%;
+  width: 2px; height: 0;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--accent);
+  transition: height .18s var(--ease);
 }
-.sidebar__link-text { min-width: 0; }
+
+.sidebar__link-text {
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 .sidebar__link:hover { background: var(--surface-2); color: var(--text); }
-.sidebar__link:hover .sidebar__marker { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 35%, transparent); }
-/* active: solid accent dot + accent text, no heavy filled background */
-.sidebar__link.is-active { color: var(--text); }
-.sidebar__link.is-active .sidebar__marker { background: var(--accent); border-color: var(--accent); transform: scale(1.15); }
+.sidebar__link.is-active { color: var(--text); font-weight: 650; }
+.sidebar__link.is-active::before { height: 1.05rem; }
+
+/* --- bold the active item WITHOUT reflow ---------------------------------
+   Weighting only the active item is what makes it stand out — weighting every
+   item highlights nothing. But bold glyphs are wider, so the label visibly
+   re-flows each time the active page changes.
+
+   The fix is to reserve the bold width up front. Every label carries its own
+   text in data-text, and a zero-height hidden copy of it is rendered at the
+   bold weight inside the same box. That copy contributes its width to the
+   element's intrinsic size but nothing to its height, so the box is always as
+   wide as the bold version and toggling the visible weight moves nothing.
+
+   Long labels that already ellipse are unaffected: they are constrained by the
+   column, not by their content, so there is no width to reserve. */
+.sidebar__link-text::after,
+.sidebar-sect__page::after {
+  content: attr(data-text);
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 650;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Overview sits above the page list and points at a section index that is a
+   real page. Separated by space, not a rule — one less line in a narrow
+   column. */
+.sidebar__link--overview { margin-bottom: .35rem; }
+
+/* Group headings. Sized and coloured like the section blurbs on the home
+   sidebar so the two navigations feel like one system. */
+.sidebar__group {
+  margin: 1.1rem 0 .3rem;
+  padding: 0 .6rem;
+  font-size: .68rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .75;
+}
+.sidebar__group:first-child { margin-top: .2rem; }
+.sidebar__link + .sidebar__group { margin-top: 1.25rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar__link, .sidebar__link::before { transition: none; }
+}
 
 /* --- home sidebar: collapsible section groups (native <details>) --------- */
-.sidebar__title + .sidebar__sections { margin-bottom: 1.4rem; }
 .sidebar__sections { display: grid; gap: .1rem; }
 
 .sidebar-sect { border-radius: var(--radius-sm); }
@@ -151,10 +213,12 @@ body[data-nav="open"] .sidebar {
 .sidebar-sect__page,
 .sidebar-sect__more {
   position: relative;
-  margin-left: .55rem;               /* clear the connector tick */
-  padding: .3rem .5rem;
+  /* The connector tick lives INSIDE the box as left padding rather than in a
+     negative margin outside it. Truncating long titles needs overflow:hidden,
+     which would clip anything drawn outside the box — the ticks vanished. */
+  padding: .3rem .5rem .3rem 1.05rem;
   border-radius: var(--radius-sm);
-  font-size: .88rem; color: var(--muted);
+  font-size: .84rem; color: var(--muted);
   transition: background .15s, color .15s;
 }
 /* the horizontal connector from the rail to each item */
@@ -162,13 +226,13 @@ body[data-nav="open"] .sidebar {
 .sidebar-sect__more::before {
   content: "";
   position: absolute;
-  left: -.55rem; top: 50%;
+  left: 0; top: 50%;
   width: .5rem; height: 1.5px;
   background: var(--border);
 }
 .sidebar-sect__page:hover,
 .sidebar-sect__more:hover { background: var(--surface-2); color: var(--text); }
-.sidebar-sect__page.is-active { color: var(--text); background: var(--accent-soft); }
+.sidebar-sect__page.is-active { color: var(--text); background: var(--accent-soft); font-weight: 650; }
 /* the active item's connector + a segment of rail glow in the accent */
 .sidebar-sect__page.is-active::before { background: var(--accent); }
 .sidebar-sect__more { color: var(--accent); }
@@ -194,3 +258,28 @@ body[data-nav="open"] .sidebar {
   border-radius: 50%; background: var(--accent);
   vertical-align: middle;
 }
+
+/* --- sidebar: no horizontal scrollbar ------------------------------------
+   Long page titles ("Lai Siangtho — e-book & presentation suite") were wider
+   than the column and pushed a scrollbar onto every sidebar. Flex and grid
+   children default to min-width:auto, so they refuse to shrink below their
+   content and overflow the track instead of ellipsing. Each text node is
+   allowed to shrink and truncate; overflow-x on the body is the backstop. */
+
+.sidebar__body { overflow-x: hidden; }
+.sidebar__body > * { min-width: 0; }
+
+.sidebar-sect__summary { min-width: 0; }
+.sidebar-sect__text { min-width: 0; }
+.sidebar-sect__label,
+.sidebar-sect__blurb,
+.sidebar-sect__page,
+.sidebar__group,
+.sidebar__fixed-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar__fixed-item { min-width: 0; }
+.brand-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

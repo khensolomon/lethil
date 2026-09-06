@@ -3,7 +3,6 @@ title: "Packaging scripts"
 description: "Shipping small CLI tools."
 category: "Python"
 nav_order: 2
-in_nav: true
 tags: [python, packaging, cli]
 ---
 

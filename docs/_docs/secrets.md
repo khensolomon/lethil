@@ -1,9 +1,9 @@
 ---
 title: "Secrets manager"
 description: "Validate a project's .env and push the right pieces to GitHub Actions as repository secrets."
+group: "Server"
 category: "Guide"
 nav_order: 3
-in_nav: true
 tags: [secrets]
 ---
 
