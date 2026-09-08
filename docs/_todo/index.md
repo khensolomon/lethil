@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: tool
 permalink: /todo/
 title: "Todo"
 description: "Plans and aims — what's being built, what's queued, what's done."

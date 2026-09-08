@@ -12,6 +12,63 @@ nav_order: 99
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.09.07f
+
+- The tool pages are one workspace rather than six unrelated URLs. Directory,
+  Tags, Graph, Todo, Bookmarks and Settings share a layout and carry a tab
+  strip listing all six with the current one marked, so arriving at any tool
+  shows the way to the others.
+- Added a **tool rail** to the sidebar on every page — a single icon row under
+  the brand. The tool links previously existed only on the home sidebar, so
+  reaching Bookmarks or Settings from a doc page meant navigating home first.
+  It sits outside the scrolling body, so it stays put however far the page list
+  below it scrolls.
+- Icons rather than a labelled list in the rail: seven labelled rows would have
+  pushed a section's page list off screen. The labels live on the tab strip,
+  with a title and an accessible name on each icon.
+- Both are generated from `_data/tools.yml`, so the rail and the strip cannot
+  list different things.
+- On narrow screens the tab labels drop away and only the active tab keeps
+  its label, so all six stay reachable without horizontal scrolling.
+
+## 26.09.07e
+
+- Settings rows are one line again. The key and its page-count collapsible sit
+  in a two-column grid rather than stacking, so an expandable list no longer
+  costs a second line on every row whether it is opened or not. Expanding still
+  grows the list under its own summary.
+- Dropped the key background tint — with 48 rows it read as a wall of chips.
+  The mono face and accent colour already mark it as a key.
+- Dropped the per-row "credential" tag. The section's left border says it once;
+  repeating the word on all nine rows was noise.
+- Moved the sort control into the header of the column it sorts, which was
+  otherwise costing a whole row to say one word. Rendered transparent and
+  unbordered so the header still reads as a header.
+
+## 26.09.07d
+
+- Moved the Save and values/placeholders controls into the sticky topbar, as
+  icons. They stay reachable at any scroll position and cost the same width on
+  a phone as on a desktop. Each keeps a visually-hidden label and a title, so
+  the icon is never the only cue.
+- **Credentials are now listed**, in their own section, instead of being hidden
+  from the form. Excluding them meant the tedious half of the job stayed
+  tedious. They are handled differently rather than refused: a credential is
+  never written into the page — the block keeps showing `<TUNNEL_TOKEN>` — and
+  the real value is inserted only when Copy is pressed, so it reaches the
+  clipboard and nothing else. Not the screen, not a screenshot, not a shared
+  window. They are excluded from export, and can be set to clear when the tab
+  closes.
+- Settings columns are Key and Value; keys lost their angle brackets and are
+  styled as keys. Clear is an icon inside the field, with a reveal toggle
+  beside it on credential rows.
+- Each key lists the pages using it, collapsed by default.
+- Added sorting: most used, A→Z, or filled first.
+- Stored values are obfuscated at rest — XOR against a fixed pad, then base64 —
+  so the blob is not a legible key list at a glance. This is deliberately not
+  encryption and is not claimed to be; anything with access to this origin can
+  still decode it. Existing plain values are read once and re-saved obfuscated.
+
 ## 26.09.07c
 
 - Made placeholders discoverable. Substitution worked, but nothing on a page

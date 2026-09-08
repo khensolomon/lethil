@@ -1,0 +1,18 @@
+{%- comment -%}
+  The tab strip at the top of every tool page. Makes the five tools read as one
+  workspace with tabs rather than five unrelated URLs, and means arriving at any
+  of them shows the way to the others.
+{%- endcomment -%}
+<nav class="toolbar" aria-label="Tools">
+  <div class="toolbar__inner">
+    {%- for tool in site.data.tools -%}
+      <a class="toolbar__tab{% if page.url == tool.url %} is-active{% endif %}"
+         href="{{ tool.url | relative_url }}"
+         {% if page.url == tool.url %}aria-current="page"{% endif %}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{{ tool.icon }}</svg>
+        <span>{{ tool.label }}</span>
+      </a>
+    {%- endfor -%}
+  </div>
+</nav>

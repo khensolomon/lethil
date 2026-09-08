@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: tool
 permalink: /tags/
 title: "Tags"
 section: ""

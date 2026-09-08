@@ -1,0 +1,10 @@
+---
+layout: default
+---
+{%- comment -%}
+  Shared chrome for the tool pages. The strip is rendered above whatever the
+  page itself provides, so each tool keeps its own body while gaining a common
+  frame and a way across to its siblings.
+{%- endcomment -%}
+{% include toolbar.html %}
+{{ content }}

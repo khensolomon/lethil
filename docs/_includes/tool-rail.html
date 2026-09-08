@@ -1,0 +1,22 @@
+{%- comment -%}
+  The tool rail: one compact icon row, in the sidebar, on EVERY page.
+
+  Previously the tool links only existed on the home sidebar, so reaching
+  Bookmarks or Settings from a doc page meant going home first. Icons rather
+  than a labelled list because the rail has to fit above a section's page list
+  without pushing it off screen — the labels live on the tab strip at the top
+  of each tool page instead, plus a title and an accessible name here.
+
+  Driven by _data/tools.yml, the same source as the tab strip.
+{%- endcomment -%}
+<nav class="toolrail" aria-label="Tools">
+  {%- for tool in site.data.tools -%}
+    {%- assign turl = tool.url | relative_url -%}
+    <a class="toolrail__item{% if page.url == tool.url %} is-active{% endif %}"
+       href="{{ turl }}" title="{{ tool.label }} — {{ tool.blurb }}" aria-label="{{ tool.label }}"
+       {% if page.url == tool.url %}aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{{ tool.icon }}</svg>
+    </a>
+  {%- endfor -%}
+</nav>

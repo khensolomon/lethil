@@ -11,30 +11,7 @@ layout: default
     {%- comment -%} Resolve the title before the header: the Save button needs it. {%- endcomment -%}
     {%- include doc-title.html doc=page -%}
     <header class="docs__head">
-      <div class="docs__head-row">
-        {% if page.category %}<a class="eyebrow mono accent docs__category" href="{{ '/directory/' | relative_url }}#category={{ page.category | url_encode }}">{{ page.category }}</a>{% endif %}
-      {%- comment -%} Save toggle. State is read from localStorage by bookmarks.js. {%- endcomment -%}
-      <button class="bookmark" type="button" data-bookmark aria-pressed="false"
-              data-url="{{ page.url }}"
-              data-title="{{ doc_title | escape }}"
-              data-section="{{ bm_section.label | default: page.section | escape }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M6 4h12v16l-6-4.5L6 20z"/>
-        </svg>
-        <span class="bookmark__label">Save</span>
-      </button>
-      {%- comment -%}
-        Switches code blocks between stored values and raw placeholders. Shown
-        on every doc page; placeholders.js hides it where no block uses one.
-      {%- endcomment -%}
-      <button class="bookmark phbar" type="button" data-ph-toggle aria-pressed="true"
-              data-ph-settings="{{ '/settings/' | relative_url }}" hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M9 6l-5 6 5 6"/><path d="M15 6l5 6-5 6"/>
-        </svg>
-        <span class="phbar__label">Your values</span>
-      </button>
-      </div>
+      {% if page.category %}<a class="eyebrow mono accent docs__category" href="{{ '/directory/' | relative_url }}#category={{ page.category | url_encode }}">{{ page.category }}</a>{% endif %}
       <h1>{{ doc_title }}</h1>
       {%- comment -%}
         `status` is optional and only Todo pages set it today, but nothing here

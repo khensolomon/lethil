@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: tool
 permalink: /graph/
 title: "Graph View"
 section: ""

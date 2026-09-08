@@ -29,19 +29,6 @@ layout: default
     {%- assign bm_section = site.data.sections | where: "key", page.section | first -%}
     {%- include doc-title.html doc=page -%}
     <header class="docs__head todopage__head" data-status="{{ todo_status }}">
-      <div class="docs__head-row">
-        <span></span>
-      {%- comment -%} Save toggle. State is read from localStorage by bookmarks.js. {%- endcomment -%}
-      <button class="bookmark" type="button" data-bookmark aria-pressed="false"
-              data-url="{{ page.url }}"
-              data-title="{{ doc_title | escape }}"
-              data-section="{{ bm_section.label | default: page.section | escape }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M6 4h12v16l-6-4.5L6 20z"/>
-        </svg>
-        <span class="bookmark__label">Save</span>
-      </button>
-      </div>
       <h1>{{ doc_title }}</h1>
       {% if page.description %}<p class="docs__lede">{{ page.description }}</p>{% endif %}
 

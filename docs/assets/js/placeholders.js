@@ -1,64 +1,98 @@
 /* ===========================================================================
- * placeholders.js — fill <PLACEHOLDER> tokens in code blocks with your own
- * values, and copy the finished command.
+ * placeholders.js — fill <KEY> tokens in code blocks with your own values.
  *
- * Values live in localStorage on this device. Nothing is sent anywhere and
- * clearing site data clears them. Secret-shaped names never reach this system:
- * they are filtered out at build time in placeholders.json.liquid, so a token
- * or API key cannot be stored here even deliberately.
+ * Two stores, treated very differently:
  *
- * Two halves, each a no-op when its markup is absent:
- *   · every page   — substitute into code blocks, add copy buttons
- *   · /settings/   — the add / edit / delete form
+ *   values       ordinary keys (user, VM_IP, ACCOUNT_ID …). Substituted into
+ *                the page and into the clipboard.
+ *   credentials  secret-shaped keys (…TOKEN, …SECRET, …KEY, password …).
+ *                NEVER written into the page. The block keeps showing
+ *                <TUNNEL_TOKEN>; the real value is injected only when you
+ *                press Copy, so it lands in the clipboard and nowhere else.
+ *
+ * That split is the point: it removes the copy-paste tedium without putting a
+ * live credential on screen, in a screenshot, or in a shared window.
+ *
+ * At rest both stores are obfuscated — see obscure(). That is NOT encryption
+ * and is not claimed to be: it stops a plain token being readable at a glance
+ * in devtools. Anything with access to this origin can still decode it.
  * ======================================================================== */
 (function () {
   "use strict";
 
-  var KEY = "lethil:placeholders";
-  // Resolved from the toggle so it survives a baseurl; falls back for pages
-  // rendered without one.
-  var PH_SETTINGS = (document.querySelector("[data-ph-settings]") || {}).getAttribute
-      ? document.querySelector("[data-ph-settings]").getAttribute("data-ph-settings")
-      : "/settings/";
+  var VKEY = "lethil:values";
+  var CKEY = "lethil:credentials";
   var SHOW_KEY = "lethil:placeholders:show";
-  var VERSION = 1;
+  var SESSION_KEY = "lethil:credentials:session";
+  var VERSION = 2;
 
-  function read() {
+  var SETTINGS_URL = (function () {
+    var el = document.querySelector("[data-ph-settings]");
+    return el ? el.getAttribute("data-ph-settings") : "/settings/";
+  })();
+
+  /* --- which names count as credentials --------------------------------- */
+  var DENY = ["TOKEN", "SECRET", "KEY", "PASSWORD", "PASSWD", "CREDENTIAL", "PRIVATE", "AUTH"];
+  function isSecret(name) {
+    var up = String(name).toUpperCase();
+    for (var i = 0; i < DENY.length; i++) if (up.indexOf(DENY[i]) !== -1) return true;
+    return false;
+  }
+
+  /* --- obfuscation at rest ----------------------------------------------
+     XOR against a fixed pad, then base64. Reversible by design and by anyone
+     who reads this file — the goal is only that the stored blob is not a
+     legible token list to a passing glance. Real secrecy is not achievable in
+     a browser store and is not implied here.                              */
+  var PAD = "lethil/v2/obscure";
+  function xor(s) {
+    var out = "";
+    for (var i = 0; i < s.length; i++) {
+      out += String.fromCharCode(s.charCodeAt(i) ^ PAD.charCodeAt(i % PAD.length));
+    }
+    return out;
+  }
+  function obscure(obj) {
+    try { return btoa(unescape(encodeURIComponent(xor(JSON.stringify(obj))))); }
+    catch (e) { return ""; }
+  }
+  function reveal(raw) {
+    if (!raw) return {};
     try {
-      var raw = localStorage.getItem(KEY);
-      if (!raw) return {};
-      var o = JSON.parse(raw);
+      // v1 stored plain JSON; accept it once so nothing is lost on upgrade.
+      if (raw.charAt(0) === "{") return JSON.parse(raw);
+      var o = JSON.parse(xor(decodeURIComponent(escape(atob(raw)))));
       return (o && typeof o === "object" && !Array.isArray(o)) ? o : {};
     } catch (e) { return {}; }
   }
-  function write(o) {
-    try { localStorage.setItem(KEY, JSON.stringify(o)); return true; }
-    catch (e) { return false; }
+
+  function store(forCreds) {
+    if (!forCreds) return localStorage;
+    var sessionOnly = false;
+    try { sessionOnly = localStorage.getItem(SESSION_KEY) === "1"; } catch (e) {}
+    return sessionOnly ? sessionStorage : localStorage;
   }
+
+  function readV() { try { return reveal(localStorage.getItem(VKEY)); } catch (e) { return {}; } }
+  function writeV(o) { try { localStorage.setItem(VKEY, obscure(o)); return true; } catch (e) { return false; } }
+  function readC() { try { return reveal(store(true).getItem(CKEY)); } catch (e) { return {}; } }
+  function writeC(o) { try { store(true).setItem(CKEY, obscure(o)); return true; } catch (e) { return false; } }
+
   function showReal() {
     try { return localStorage.getItem(SHOW_KEY) !== "off"; } catch (e) { return true; }
   }
-  function setShowReal(on) {
-    try { localStorage.setItem(SHOW_KEY, on ? "on" : "off"); } catch (e) {}
-  }
+  function setShowReal(on) { try { localStorage.setItem(SHOW_KEY, on ? "on" : "off"); } catch (e) {} }
 
   /* =======================================================================
      SUBSTITUTION
-     Each <TOKEN> in a code block is wrapped in a span once, on first pass.
-     The original text stays in a data attribute, so toggling between real
-     values and placeholders is a text swap and never re-parses the DOM.
      ==================================================================== */
   var blocks = document.querySelectorAll("pre > code");
 
   function wrap() {
-    if (!blocks.length) return;
-    var values = read();
-
     blocks.forEach(function (code) {
       if (code.dataset.phDone) return;
       code.dataset.phDone = "1";
 
-      // Walk text nodes only: never touch syntax-highlight markup.
       var walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT, null);
       var nodes = [];
       while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -72,18 +106,13 @@
         var last = 0, m;
 
         while ((m = re.exec(text)) !== null) {
-          if (m.index > last) {
-            frag.appendChild(document.createTextNode(text.slice(last, m.index)));
-          }
-          // A link, not a span: an unset placeholder is the one thing on the
-          // page that tells you this feature exists, so it has to be the way
-          // in. Clicking it opens Settings focused on that exact row.
-          var span = document.createElement("a");
-          span.className = "ph";
-          span.dataset.phName = m[1];
-          span.textContent = m[0];
-          span.href = PH_SETTINGS + "#ph-" + encodeURIComponent(m[1]);
-          frag.appendChild(span);
+          if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+          var a = document.createElement("a");
+          a.className = "ph" + (isSecret(m[1]) ? " ph--secret" : "");
+          a.dataset.phName = m[1];
+          a.textContent = m[0];
+          a.href = SETTINGS_URL + "#ph-" + encodeURIComponent(m[1]);
+          frag.appendChild(a);
           last = re.lastIndex;
         }
         if (!last) return;
@@ -95,34 +124,49 @@
   }
 
   function paint() {
-    var values = read();
+    var values = readV();
+    var creds = readC();
     var on = showReal();
+
     document.querySelectorAll(".ph").forEach(function (el) {
       var name = el.dataset.phName;
+
+      if (isSecret(name)) {
+        // Never rendered. Shown as the placeholder always; the value reaches
+        // the clipboard only, via the copy button.
+        el.textContent = "<" + name + ">";
+        el.classList.toggle("is-armed", !!creds[name]);
+        el.title = creds[name]
+          ? "Credential set. Stays hidden here — Copy inserts it."
+          : "No credential set for " + name + ". Click to set one.";
+        return;
+      }
+
       var v = values[name];
       if (on && v) {
         el.textContent = v;
         el.classList.add("is-filled");
-        el.title = "<" + name + "> — your value. Click to edit in Settings.";
+        el.title = name + " — your value. Click to edit.";
       } else {
         el.textContent = "<" + name + ">";
         el.classList.remove("is-filled");
         el.title = v ? "Showing the placeholder. Toggle to use your value."
-                     : "No value set for <" + name + ">. Click to set one.";
+                     : "No value set for " + name + ". Click to set one.";
       }
     });
-    // The toggle is meaningless on a page with no placeholders, so it is
-    // hidden rather than sitting there doing nothing.
-    var anyPh = document.querySelector(".ph");
+
+    var anyPh = document.querySelector(".ph:not(.ph--secret)");
     document.querySelectorAll("[data-ph-toggle]").forEach(function (b) {
       b.hidden = !anyPh;
       b.setAttribute("aria-pressed", String(on));
+      b.title = on ? "Showing your values — switch to placeholders"
+                   : "Showing placeholders — switch to your values";
       var l = b.querySelector(".phbar__label");
       if (l) l.textContent = on ? "Your values" : "Placeholders";
     });
   }
 
-  /* --- copy button on every block ---------------------------------------- */
+  /* --- copy: the only place a credential is ever emitted ------------------ */
   function addCopy() {
     blocks.forEach(function (code) {
       var pre = code.parentNode;
@@ -133,14 +177,20 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "copybtn";
+      btn.title = "Copy, with your values filled in";
       btn.textContent = "Copy";
+
       btn.addEventListener("click", function () {
-        // code.textContent already reflects whatever is displayed, so the
-        // copied command is exactly what is on screen.
         var text = code.textContent;
+        var creds = readC();
+        Object.keys(creds).forEach(function (k) {
+          if (creds[k]) text = text.split("<" + k + ">").join(creds[k]);
+        });
+
         var done = function () {
           btn.textContent = "Copied";
-          setTimeout(function () { btn.textContent = "Copy"; }, 1400);
+          btn.classList.add("is-done");
+          setTimeout(function () { btn.textContent = "Copy"; btn.classList.remove("is-done"); }, 1400);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(text).then(done, function () {});
@@ -163,6 +213,8 @@
     document.querySelectorAll("[data-ph-toggle]").forEach(function (b) {
       b.addEventListener("click", function () { setShowReal(!showReal()); paint(); });
     });
+  } else {
+    document.querySelectorAll("[data-ph-toggle]").forEach(function (b) { b.hidden = true; });
   }
 
   /* =======================================================================
@@ -174,101 +226,205 @@
   var status = document.querySelector("[data-ph-status]");
   function say(m) { if (status) status.textContent = m; }
 
-  function row(name, value, count) {
+  var DATA = [];
+
+  function icon(path, cls) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.8");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("aria-hidden", "true");
+    if (cls) svg.setAttribute("class", cls);
+    var p = document.createElementNS(ns, "path");
+    p.setAttribute("d", path);
+    svg.appendChild(p);
+    return svg;
+  }
+
+  function row(name, secret, uses) {
+    var values = secret ? readC() : readV();
+
     var tr = document.createElement("tr");
-    tr.className = "phform__row";
+    tr.className = "phrow" + (secret ? " phrow--secret" : "");
     tr.id = "ph-" + name;
 
-    var tdName = document.createElement("td");
-    var code = document.createElement("code");
-    code.className = "phform__name";
-    code.textContent = "<" + name + ">";
-    tdName.appendChild(code);
-    if (count) {
-      var c = document.createElement("span");
-      c.className = "phform__count mono";
-      c.textContent = count + "\u00d7";
-      tdName.appendChild(c);
-    }
-    tr.appendChild(tdName);
+    /* key */
+    var tdKey = document.createElement("td");
+    tdKey.className = "phrow__keycell";
+    var key = document.createElement("code");
+    key.className = "phrow__key";
+    key.textContent = name;
+    tdKey.appendChild(key);
 
+    /* where it is used — collapsed, so 48 rows stay scannable */
+    if (uses.length) {
+      var det = document.createElement("details");
+      det.className = "phuses";
+      var sum = document.createElement("summary");
+      sum.className = "phuses__summary mono";
+      sum.textContent = uses.length + (uses.length === 1 ? " page" : " pages");
+      det.appendChild(sum);
+      var ul = document.createElement("ul");
+      ul.className = "phuses__list";
+      uses.forEach(function (u) {
+        var li = document.createElement("li");
+        var a = document.createElement("a");
+        a.href = u.url;
+        a.textContent = u.title;
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
+      det.appendChild(ul);
+      tdKey.appendChild(det);
+    }
+    tr.appendChild(tdKey);
+
+    /* value */
     var tdVal = document.createElement("td");
+    var wrapEl = document.createElement("div");
+    wrapEl.className = "phinput";
+
     var input = document.createElement("input");
-    input.type = "text";
-    input.className = "phform__input";
-    input.value = value || "";
-    input.placeholder = "not set";
+    input.type = secret ? "password" : "text";
+    input.className = "phinput__field";
+    input.value = values[name] || "";
+    input.placeholder = secret ? "not set — stays hidden on pages" : "not set";
     input.setAttribute("aria-label", "Value for " + name);
-    input.addEventListener("input", function () {
-      var all = read();
+    input.autocomplete = "off";
+    input.spellcheck = false;
+
+    function save() {
+      var all = secret ? readC() : readV();
       if (input.value.trim()) all[name] = input.value.trim();
       else delete all[name];
-      write(all);
+      (secret ? writeC : writeV)(all);
       paint();
+      syncTools();
+      tr.classList.toggle("is-set", !!input.value.trim());
       say("Saved.");
+    }
+    input.addEventListener("input", save);
+    wrapEl.appendChild(input);
+
+    if (secret) {
+      var eye = document.createElement("button");
+      eye.type = "button";
+      eye.className = "phinput__btn";
+      eye.title = "Show or hide this value";
+      eye.setAttribute("aria-label", "Show or hide value for " + name);
+      eye.appendChild(icon("M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"));
+      eye.addEventListener("click", function () {
+        input.type = input.type === "password" ? "text" : "password";
+        eye.classList.toggle("is-on", input.type === "text");
+      });
+      wrapEl.appendChild(eye);
+    }
+
+    var clr = document.createElement("button");
+    clr.type = "button";
+    clr.className = "phinput__btn phinput__btn--clear";
+    clr.title = "Clear this value";
+    clr.setAttribute("aria-label", "Clear value for " + name);
+    clr.appendChild(icon("M18 6 6 18M6 6l12 12"));
+    clr.addEventListener("click", function () {
+      input.value = "";
+      save();
+      say("Cleared " + name + ".");
     });
-    tdVal.appendChild(input);
+    wrapEl.appendChild(clr);
+
+    tdVal.appendChild(wrapEl);
     tr.appendChild(tdVal);
 
-    var tdAct = document.createElement("td");
-    var del = document.createElement("button");
-    del.type = "button";
-    del.className = "phform__clear";
-    del.textContent = "Clear";
-    del.addEventListener("click", function () {
-      var all = read();
-      delete all[name];
-      write(all);
-      input.value = "";
-      paint();
-      say("Cleared <" + name + ">.");
-    });
-    tdAct.appendChild(del);
-    tr.appendChild(tdAct);
-
+    tr.classList.toggle("is-set", !!input.value);
     return tr;
   }
 
-  var tbody = form.querySelector("tbody");
+  var tbodyMain = form.querySelector("[data-ph-body]");
+  var tbodySec = document.querySelector("[data-ph-secret-body]");
+  var sortSel = document.querySelector("[data-ph-sort]");
 
-  function build(discovered) {
-    var values = read();
-    var counts = {};
-    discovered.forEach(function (n) { counts[n] = (counts[n] || 0) + 1; });
+  function build() {
+    var counts = {}, uses = {}, secretOf = {};
+    DATA.forEach(function (o) {
+      counts[o.name] = (counts[o.name] || 0) + 1;
+      secretOf[o.name] = !!o.secret;
+      (uses[o.name] = uses[o.name] || []).push({ url: o.url, title: o.title });
+    });
+    // Keys with a saved value but no longer used anywhere still show, so a
+    // value can never become invisible and unremovable.
+    Object.keys(readV()).forEach(function (n) { if (!(n in counts)) { counts[n] = 0; secretOf[n] = false; } });
+    Object.keys(readC()).forEach(function (n) { if (!(n in counts)) { counts[n] = 0; secretOf[n] = true; } });
 
-    // Anything stored but no longer used in the docs still shows, so a value
-    // never becomes invisible and unremovable after a page is rewritten.
-    Object.keys(values).forEach(function (n) { if (!(n in counts)) counts[n] = 0; });
-
-    var names = Object.keys(counts).sort(function (a, b) {
+    var mode = sortSel ? sortSel.value : "uses";
+    function order(a, b) {
+      if (mode === "alpha") return a.localeCompare(b);
+      if (mode === "set") {
+        var av = (secretOf[a] ? readC() : readV())[a] ? 0 : 1;
+        var bv = (secretOf[b] ? readC() : readV())[b] ? 0 : 1;
+        if (av !== bv) return av - bv;
+        return a.localeCompare(b);
+      }
       if (counts[b] !== counts[a]) return counts[b] - counts[a];
       return a.localeCompare(b);
-    });
+    }
 
-    tbody.textContent = "";
-    names.forEach(function (n) { tbody.appendChild(row(n, values[n], counts[n])); });
+    var names = Object.keys(counts);
+    var plain = names.filter(function (n) { return !secretOf[n]; }).sort(order);
+    var secret = names.filter(function (n) { return secretOf[n]; }).sort(order);
 
-    // Arriving from a clicked placeholder: jump to that row and put the cursor
-    // in it, so the trip is one click and one keystroke rather than a hunt.
+    tbodyMain.textContent = "";
+    plain.forEach(function (n) { tbodyMain.appendChild(row(n, false, uses[n] || [])); });
+
+    if (tbodySec) {
+      tbodySec.textContent = "";
+      secret.forEach(function (n) { tbodySec.appendChild(row(n, true, uses[n] || [])); });
+    }
+    var cnt = document.querySelector("[data-ph-secret-count]");
+    if (cnt) cnt.textContent = secret.length + (secret.length === 1 ? " key" : " keys");
+
     var want = decodeURIComponent((window.location.hash || "").replace(/^#ph-/, ""));
     if (want) {
       var target = document.getElementById("ph-" + want);
       if (target) {
+        var host = target.closest("details");
+        if (host) host.open = true;
         target.classList.add("is-target");
-        // Guarded: not every environment implements it, and a missing scroll
-        // must not take the whole form down with it — the fetch handler's
-        // catch would otherwise swallow the throw and render zero rows.
         if (target.scrollIntoView) target.scrollIntoView({ block: "center" });
         var inp = target.querySelector("input");
         if (inp) inp.focus();
       }
     }
+    syncTools();
   }
 
-  fetch(form.dataset.phForm)
+  if (sortSel) sortSel.addEventListener("change", build);
+
+  /* session-only credentials */
+  var sessToggle = document.querySelector("[data-ph-session]");
+  if (sessToggle) {
+    try { sessToggle.checked = localStorage.getItem(SESSION_KEY) === "1"; } catch (e) {}
+    sessToggle.addEventListener("change", function () {
+      var existing = readC();
+      try { localStorage.setItem(SESSION_KEY, sessToggle.checked ? "1" : "0"); } catch (e) {}
+      // Move what is already stored into the newly chosen store, then clear
+      // the old one, so toggling never silently loses or duplicates values.
+      try { localStorage.removeItem(CKEY); sessionStorage.removeItem(CKEY); } catch (e) {}
+      writeC(existing);
+      build();
+      say(sessToggle.checked
+        ? "Credentials now clear when this tab closes."
+        : "Credentials now persist on this device.");
+    });
+  }
+
+  fetch(form.getAttribute("data-ph-form"))
     .then(function (r) { return r.json(); })
-    .then(function (list) { build(Array.isArray(list) ? list : []); })
-    .catch(function () { build([]); say("Could not load the placeholder list."); });
+    .then(function (list) { DATA = Array.isArray(list) ? list : []; build(); })
+    .catch(function () { DATA = []; build(); say("Could not load the key list."); });
 
   /* --- export / import / clear ------------------------------------------- */
   var ex = document.querySelector("[data-ph-export]");
@@ -276,22 +432,22 @@
   var cl = document.querySelector("[data-ph-clear]");
 
   function syncTools() {
-    var n = Object.keys(read()).length;
+    var n = Object.keys(readV()).length + Object.keys(readC()).length;
     if (ex) ex.disabled = n === 0;
     if (cl) cl.disabled = n === 0;
   }
-  syncTools();
-  form.addEventListener("input", syncTools);
-  form.addEventListener("click", syncTools);
 
   if (ex) ex.addEventListener("click", function () {
-    var blob = new Blob([JSON.stringify({ version: VERSION, values: read() }, null, 2)],
+    // Credentials are NOT exported. An export is a file that gets emailed,
+    // synced and forgotten; that is the last place a live token should be.
+    var blob = new Blob([JSON.stringify({ version: VERSION, values: readV() }, null, 2)],
                         { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "lethil-placeholders.json";
+    a.download = "lethil-values.json";
     a.click();
     URL.revokeObjectURL(a.href);
+    say("Exported values. Credentials were not included.");
   });
 
   if (im) im.addEventListener("change", function () {
@@ -306,17 +462,15 @@
       } catch (e) { say("That file is not valid JSON."); return; }
       if (!incoming || typeof incoming !== "object") { say("No values found."); return; }
 
-      var all = read(), n = 0;
+      var all = readV(), n = 0;
       Object.keys(incoming).forEach(function (k) {
         if (typeof incoming[k] !== "string") return;
-        all[k] = incoming[k];
-        n++;
+        if (isSecret(k)) return;      // never import into the credential store
+        all[k] = incoming[k]; n++;
       });
-      write(all);
-      fetch(form.dataset.phForm).then(function (r) { return r.json(); })
-        .then(function (l) { build(l); }).catch(function () { build([]); });
+      writeV(all);
+      build();
       paint();
-      syncTools();
       say(n ? "Imported " + n + " value" + (n === 1 ? "." : "s.") : "Nothing to import.");
       im.value = "";
     };
@@ -324,13 +478,9 @@
   });
 
   if (cl) cl.addEventListener("click", function () {
-    if (!Object.keys(read()).length) return;
-    if (!window.confirm("Remove all saved values? This cannot be undone.")) return;
-    write({});
-    fetch(form.dataset.phForm).then(function (r) { return r.json(); })
-      .then(function (l) { build(l); }).catch(function () { build([]); });
-    paint();
-    syncTools();
-    say("All values removed.");
+    if (!window.confirm("Remove all saved values and credentials? This cannot be undone.")) return;
+    writeV({}); writeC({});
+    build(); paint();
+    say("Everything removed.");
   });
 })();

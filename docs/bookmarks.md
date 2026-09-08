@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: tool
 permalink: /bookmarks/
 title: "Bookmarks"
 description: "Pages saved on this device."

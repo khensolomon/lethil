@@ -74,40 +74,118 @@ pre.has-copy:hover .copybtn,
   line-height: 1.5;
 }
 
+// --- page actions in the sticky topbar --------------------------------------
+// Icon-only so they cost the same width on a phone as on a desktop, and in the
+// topbar so they stay reachable at any scroll position.
+.pageacts { display: inline-flex; gap: 2px; flex: none; }
+.pageact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px; height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color var(--dur-nav) var(--ease), background var(--dur-nav) var(--ease);
+
+  svg { width: 16px; height: 16px; }
+  &:hover { color: var(--text); background: var(--surface-2); }
+  &[aria-pressed="true"].is-on,
+  &.is-on { color: var(--accent); svg { fill: currentColor; } }
+}
+.pageact[data-ph-toggle][aria-pressed="false"] { opacity: .55; }
+
+// --- settings: keys ---------------------------------------------------------
+// Sort sits in the header of the column it sorts. The select is transparent
+// and unbordered so the header still reads as a header, with a caret hinting
+// it is interactive.
+.phsort { display: inline-flex; align-items: center; gap: .3rem; cursor: pointer; }
+.phsort__label { pointer-events: none; }
+.phsort select {
+  padding: 0 .2rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: .64rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+
+  &:hover { border-color: var(--border); color: var(--text); }
+  &:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+}
+
 .phform {
   width: 100%;
   border-collapse: collapse;
-  font-size: .85rem;
+  table-layout: fixed;
 
   th {
     text-align: left;
     padding: 0 .5rem .4rem 0;
-    font-size: .68rem;
-    font-weight: 500;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    opacity: .75;
+    font-size: .68rem; font-weight: 500;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); opacity: .75;
     border-bottom: 1px solid var(--border);
   }
+  th:first-child { width: 42%; }
   td {
-    padding: .3rem .5rem .3rem 0;
+    padding: .35rem .5rem .35rem 0;
     border-bottom: 1px solid var(--border);
-    vertical-align: middle;
+    vertical-align: top;
   }
+  td:last-child { padding-right: 0; }
 }
-.phform__name { font-size: .8rem; color: var(--text); }
-.phform__count { margin-left: .4rem; font-size: .66rem; color: var(--muted); opacity: .7; }
 .phform__loading { padding: .8rem 0; font-size: .78rem; }
 
-// The row arrived at from a clicked placeholder.
-.phform__row.is-target td {
-  background: var(--accent-soft);
+// Key and its page-count sit on ONE line: a two-column grid where the key
+// takes column 1 and the collapsible takes column 2. When expanded the list
+// grows inside column 2, under its own summary, instead of pushing a second
+// line into every row whether used or not.
+.phrow__keycell {
+  padding-top: .5rem !important;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: .45rem;
+  align-items: baseline;
+}
+.phrow__key {
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  color: var(--accent);
+  word-break: break-all;
+}
+.phrow.is-target td { background: var(--accent-soft); }
+
+// where a key is used — collapsed by default, 48 rows stay scannable
+.phuses { min-width: 0; }
+.phuses__summary {
+  cursor: pointer; list-style: none;
+  font-size: .66rem; color: var(--muted); opacity: .8;
+  &::-webkit-details-marker { display: none; }
+  &::before { content: "▸ "; }
+  &:hover { color: var(--text); }
+}
+.phuses[open] .phuses__summary::before { content: "▾ "; }
+.phuses__list {
+  list-style: none; margin: .25rem 0 .2rem; padding: 0 0 0 .8rem;
+  border-left: 1px solid var(--border);
+  display: grid; gap: .1rem;
+
+  a { font-size: .72rem; color: var(--muted); text-decoration: none; }
+  a:hover { color: var(--accent); }
 }
 
-.phform__input {
+// --- value field with inline buttons ----------------------------------------
+.phinput { position: relative; display: flex; align-items: center; }
+.phinput__field {
   width: 100%;
-  padding: .3rem .5rem;
+  padding: .32rem 3.4rem .32rem .5rem;   // room for the inline buttons
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -116,22 +194,61 @@ pre.has-copy:hover .copybtn,
   font-size: .78rem;
 
   &:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
-  &::placeholder { color: var(--muted); opacity: .6; }
+  &::placeholder { color: var(--muted); opacity: .55; font-family: var(--font-sans); }
 }
+.phinput__btn {
+  position: absolute;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  padding: 0; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--muted);
+  cursor: pointer; opacity: 0;
+  transition: opacity var(--dur-nav) var(--ease), color var(--dur-nav) var(--ease);
 
-.phform__clear {
-  padding: .15rem .45rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-btn);
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: .7rem;
-  cursor: pointer;
-  transition: color var(--dur-nav) var(--ease), border-color var(--dur-nav) var(--ease);
-
-  &:hover { color: var(--status-blocked); border-color: var(--border-hover); }
+  svg { width: 13px; height: 13px; }
+  &:hover { color: var(--text); }
+  &.is-on { color: var(--accent); opacity: 1; }
 }
+.phinput__btn--clear { right: .25rem; &:hover { color: var(--status-blocked); } }
+.phinput__btn:not(.phinput__btn--clear) { right: 1.75rem; }
+// Revealed on hover or focus; always shown once a value exists, so there is
+// always a visible way to clear it.
+.phinput:hover .phinput__btn,
+.phinput__field:focus ~ .phinput__btn,
+.phinput__btn:focus-visible,
+.phrow.is-set .phinput__btn { opacity: 1; }
+@media (hover: none) { .phinput__btn { opacity: 1; } }
+
+// --- credentials ------------------------------------------------------------
+.phsecret {
+  margin-top: 2rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--status-blocked);
+  border-radius: var(--radius-sm);
+  padding: .6rem .8rem;
+}
+.phsecret__summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: baseline; gap: .5rem;
+  &::-webkit-details-marker { display: none; }
+  &::before { content: "▸"; color: var(--muted); }
+}
+.phsecret[open] .phsecret__summary::before { content: "▾"; }
+.phsecret__title { font-weight: 550; font-size: .9rem; }
+.phsecret__count { font-size: .68rem; color: var(--muted); }
+.phsecret__session {
+  display: flex; align-items: center; gap: .4rem;
+  margin: .6rem 0 .8rem; font-size: .78rem; color: var(--muted);
+  input { accent-color: var(--accent); }
+}
+// No per-row "credential" tag: the section's left border already says it, and
+// repeating the word on all nine rows was noise.
+.phrow--secret .phrow__key { color: var(--status-blocked); }
+
+// A credential that is set: the token stays visible in the block, but the
+// underline says Copy will fill it.
+.ph--secret { border-bottom-style: dotted; }
+.ph--secret.is-armed { border-bottom-color: var(--status-active); color: var(--status-active); }
 
 .visually-hidden {
   position: absolute; width: 1px; height: 1px;
@@ -139,6 +256,60 @@ pre.has-copy:hover .copybtn,
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
+@media (max-width: 620px) {
+  .phform th:first-child { width: 38%; }
+  .phrow__key { font-size: .74rem; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .copybtn, .phform__clear { transition: none; }
+  .copybtn, .phinput__btn, .pageact { transition: none; }
+}
+
+// ===========================================================================
+// TOOLBAR — the tab strip at the top of each tool page.
+//
+// Turns five separate URLs into one workspace: arriving at any tool shows the
+// others and which one you are on. Scrolls horizontally rather than wrapping,
+// so it stays one row at every width.
+// ===========================================================================
+.toolbar {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.toolbar__inner {
+  display: flex;
+  gap: .15rem;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: .4rem var(--gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+.toolbar__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  flex: none;
+  padding: .3rem .6rem;
+  border-radius: var(--radius-btn);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: .8rem;
+  white-space: nowrap;
+  transition: color var(--dur-nav) var(--ease), background var(--dur-nav) var(--ease);
+
+  svg { width: 15px; height: 15px; flex: none; }
+  &:hover { color: var(--text); background: var(--surface-2); }
+  &.is-active { color: var(--accent); background: var(--accent-soft); font-weight: 550; }
+}
+
+@media (max-width: 620px) {
+  // Labels drop away on narrow screens so all six tabs stay reachable without
+  // scrolling; the active one keeps its label for orientation.
+  .toolbar__tab span { display: none; }
+  .toolbar__tab.is-active span { display: inline; }
+  .toolbar__tab { padding: .35rem .55rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toolrail__item, .toolbar__tab { transition: none; }
 }

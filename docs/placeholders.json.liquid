@@ -13,9 +13,13 @@ sitemap: false
   several awkward ones here, and the count is what lets the form put the most
   used names first.
 
-  Secret-shaped names are EXCLUDED and never reach the form: values entered
-  there live in the browser, and a browser is the wrong place for a live
-  credential.
+  Secret-shaped names are FLAGGED, not excluded. They are handled differently
+  at runtime — never substituted into the page, only injected at copy time —
+  but hiding them from the form entirely just meant the tedious half of the job
+  stayed tedious.
+
+  One object per OCCURRENCE, carrying the page it appears on, so the form can
+  show where each key is used and count uses without a second pass.
 {%- endcomment -%}
 {%- assign deny = "TOKEN,SECRET,KEY,PASSWORD,PASSWD,CREDENTIAL,PRIVATE,AUTH" | split: "," -%}
 {%- assign out = "" -%}
@@ -36,16 +40,25 @@ sitemap: false
           {%- if tok contains " " or tok contains "/" or tok contains "=" -%}{%- assign ok = false -%}{%- endif -%}
           {%- if tok contains "&" or tok contains ";" or tok contains '"' -%}{%- assign ok = false -%}{%- endif -%}
 
+          {%- assign secret = false -%}
           {%- if ok -%}
             {%- for bad in deny -%}
-              {%- if up contains bad -%}{%- assign ok = false -%}{%- break -%}{%- endif -%}
+              {%- if up contains bad -%}{%- assign secret = true -%}{%- break -%}{%- endif -%}
             {%- endfor -%}
           {%- endif -%}
 
           {%- if ok -%}
+            {%- include doc-title.html doc=d -%}
             {%- assign tokj = tok | jsonify -%}
+            {%- assign urlj = d.url | jsonify -%}
+            {%- assign titlej = doc_title | jsonify -%}
             {%- if out != "" -%}{%- assign out = out | append: "," -%}{%- endif -%}
-            {%- assign out = out | append: tokj -%}
+            {%- assign out = out
+                  | append: '{"name":' | append: tokj
+                  | append: ',"url":'  | append: urlj
+                  | append: ',"title":' | append: titlej
+                  | append: ',"secret":' | append: secret
+                  | append: '}' -%}
           {%- endif -%}
         {%- endif -%}
       {%- endunless -%}

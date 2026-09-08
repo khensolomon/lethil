@@ -283,3 +283,37 @@ body[data-nav="open"] .sidebar {
 }
 .sidebar__fixed-item { min-width: 0; }
 .brand-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- tool rail -----------------------------------------------------------
+   Icon row under the brand, on every page. Previously the tool links only
+   existed on the home sidebar, so reaching Bookmarks or Settings from a doc
+   page meant navigating home first.
+
+   Outside .sidebar__body on purpose: it must not scroll away with a long page
+   list. Icons rather than labels so it costs one row instead of seven and
+   leaves the section list room to breathe — labels live on the tab strip at
+   the top of each tool page. */
+
+.toolrail {
+  display: flex;
+  gap: 2px;
+  padding: .35rem .55rem .5rem;
+  margin: 0 .25rem;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.toolrail__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;              /* share the width evenly at any sidebar size */
+  min-width: 0;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  transition: color .15s, background .15s;
+
+  svg { width: 16px; height: 16px; }
+  &:hover { color: var(--text); background: var(--surface-2); }
+  &.is-active { color: var(--accent); background: var(--accent-soft); }
+}

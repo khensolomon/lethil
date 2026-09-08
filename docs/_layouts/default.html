@@ -127,6 +127,35 @@
         you were.
       {%- endcomment -%}
       <div class="topbar__cluster">
+        {%- if is_docs -%}
+        {%- assign tb_meta = site.data.sections | where: "key", active_section | first -%}
+        {%- include doc-title.html doc=page -%}
+        {%- comment -%}
+          Page actions live in the sticky topbar so they stay reachable however
+          far down the page you are, and are icon-only so they cost the same
+          space on a phone as on a desktop. Each carries a visually-hidden
+          label and a title, so the icon is never the only cue.
+        {%- endcomment -%}
+        <div class="pageacts">
+          <button class="pageact" type="button" data-bookmark aria-pressed="false"
+                  title="Save this page" aria-label="Save this page"
+                  data-url="{{ page.url }}"
+                  data-title="{{ doc_title | escape }}"
+                  data-section="{{ tb_meta.label | default: page.section | escape }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 4h12v16l-6-4.5L6 20z"/>
+            </svg>
+            <span class="bookmark__label visually-hidden">Save</span>
+          </button>
+          <button class="pageact" type="button" data-ph-toggle aria-pressed="true" hidden
+                  data-ph-settings="{{ '/settings/' | relative_url }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 6l-5 6 5 6"/><path d="M15 6l5 6-5 6"/>
+            </svg>
+            <span class="phbar__label visually-hidden">Your values</span>
+          </button>
+        </div>
+        {%- endif -%}
         {% include search.html %}
       </div>
     </header>
