@@ -1,0 +1,55 @@
+---
+permalink: /placeholders.json
+sitemap: false
+---
+{%- comment -%}
+  Every placeholder token used anywhere in the docs, discovered at build time so
+  the settings form arrives pre-filled with the names that actually appear
+  rather than an empty box.
+
+  Liquid has no regex, so tokens are found by splitting on the HTML-escaped
+  angle brackets kramdown emits inside code blocks. Occurrences are emitted
+  RAW, duplicates and all — counting and de-duplicating is one line in JS and
+  several awkward ones here, and the count is what lets the form put the most
+  used names first.
+
+  Secret-shaped names are EXCLUDED and never reach the form: values entered
+  there live in the browser, and a browser is the wrong place for a live
+  credential.
+{%- endcomment -%}
+{%- assign deny = "TOKEN,SECRET,KEY,PASSWORD,PASSWD,CREDENTIAL,PRIVATE,AUTH" | split: "," -%}
+{%- assign out = "" -%}
+
+{%- for meta in site.data.sections -%}
+  {%- include nav-docs.html key=meta.key -%}
+  {%- for d in nav_docs -%}
+    {%- assign chunks = d.content | split: "&lt;" -%}
+    {%- for chunk in chunks -%}
+      {%- unless forloop.first -%}
+        {%- if chunk contains "&gt;" -%}
+          {%- assign tok = chunk | split: "&gt;" | first | strip -%}
+          {%- assign up = tok | upcase -%}
+
+          {%- comment -%} identifier-shaped only: no spaces, markup or punctuation runs {%- endcomment -%}
+          {%- assign ok = true -%}
+          {%- if tok == "" or tok.size > 40 -%}{%- assign ok = false -%}{%- endif -%}
+          {%- if tok contains " " or tok contains "/" or tok contains "=" -%}{%- assign ok = false -%}{%- endif -%}
+          {%- if tok contains "&" or tok contains ";" or tok contains '"' -%}{%- assign ok = false -%}{%- endif -%}
+
+          {%- if ok -%}
+            {%- for bad in deny -%}
+              {%- if up contains bad -%}{%- assign ok = false -%}{%- break -%}{%- endif -%}
+            {%- endfor -%}
+          {%- endif -%}
+
+          {%- if ok -%}
+            {%- assign tokj = tok | jsonify -%}
+            {%- if out != "" -%}{%- assign out = out | append: "," -%}{%- endif -%}
+            {%- assign out = out | append: tokj -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endunless -%}
+    {%- endfor -%}
+  {%- endfor -%}
+{%- endfor -%}
+[{{ out }}]

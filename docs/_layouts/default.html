@@ -138,6 +138,12 @@
 
   <script src="{{ '/assets/js/app.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/search.js' | relative_url }}?v={{ v }}" defer></script>
+  {%- comment -%}
+    Loaded on every page: it drives both the per-page Save toggle and the
+    manager at /bookmarks/, and each half no-ops when its markup is absent.
+  {%- endcomment -%}
+  <script src="{{ '/assets/js/bookmarks.js' | relative_url }}?v={{ v }}" defer></script>
+  <script src="{{ '/assets/js/placeholders.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/activity.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/stars.js' | relative_url }}?v={{ v }}" defer></script>
 </body>

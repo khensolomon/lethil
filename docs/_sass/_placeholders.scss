@@ -1,0 +1,144 @@
+// ===========================================================================
+// PLACEHOLDERS — filled tokens in code blocks, the copy button, and the
+// settings form at /settings/.
+// ===========================================================================
+
+// --- a token inside a code block -------------------------------------------
+// Unset placeholders are the only thing that advertises this feature exists,
+// so they are visibly interactive: dashed underline, pointer cursor, and a
+// hover state. Clicking one opens Settings on its row.
+.ph {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dashed var(--border-hover);
+  cursor: pointer;
+  transition: background var(--dur-nav) var(--ease), border-color var(--dur-nav) var(--ease);
+}
+.ph:hover {
+  background: var(--accent-soft);
+  border-bottom-color: var(--accent);
+}
+// Filled tokens read as content, not as a control — the job is done.
+.ph.is-filled {
+  border-bottom-color: transparent;
+  color: var(--accent);
+}
+.ph.is-filled:hover { border-bottom-color: var(--accent); }
+
+// --- copy button ------------------------------------------------------------
+pre.has-copy { position: relative; }
+.copybtn {
+  position: absolute;
+  top: .4rem; right: .4rem;
+  padding: .15rem .5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur-nav) var(--ease), color var(--dur-nav) var(--ease);
+}
+// Revealed on hover or keyboard focus — always visible would put a control on
+// top of every block on the page at once.
+pre.has-copy:hover .copybtn,
+.copybtn:focus-visible { opacity: 1; }
+.copybtn:hover { color: var(--text); border-color: var(--border-hover); }
+
+@media (hover: none) {
+  .copybtn { opacity: 1; }   // no hover to reveal it on touch
+}
+
+// --- settings page ----------------------------------------------------------
+.phpage {
+  max-width: var(--measure);
+  padding: 2.4rem var(--gutter) 3rem;
+}
+.phpage__head { margin-bottom: 1.6rem; }
+.phpage__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  letter-spacing: -.02em;
+}
+.phpage__lede { margin: .4rem 0 0; color: var(--muted); font-size: .9rem; }
+.phpage__warn {
+  margin: .9rem 0 0;
+  padding: .6rem .75rem;
+  border-left: 2px solid var(--status-blocked);
+  background: var(--surface-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.5;
+}
+
+.phform {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+
+  th {
+    text-align: left;
+    padding: 0 .5rem .4rem 0;
+    font-size: .68rem;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    opacity: .75;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: .3rem .5rem .3rem 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+}
+.phform__name { font-size: .8rem; color: var(--text); }
+.phform__count { margin-left: .4rem; font-size: .66rem; color: var(--muted); opacity: .7; }
+.phform__loading { padding: .8rem 0; font-size: .78rem; }
+
+// The row arrived at from a clicked placeholder.
+.phform__row.is-target td {
+  background: var(--accent-soft);
+}
+
+.phform__input {
+  width: 100%;
+  padding: .3rem .5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .78rem;
+
+  &:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  &::placeholder { color: var(--muted); opacity: .6; }
+}
+
+.phform__clear {
+  padding: .15rem .45rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: .7rem;
+  cursor: pointer;
+  transition: color var(--dur-nav) var(--ease), border-color var(--dur-nav) var(--ease);
+
+  &:hover { color: var(--status-blocked); border-color: var(--border-hover); }
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copybtn, .phform__clear { transition: none; }
+}

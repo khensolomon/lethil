@@ -1,0 +1,194 @@
+// ===========================================================================
+// BOOKMARKS — the per-page Save toggle and the manager at /bookmarks/.
+// ===========================================================================
+
+.docs__head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .35rem;
+}
+
+// --- the Save toggle --------------------------------------------------------
+.bookmark {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  flex: none;
+  padding: .25rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: .74rem;
+  cursor: pointer;
+  transition: color var(--dur-nav) var(--ease),
+              border-color var(--dur-nav) var(--ease),
+              background var(--dur-nav) var(--ease);
+
+  svg { width: 13px; height: 13px; transition: fill var(--dur-nav) var(--ease); }
+  &:hover { color: var(--text); border-color: var(--border-hover); }
+
+  // Saved state fills the mark rather than only recolouring it, so the state
+  // is legible without relying on colour alone.
+  &.is-on {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    svg { fill: currentColor; }
+  }
+}
+
+// --- manager ----------------------------------------------------------------
+.bookmarks {
+  max-width: var(--measure);
+  padding: 2.4rem var(--gutter) 3rem;
+}
+.bookmarks__head { margin-bottom: 1.4rem; }
+.bookmarks__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  letter-spacing: -.02em;
+}
+.bookmarks__lede { margin: .35rem 0 0; color: var(--muted); font-size: .9rem; }
+.bookmarks__count { margin: .5rem 0 0; font-size: .72rem; }
+
+.bookmarks__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+.bookmarks__item {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--dur-nav) var(--ease);
+
+  &:hover { background: var(--surface-2); }
+}
+.bookmarks__link {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  padding: .7rem .2rem;
+  text-decoration: none;
+  color: inherit;
+}
+.bookmarks__title {
+  font-size: .93rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bookmarks__link:hover .bookmarks__title { color: var(--accent); }
+.bookmarks__section { font-size: .68rem; color: var(--muted); flex: none; }
+
+.bookmarks__remove {
+  flex: none;
+  margin-right: .2rem;
+  padding: .2rem .5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: .72rem;
+  cursor: pointer;
+  transition: color var(--dur-nav) var(--ease), border-color var(--dur-nav) var(--ease);
+
+  &:hover { color: var(--status-blocked); border-color: var(--border-hover); }
+}
+
+.bookmarks__empty { color: var(--muted); font-size: .9rem; }
+
+// --- backup -----------------------------------------------------------------
+.bookmarks__tools {
+  margin-top: 2.4rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border);
+}
+.bookmarks__tools-title {
+  margin: 0 0 .6rem;
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .75;
+}
+.bookmarks__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.bookmarks__btn {
+  padding: .35rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--surface-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: .78rem;
+  cursor: pointer;
+  transition: color var(--dur-nav) var(--ease), border-color var(--dur-nav) var(--ease);
+
+  &:hover { color: var(--text); border-color: var(--border-hover); }
+}
+.bookmarks__btn--file { display: inline-flex; align-items: center; }
+.bookmarks__btn--danger:hover { color: var(--status-blocked); }
+.bookmarks__status { margin: .6rem 0 0; font-size: .74rem; min-height: 1em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bookmark, .bookmarks__item, .bookmarks__btn, .bookmarks__remove { transition: none; }
+}
+
+// Export and Remove all are disabled while the store is empty — there is
+// nothing to act on. Import stays enabled: restoring into an empty store is
+// the whole point of it.
+.bookmarks__btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.bookmarks__btn:disabled:hover {
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+// ===========================================================================
+// BACKLINKS — "Referenced by" at the foot of a page.
+// ===========================================================================
+.backlinks {
+  margin-top: 2.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border);
+}
+.backlinks__title {
+  margin: 0 0 .5rem;
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .75;
+}
+.backlinks__list { list-style: none; margin: 0; padding: 0; display: grid; gap: .1rem; }
+.backlinks__link {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  padding: .3rem .4rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--muted);
+  font-size: .85rem;
+  transition: background var(--dur-nav) var(--ease), color var(--dur-nav) var(--ease);
+
+  &:hover { background: var(--surface-2); color: var(--text); }
+}
+.backlinks__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.backlinks__section { font-size: .66rem; opacity: .7; flex: none; }
+
+@media (prefers-reduced-motion: reduce) { .backlinks__link { transition: none; } }

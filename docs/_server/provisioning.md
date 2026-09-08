@@ -21,6 +21,8 @@ that moment. Download, read, then run.
 ```bash
 python ~/dev/lethil/server/setup.py --show-command
 sudo python3 setup.py --cloudflare-token <TUNNEL_TOKEN>
+
+sudo abc $TUNNEL_ID
 ```
 
 ## Local hostnames

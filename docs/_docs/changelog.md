@@ -12,6 +12,58 @@ nav_order: 99
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.09.07c
+
+- Made placeholders discoverable. Substitution worked, but nothing on a page
+  said the feature existed until a value was already set — so an untouched site
+  looked identical to a broken one. An unset `<PLACEHOLDER>` is now a link:
+  clicking it opens Settings scrolled to that exact row with the cursor in the
+  field. Filled ones lose the dashed underline and read as content.
+- Every token carries a title explaining its state — no value set, showing your
+  value, or showing the placeholder because the toggle is off.
+- The values/placeholders toggle is hidden on pages that contain no
+  placeholders, instead of sitting there doing nothing.
+- Guarded `scrollIntoView`: where it is unimplemented the throw was caught by
+  the fetch handler's own catch, which then rendered the settings form with
+  zero rows.
+
+## 26.09.07b
+
+- Added **Referenced by** to the foot of every page with inbound links — the
+  reverse of the wiki-links already written by hand. Writing `[[Docker Swarm]]`
+  on the Compose page said nothing when standing on the Swarm page; it now
+  lists all five pages pointing at it. Build-time, no plugin, no new front
+  matter. 24 of 46 pages show one. Matching accepts the raw token, the
+  `section/slug` form, and the rendered anchor, so the result does not depend
+  on build order.
+- Added **placeholder values**. `/settings/` lists every `<PLACEHOLDER>` used
+  in the docs — discovered at build time and ordered by how often it appears,
+  so the form arrives filled in rather than empty — and any value entered is
+  substituted into code blocks across the site. Stored in localStorage on the
+  device; nothing is sent anywhere.
+- Every code block gained a copy button, revealed on hover or keyboard focus.
+  It copies exactly what is on screen, so a filled command copies filled.
+- A toggle in the page header switches code blocks between stored values and
+  raw placeholders, for reading the docs as written.
+- Secret-shaped names (`TOKEN`, `SECRET`, `KEY`, `PASSWORD`, `CREDENTIAL`,
+  `PRIVATE`, `AUTH`) are excluded from discovery, so a live credential cannot
+  be stored through this system even deliberately. Commands needing one show a
+  shell variable such as `"$TUNNEL_TOKEN"` instead.
+- Bookmarks: Export and Remove all are disabled while the store is empty.
+  Import stays enabled — restoring into an empty store is its main use.
+
+## 26.09.07
+
+- Added bookmarks. A Save toggle in each page header, a manager at
+  `/bookmarks/`, and JSON import/export. Everything is one key in
+  localStorage: no account, no network, no sync, and clearing site data clears
+  it. Every storage call is guarded, so private mode or a full quota degrades
+  to "bookmarks do not work" rather than a broken page.
+- The manager builds its list with DOM methods rather than an HTML string, and
+  import merges instead of replacing while rejecting any URL that is not a
+  same-origin relative path. Titles and URLs in the store are user-editable and
+  importable, so they are treated as untrusted input.
+
 ## 26.09.06e
 
 - Fixed the menu button's close animation. `.navbtn__icon` had no `transition`

@@ -1,0 +1,80 @@
+{%- comment -%}
+  "Referenced by" — the reverse of the [[wiki-links]] already written by hand.
+
+  Links are one-directional in the source: writing [[Docker Swarm]] on the
+  Compose page tells you nothing when you are standing ON the Swarm page. This
+  walks every page once and lists the ones pointing here.
+
+  Matching accepts three forms so the result does not depend on build order:
+    · raw   [[Title]] / [[Title|display]]   — source not yet rendered
+    · raw   [[section/slug]]                — path form
+    · rendered  href="/this/page/"          — source already rendered
+
+  Cheap by construction: tokens are compared against THIS page's title and path
+  rather than resolved into URLs, so there is no inner lookup loop.
+{%- endcomment -%}
+{%- include doc-title.html doc=page -%}
+{%- assign bl_title = doc_title | downcase -%}
+
+{%- assign bl_segs = page.url | split: "/" -%}
+{%- assign bl_slug = "" -%}
+{%- for seg in bl_segs -%}{%- if seg != "" -%}{%- assign bl_slug = seg -%}{%- endif -%}{%- endfor -%}
+{%- assign bl_path = page.section | append: "/" | append: bl_slug | downcase -%}
+{%- capture bl_href %}href="{{ page.url | relative_url }}"{% endcapture -%}
+
+{%- assign bl_rows = "" -%}
+{%- for meta in site.data.sections -%}
+  {%- include nav-docs.html key=meta.key -%}
+  {%- for d in nav_docs -%}
+    {%- unless d.url == page.url -%}
+      {%- assign bl_hit = false -%}
+
+      {%- if d.content contains bl_href -%}
+        {%- assign bl_hit = true -%}
+      {%- else -%}
+        {%- assign bl_parts = d.content | split: "[[" -%}
+        {%- for bl_part in bl_parts -%}
+          {%- unless forloop.first -%}
+            {%- assign bl_tok = bl_part | split: "]]" | first -%}
+            {%- if bl_tok contains "|" -%}
+              {%- assign bl_tok = bl_tok | split: "|" | first -%}
+            {%- endif -%}
+            {%- assign bl_tok = bl_tok | strip | downcase -%}
+            {%- if bl_tok == bl_title or bl_tok == bl_path -%}
+              {%- assign bl_hit = true -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endunless -%}
+        {%- endfor -%}
+      {%- endif -%}
+
+      {%- if bl_hit -%}
+        {%- include doc-title.html doc=d -%}
+        {%- capture bl_row -%}{{ doc_title }}‖{{ d.url }}‖{{ meta.label }}{%- endcapture -%}
+        {%- if bl_rows == "" -%}
+          {%- assign bl_rows = bl_row -%}
+        {%- else -%}
+          {%- assign bl_rows = bl_rows | append: "¶" | append: bl_row -%}
+        {%- endif -%}
+      {%- endif -%}
+    {%- endunless -%}
+  {%- endfor -%}
+{%- endfor -%}
+
+{%- if bl_rows != "" -%}
+  {%- assign bl_list = bl_rows | split: "¶" -%}
+<nav class="backlinks" aria-label="Pages referencing this one">
+  <h2 class="backlinks__title mono">Referenced by</h2>
+  <ul class="backlinks__list">
+    {%- for row in bl_list -%}
+      {%- assign f = row | split: "‖" -%}
+    <li class="backlinks__item">
+      <a class="backlinks__link" href="{{ f[1] | relative_url }}">
+        <span class="backlinks__name">{{ f[0] }}</span>
+        <span class="backlinks__section mono">{{ f[2] }}</span>
+      </a>
+    </li>
+    {%- endfor -%}
+  </ul>
+</nav>
+{%- endif -%}
