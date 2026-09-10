@@ -19,6 +19,11 @@
   --accent:      #3457e0;
   --accent-hover:#2c49c0;   /* a touch darker for hover on accent fills */
   --accent-soft: #3457e01a;
+  /* The scrim behind the open search panel. A token rather than a hardcoded
+     rgba with an opacity multiplier: the two dim layers (page and topbar) have
+     to agree exactly or the seam between them shows, and the right strength
+     differs per theme — a dark UI needs a heavier veil to read as dimmed. */
+  --scrim:       rgba(20, 22, 28, .07);
   --shadow:      0 1px 2px rgba(20,22,28,.04), 0 8px 30px rgba(20,22,28,.06);
 
   /* status — Todo board + the page-header pill. Four states, deliberately
@@ -42,6 +47,7 @@
                                                matches it so borders align   */
   --radius:     14px;
   --radius-sm:  9px;
+  --radius-xs:  5px;    /* chips, badges — boxes too small for 9px to read */
   --radius-btn: 8px;    /* shared by theme toggle, menu button, search input */
   --btn:        35px;   /* icon-button footprint (width & height)           */
 
@@ -67,6 +73,7 @@
   --accent:      #7aa0ff;
   --accent-hover:#9ab6ff;   /* lighter for hover on accent fills (dark) */
   --accent-soft: #7aa0ff1f;
+  --scrim:       rgba(0, 0, 0, .28);
   --shadow:      0 1px 2px rgba(0,0,0,.4), 0 10px 40px rgba(0,0,0,.5);
 
   --status-active:  #3ddc84;

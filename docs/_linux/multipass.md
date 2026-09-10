@@ -1,6 +1,7 @@
 ---
 title: "Multipass"
 description: "Disposable Ubuntu VMs for testing production deploys locally."
+group: "Remote & VMs"
 category: "Linux"
 nav_order: 7
 tags: [multipass, vm, testing, ci]

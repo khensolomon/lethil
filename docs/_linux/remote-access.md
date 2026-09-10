@@ -1,6 +1,7 @@
 ---
 title: "Remote access"
 description: "SSH, RDP and VNC into a desktop machine, plus Remmina permissions."
+group: "Remote & VMs"
 category: "Linux"
 nav_order: 5
 tags: [ssh, rdp, vnc, remote, remmina]

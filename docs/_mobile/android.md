@@ -53,7 +53,10 @@ sdkmanager --sdk_root=$ANDROID_SDK \
   "system-images;android-34;google_apis;x86_64"
 ```
 
-Bump `android-34` and `34.0.0` to the current API level as needed.
+Bump `android-34` and `34.0.0` to the current API level as needed — Google
+requires new Play submissions to target a recent API level, so this pin goes
+stale on a schedule rather than at random. `sdkmanager --list` shows what is
+available.
 
 ## Emulator
 

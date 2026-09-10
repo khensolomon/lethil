@@ -1,27 +1,117 @@
 ---
 permalink: /search.json
+sitemap: false
 ---
 {%- comment -%}
-  Search index across ALL docs sections (docs, python, linux, …). Each section
-  is a collection; site.data.sections lists them, and site[key] is that
-  collection's docs. The `category` falls back to the section label so results
-  group sensibly even if a page omits its own category.
+  The search index, one record per SECTION of a page rather than one per page.
+
+  Two problems this fixes.
+
+  1. Text was fused together. The old index did `strip_html | strip_newlines`,
+     and stripping tags from `<p>a</p><p>b</p>` yields "ab" — no separator —
+     while strip_newlines removed the only thing keeping blocks apart. That
+     produced "healthcheckcd" and "hash.pyp" in the index, which broke snippets
+     AND matching: "healthcheck" and "cd" no longer existed as separate words.
+     Inserting a space before every tag before stripping is the whole fix.
+
+  2. A result pointed at a page. On a long runbook that is a weak answer, so
+     each `<h2>`/`<h3>` now gets its own record with its own anchor. Clicking a
+     result lands on the heading, not the top of the document.
+
+  A page-level record is emitted too, so searching a page by name still finds
+  the page itself — search.js ranks those above heading records.
+
+  Fields: t title · h heading ("" on page records) · u url · c category
+          s section · b badge · x text
 {%- endcomment -%}
 [
   {%- assign first = true -%}
   {%- for meta in site.data.sections -%}
     {%- include nav-docs.html key=meta.key -%}
-    {%- assign sect_docs = nav_docs -%}
-    {%- for doc in sect_docs -%}
+    {%- for doc in nav_docs -%}
       {%- include doc-title.html doc=doc -%}
+      {%- assign d_cat = doc.category | default: meta.label -%}
+      {%- assign d_badge = meta.badge | default: meta.label | slice: 0, 1 -%}
+
+      {%- comment -%}
+        A page may opt out of content indexing with `search_content: false`.
+        It still gets one record so it can be found by name; only its body and
+        headings are left out.
+      {%- endcomment -%}
+      {%- if doc.search_content == false -%}
         {%- unless first %},{% endunless -%}{%- assign first = false -%}
   {
-    "title": {{ doc_title | jsonify }},
-    "url": {{ doc.url | relative_url | jsonify }},
-    "category": {{ doc.category | default: meta.label | jsonify }},
-    "section": {{ meta.label | jsonify }},
-    "content": {{ doc.content | strip_html | strip_newlines | jsonify }}
+    "t": {{ doc_title | jsonify }},
+    "h": "",
+    "u": {{ doc.url | jsonify }},
+    "c": {{ d_cat | jsonify }},
+    "s": {{ meta.label | jsonify }},
+    "b": {{ d_badge | jsonify }},
+    "x": {{ doc.description | default: "" | jsonify }}
   }
+        {%- continue -%}
+      {%- endif -%}
+
+      {%- comment -%} Split on headings; the first chunk is the page intro. {%- endcomment -%}
+      {%- assign chunks = doc.content | split: "<h" -%}
+
+      {%- for chunk in chunks -%}
+        {%- assign emit = false -%}
+        {%- assign h_title = "" -%}
+        {%- assign h_url = doc.url -%}
+        {%- assign raw = "" -%}
+
+        {%- if forloop.first -%}
+          {%- comment -%} intro: everything before the first heading {%- endcomment -%}
+          {%- assign raw = chunk -%}
+          {%- assign emit = true -%}
+        {%- else -%}
+          {%- assign hparts = chunk | split: "</h" -%}
+          {%- assign hhead = hparts | first -%}
+          {%- assign hlevel = hhead | slice: 0, 1 -%}
+          {%- if hlevel == "2" or hlevel == "3" -%}
+            {%- assign h_title = hhead | split: ">" | last | strip_html | strip -%}
+            {%- if hhead contains 'id="' -%}
+              {%- assign h_id = hhead | split: 'id="' | last | split: '"' | first -%}
+              {%- assign h_url = doc.url | append: "#" | append: h_id -%}
+            {%- endif -%}
+            {%- assign raw = chunk | remove_first: hhead | remove_first: "</h" | remove_first: hlevel | remove_first: ">" -%}
+            {%- assign emit = true -%}
+          {%- endif -%}
+        {%- endif -%}
+
+        {%- if emit -%}
+          {%- comment -%}
+            The space before "<" is what stops adjacent blocks welding
+            together; normalize_whitespace then collapses the runs.
+          {%- endcomment -%}
+          {%- comment -%}
+            doc.content is the page BEFORE wikilinks.html runs, so [[links]]
+            are still raw here, and strip_html leaves entities encoded. Both
+            leaked into snippets as "[[Docker Swarm]]" and "ssh.&lt;ID&gt;".
+            Brackets go; entities are decoded back to the characters a reader
+            typed, which is also what they will search for.
+          {%- endcomment -%}
+          {%- assign text = raw | replace: "<", " <" | strip_html -%}
+          {%- assign text = text | replace: "[[", "" | replace: "]]", "" -%}
+          {%- assign text = text | replace: "&lt;", "<" | replace: "&gt;", ">" -%}
+          {%- assign text = text | replace: "&quot;", '"' | replace: "&#39;", "'" -%}
+          {%- assign text = text | replace: "&amp;", "&" -%}
+          {%- assign text = text | normalize_whitespace | strip -%}
+          {%- if text != "" or h_title != "" -%}
+            {%- unless first %},{% endunless -%}{%- assign first = false -%}
+  {
+    "t": {{ doc_title | jsonify }},
+    "h": {{ h_title | jsonify }},
+    "u": {{ h_url | jsonify }},
+    "c": {{ d_cat | jsonify }},
+    "s": {{ meta.label | jsonify }},
+    "b": {{ d_badge | jsonify }},
+    "x": {{ text | truncate: 1200, "" | jsonify }}
+  }
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
     {%- endfor -%}
   {%- endfor -%}
 ]

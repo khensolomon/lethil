@@ -1,6 +1,7 @@
 ---
 title: "Static networking"
 description: "netplan for static IPs."
+group: "System"
 category: "Linux"
 nav_order: 2
 tags: [linux, networking, netplan]

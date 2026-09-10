@@ -5,6 +5,8 @@ layout: default
   The sidebar is global now (rendered by default.html), so this layout is
   just the article column.
 {%- endcomment -%}
+{% include contextbar.html %}
+
 <div class="docs inset">
   <article class="docs__content prose">
     {%- assign bm_section = site.data.sections | where: "key", page.section | first -%}

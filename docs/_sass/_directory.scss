@@ -78,7 +78,7 @@
 .directory__chips--tags .directory__chip:hover { background: var(--surface-2); }
 .directory__chips--tags .directory__chip.is-on { background: var(--accent); }
 
-/* label: the primary meaning — the thing you filter by. */
+/* label: the primary meaning — the thing filtered by. */
 .directory__chip-label { font-weight: 450; line-height: 1; }
 /* count: a distinct secondary badge — how many pages have it. Its own capsule,
    so it reads as metadata about the label rather than part of the name. */

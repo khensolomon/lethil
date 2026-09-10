@@ -1,6 +1,7 @@
 ---
 title: "Django"
 description: "Project bootstrap and the management commands used most."
+group: "Building"
 category: "Python"
 nav_order: 4
 tags: [python, django, mysql]
@@ -38,8 +39,12 @@ npm run build && python manage.py collectstatic --clear --noinput
 ## Linking python to python3
 
 ```bash
-sudo ln -s /usr/bin/python3 /usr/bin/python
+sudo apt install -y python-is-python3
 ```
+
+Prefer the package over `ln -s /usr/bin/python3 /usr/bin/python`: a hand-made
+symlink in `/usr/bin` is unmanaged, survives upgrades that move the target, and
+conflicts with the package if it is ever installed.
 
 ## Environment
 

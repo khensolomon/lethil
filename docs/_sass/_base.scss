@@ -32,3 +32,46 @@ a { color: inherit; text-decoration: none; }
 
 /* Region inset is a left/right gutter only — never `margin: 0 auto`. */
 .inset { padding-inline: var(--gutter); }
+
+/* --- thin scrollbars -----------------------------------------------------
+   For panes that scroll inside the page (the search chip strip, the search
+   result list). Deliberately minimal: no track, no arrow buttons, and the
+   thumb only appears on hover or while the pane has keyboard focus, so a
+   resting panel shows no furniture.
+
+   The thumb is transparent rather than absent when idle: keeping the scrollbar
+   present at a fixed width means revealing it does not reflow the content,
+   which is what a `display: none` to `block` swap would do.
+
+   Firefox reserves a hairline for `scrollbar-width: thin`; WebKit takes the
+   declared 6px from the pane. Both are accounted for in the padding of the
+   panes that use this. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scroll-thin:hover,
+.scroll-thin:focus-within { scrollbar-color: var(--border-hover) transparent; }
+
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+.scroll-thin::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.scroll-thin::-webkit-scrollbar-corner { background: transparent; }
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: transparent;
+  /* Inset by a transparent border so the thumb reads as a slim overlay pill
+     rather than filling the full track width. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  transition: background-color .15s;
+}
+.scroll-thin:hover::-webkit-scrollbar-thumb,
+.scroll-thin:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--border-hover);
+}
+.scroll-thin::-webkit-scrollbar-thumb:hover { background-color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-thin::-webkit-scrollbar-thumb { transition: none; }
+}

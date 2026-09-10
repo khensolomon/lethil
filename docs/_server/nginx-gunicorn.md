@@ -1,6 +1,7 @@
 ---
 title: "Nginx and Gunicorn"
 description: "Serving Django directly from systemd, without containers."
+group: "Serving & storage"
 category: "Server"
 nav_order: 7
 tags: [server, nginx, gunicorn, django, systemd]

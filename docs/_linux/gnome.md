@@ -1,6 +1,7 @@
 ---
 title: "GNOME"
 description: "GNOME guide"
+group: "Desktop"
 category: "Linux"
 nav_order: 4
 tags: [gnome]

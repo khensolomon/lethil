@@ -1,6 +1,7 @@
 ---
 title: "MySQL backups"
 description: "Dumping and restoring, in containers and on the host."
+group: "Operations"
 category: "SQL"
 nav_order: 2
 tags: [mysql, backup, docker, cron]

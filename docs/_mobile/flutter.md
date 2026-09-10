@@ -13,6 +13,8 @@ sudo apt update
 sudo apt install -y curl git unzip xz-utils zip libglu1-mesa
 
 cd ~/.sdk
+# Check docs.flutter.dev for the current stable version before pasting — this
+# URL is pinned and will 404 once 3.35.6 is rotated out.
 curl -O https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.35.6-stable.tar.xz
 tar xf flutter_linux_3.35.6-stable.tar.xz
 

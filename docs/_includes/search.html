@@ -26,14 +26,25 @@
         autocomplete="off"
         spellcheck="false"
         data-search-input>
+      {%- comment -%}
+        One chip, not four. "/ or Ctrl + K" spelled out every option inside the
+        field and read as clutter; a single shortcut is enough of a hint, and
+        "/" still works.
+      {%- endcomment -%}
       <span class="search__hint" data-search-hint aria-hidden="true" title="Press / or Ctrl+K to search">
-        <kbd>/</kbd>
-        <span class="search__hint-sep">or</span>
-        <kbd data-search-hint-mod>Ctrl</kbd><span class="search__hint-plus">+</span><kbd>K</kbd>
+        <kbd><span data-search-hint-mod>Ctrl</span> K</kbd>
       </span>
     </div>
   </div>
+  {%- comment -%}
+    The panel does double duty. With an empty box it browses — section chips
+    and the full page list, which is what /directory/ does, without leaving the
+    current page. Type, and the same list filters. One surface, one control
+    (the chips), so browsing never becomes a form full of options.
+  {%- endcomment -%}
   <div class="search__panel" data-search-panel hidden>
-    <ul class="search__results" data-search-results role="listbox"></ul>
+    <div class="search__facets" data-search-facets role="group" aria-label="Filter by section"></div>
+    <ul class="search__results scroll-thin" data-search-results role="listbox"></ul>
+    <p class="search__foot mono" data-search-foot></p>
   </div>
 </div>

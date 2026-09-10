@@ -1,6 +1,7 @@
 ---
 title: "Virtual Machine Manager"
 description: "QEMU/KVM with a GUI - snapshots, ISO installs, bridged networking."
+group: "Remote & VMs"
 category: "Linux"
 nav_order: 6
 tags: [kvm, qemu, virtualization, vm]
@@ -14,12 +15,31 @@ no GUI, [[Multipass]] is quicker.
 ```bash
 sudo apt update
 sudo apt install -y \
-    qemu-kvm libvirt-daemon-system libvirt-clients \
-    virtinst virt-manager bridge-utils \
+    qemu-system-x86 libvirt-daemon-system libvirt-clients \
+    virtinst virt-manager \
     ovmf libosinfo-bin cpu-checker
 ```
 
+`qemu-kvm` was a transitional package and no longer exists on Ubuntu 24.04 or
+Debian 11 and later — `apt` will say *"Note, selecting 'qemu-system-x86'
+instead of 'qemu-kvm'"* at best, and fail outright at worst. Install
+`qemu-system-x86` directly.
+
+On a hardware enablement kernel, use the matching HWE build so the userspace
+tracks the backported kernel:
+
+```bash
+sudo apt install -y qemu-system-x86-hwe
+```
+
+To install for whatever architecture the host happens to be, `qemu-system`
+pulls in the right `qemu-system-<arch>` without naming x86 explicitly.
+
 `ovmf` provides UEFI firmware, which modern server images expect.
+
+`bridge-utils` is not in the list: it is deprecated, `brctl` is superseded by
+`ip link` and `bridge link`, and libvirt does not need it. See
+[[Provisioning a host]] for the checks that replace it.
 
 ## Check KVM
 

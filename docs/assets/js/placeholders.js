@@ -1,5 +1,5 @@
 /* ===========================================================================
- * placeholders.js — fill <KEY> tokens in code blocks with your own values.
+ * placeholders.js — fill <KEY> tokens in code blocks with stored values.
  *
  * Two stores, treated very differently:
  *
@@ -7,8 +7,8 @@
  *                the page and into the clipboard.
  *   credentials  secret-shaped keys (…TOKEN, …SECRET, …KEY, password …).
  *                NEVER written into the page. The block keeps showing
- *                <TUNNEL_TOKEN>; the real value is injected only when you
- *                press Copy, so it lands in the clipboard and nowhere else.
+ *                <TUNNEL_TOKEN>; the real value is injected only on
+ *                Copy, so it lands in the clipboard and nowhere else.
  *
  * That split is the point: it removes the copy-paste tedium without putting a
  * live credential on screen, in a screenshot, or in a shared window.
@@ -146,11 +146,11 @@
       if (on && v) {
         el.textContent = v;
         el.classList.add("is-filled");
-        el.title = name + " — your value. Click to edit.";
+        el.title = name + " — stored value. Click to edit.";
       } else {
         el.textContent = "<" + name + ">";
         el.classList.remove("is-filled");
-        el.title = v ? "Showing the placeholder. Toggle to use your value."
+        el.title = v ? "Showing the placeholder. Toggle to use the stored value."
                      : "No value set for " + name + ". Click to set one.";
       }
     });
@@ -159,10 +159,11 @@
     document.querySelectorAll("[data-ph-toggle]").forEach(function (b) {
       b.hidden = !anyPh;
       b.setAttribute("aria-pressed", String(on));
-      b.title = on ? "Showing your values — switch to placeholders"
-                   : "Showing placeholders — switch to your values";
+      b.classList.toggle("is-on", on);
+      b.title = on ? "Showing stored values — switch to placeholders"
+                   : "Showing placeholders — switch to stored values";
       var l = b.querySelector(".phbar__label");
-      if (l) l.textContent = on ? "Your values" : "Placeholders";
+      if (l) l.textContent = on ? "Stored values" : "Placeholders";
     });
   }
 
@@ -177,7 +178,7 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "copybtn";
-      btn.title = "Copy, with your values filled in";
+      btn.title = "Copy, with stored values filled in";
       btn.textContent = "Copy";
 
       btn.addEventListener("click", function () {
@@ -251,34 +252,53 @@
     tr.className = "phrow" + (secret ? " phrow--secret" : "");
     tr.id = "ph-" + name;
 
-    /* key */
+    /* key — the key itself is the disclosure, with its use count as a badge.
+       A separate "N pages" summary beside it was a second thing to read and a
+       second thing to aim at for the same action. */
     var tdKey = document.createElement("td");
     tdKey.className = "phrow__keycell";
+
     var key = document.createElement("code");
     key.className = "phrow__key";
     key.textContent = name;
-    tdKey.appendChild(key);
 
-    /* where it is used — collapsed, so 48 rows stay scannable */
     if (uses.length) {
       var det = document.createElement("details");
       det.className = "phuses";
+
       var sum = document.createElement("summary");
-      sum.className = "phuses__summary mono";
-      sum.textContent = uses.length + (uses.length === 1 ? " page" : " pages");
+      sum.className = "phuses__summary";
+      sum.appendChild(key);
+
+      var badge = document.createElement("sup");
+      badge.className = "phrow__count";
+      badge.textContent = uses.length;
+      badge.title = uses.length + (uses.length === 1 ? " page uses this" : " pages use this");
+      sum.appendChild(badge);
       det.appendChild(sum);
-      var ul = document.createElement("ul");
-      ul.className = "phuses__list";
+
+      // Ordered so the numbering is real, not decoration: the list is a
+      // numbered set of pages, and an <ol> says so to a screen reader too.
+      var ol = document.createElement("ol");
+      ol.className = "phuses__list";
       uses.forEach(function (u) {
         var li = document.createElement("li");
         var a = document.createElement("a");
         a.href = u.url;
         a.textContent = u.title;
         li.appendChild(a);
-        ul.appendChild(li);
+        ol.appendChild(li);
       });
-      det.appendChild(ul);
+      det.appendChild(ol);
       tdKey.appendChild(det);
+    } else {
+      // Stored but unused: nothing to expand, so no disclosure affordance.
+      tdKey.appendChild(key);
+      var zero = document.createElement("sup");
+      zero.className = "phrow__count is-zero";
+      zero.textContent = "0";
+      zero.title = "Not used on any page";
+      tdKey.appendChild(zero);
     }
     tr.appendChild(tdKey);
 
@@ -401,7 +421,14 @@
     syncTools();
   }
 
-  if (sortSel) sortSel.addEventListener("change", build);
+  if (sortSel) {
+    var sortLabel = document.querySelector("[data-ph-sort-label]");
+    sortSel.addEventListener("change", function () {
+      // The visible text is ours, so it has to follow the hidden select.
+      if (sortLabel) sortLabel.textContent = sortSel.options[sortSel.selectedIndex].text;
+      build();
+    });
+  }
 
   /* session-only credentials */
   var sessToggle = document.querySelector("[data-ph-session]");

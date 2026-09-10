@@ -1,6 +1,7 @@
 ---
 title: "Provisioning a host"
 description: "First-boot setup script, hosts entries, and bridge checks."
+group: "Automation"
 category: "Server"
 nav_order: 10
 tags: [server, provisioning, networking]

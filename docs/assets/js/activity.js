@@ -179,7 +179,7 @@
     events.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
 
     // "last updated" = newest event on the portfolio repo itself (the very
-    // events we keep OUT of the ticker) — that's when the site last changed
+    // events kept OUT of the ticker) — that's when the site last changed
     if (updatedEl) {
       var self = null;
       for (var s = 0; s < events.length; s++) { if (events[s].repo.name === SELF) { self = events[s]; break; } }
@@ -218,7 +218,7 @@
     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(function (events) {
       if (!Array.isArray(events)) return;
-      // keep only the fields we use, so the cache stays small
+      // keep only the fields in use, so the cache stays small
       var slim = events.map(function (e) {
         return { type: e.type, repo: { name: e.repo.name }, created_at: e.created_at,
                  payload: { size: e.payload && e.payload.size, ref: e.payload && e.payload.ref,

@@ -21,7 +21,7 @@
   <div class="sidebar-sect__pages">
     {%- for row in nav_rows limit: 6 -%}
       {%- assign ss_f = row | split: "‖" -%}
-      <a class="sidebar-sect__page{% if page.url == ss_f[3] %} is-active{% endif %}" href="{{ ss_f[3] | relative_url }}" data-text="{{ ss_f[2] | escape }}">{{ ss_f[2] }}</a>
+      <a class="sidebar-sect__page{% if page.url == ss_f[3] %} is-active{% endif %}" href="{{ ss_f[3] | relative_url }}">{{ ss_f[2] }}</a>
     {%- endfor -%}
     {%- comment -%}
       Always link to the section index. This used to appear only when a section

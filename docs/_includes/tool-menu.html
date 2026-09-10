@@ -1,0 +1,50 @@
+{%- comment -%}
+  Tools popover in the topbar — the single global route to the tool pages.
+
+  It replaces the sidebar icon rail, which duplicated the tab strip already at
+  the top of every tool page: the same menu in two places, in two visual
+  languages. One button costs a fixed 30px on any page, so the sidebar
+  keeps its whole height for the section's pages.
+
+  A disclosure, not an ARIA menu: the contents are ordinary links, so
+  aria-expanded is the honest description and arrow-key navigation would be
+  inventing a widget the user has no reason to expect.
+
+  Driven by _data/tools.yml, the same source as the tab strip.
+{%- endcomment -%}
+<div class="toolmenu" data-toolmenu>
+  <button class="pageact toolmenu__btn" type="button"
+          aria-expanded="false" aria-controls="toolmenu-panel"
+          title="Tools" aria-label="Tools">
+    {%- comment -%}
+      Three rounded squares and one circle: a set of DIFFERENT things, which is
+      what the menu holds. The old bulleted-list mark was both generic and
+      confusable with the Directory icon two rows down inside the menu itself.
+    {%- endcomment -%}
+    <svg class="toolmenu__glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3.6" y="3.6" width="7" height="7" rx="2.2"/>
+      <rect x="13.4" y="3.6" width="7" height="7" rx="2.2"/>
+      <rect x="3.6" y="13.4" width="7" height="7" rx="2.2"/>
+      <circle cx="16.9" cy="16.9" r="3.5"/>
+    </svg>
+  </button>
+
+  <div class="toolmenu__panel" id="toolmenu-panel" hidden>
+    <p class="toolmenu__title mono">Tools</p>
+    {%- for tool in site.data.tools -%}
+      <a class="toolmenu__item{% if page.url == tool.url %} is-active{% endif %}"
+         href="{{ tool.url | relative_url }}"
+         {% if page.url == tool.url %}aria-current="page"{% endif %}>
+        <span class="toolmenu__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round">{{ tool.icon }}</svg>
+        </span>
+        <span class="toolmenu__text">
+          <span class="toolmenu__label">{{ tool.label }}</span>
+          <span class="toolmenu__blurb">{{ tool.blurb }}</span>
+        </span>
+      </a>
+    {%- endfor -%}
+  </div>
+</div>

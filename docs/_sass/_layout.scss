@@ -89,7 +89,7 @@ body[data-nav="open"] .sidebar {
    dot, so every label starts on the same vertical line and the list reads as
    one column of text rather than a bulleted list.                          */
 
-.sidebar__nav { display: grid; gap: .05rem; }
+.sidebar__nav { display: grid; grid-template-columns: minmax(0, 1fr); gap: .05rem; }
 
 .sidebar__link {
   position: relative;
@@ -118,41 +118,29 @@ body[data-nav="open"] .sidebar {
 
 .sidebar__link-text {
   min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
 }
 
 .sidebar__link:hover { background: var(--surface-2); color: var(--text); }
-.sidebar__link.is-active { color: var(--text); font-weight: 650; }
+.sidebar__link.is-active { color: var(--text); text-shadow: .3px 0 0 currentColor; }
 .sidebar__link.is-active::before { height: 1.05rem; }
 
-/* --- bold the active item WITHOUT reflow ---------------------------------
-   Weighting only the active item is what makes it stand out — weighting every
-   item highlights nothing. But bold glyphs are wider, so the label visibly
-   re-flows each time the active page changes.
+/* --- marking the active item without reflow ------------------------------
+   Weighting only the active item is what makes it stand out, but bold glyphs
+   are wider, so a real font-weight change re-flows the label every time the
+   active page moves.
 
-   The fix is to reserve the bold width up front. Every label carries its own
-   text in data-text, and a zero-height hidden copy of it is rendered at the
-   bold weight inside the same box. That copy contributes its width to the
-   element's intrinsic size but nothing to its height, so the box is always as
-   wide as the bold version and toggling the visible weight moves nothing.
+   A text-shadow offset by a fraction of a pixel thickens the strokes while
+   leaving every metric untouched — no reflow, and nothing to reserve. The
+   previous approach rendered a hidden bold copy inside the label to reserve
+   its width; that copy was a block-level child, which silently disabled
+   `text-overflow: ellipsis` on the label and is why long titles were being
+   chopped mid-word instead of truncating.                                  */
 
-   Long labels that already ellipse are unaffected: they are constrained by the
-   column, not by their content, so there is no width to reserve. */
-.sidebar__link-text::after,
-.sidebar-sect__page::after {
-  content: attr(data-text);
-  display: block;
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  font-weight: 650;
-  pointer-events: none;
-  user-select: none;
-}
-
-/* Overview sits above the page list and points at a section index that is a
-   real page. Separated by space, not a rule — one less line in a narrow
-   column. */
 .sidebar__link--overview { margin-bottom: .35rem; }
 
 /* Group headings. Sized and coloured like the section blurbs on the home
@@ -174,7 +162,13 @@ body[data-nav="open"] .sidebar {
 }
 
 /* --- home sidebar: collapsible section groups (native <details>) --------- */
-.sidebar__sections { display: grid; gap: .1rem; }
+/* minmax(0, 1fr), not the implicit 1fr: a grid item's default min-width is
+   auto, which means it refuses to shrink below its content. The section rows
+   were therefore as wide as their longest blurb and overflowed the sidebar,
+   so the text was clipped by the panel edge rather than truncating in its own
+   box — no ellipsis, just a hard cut. */
+.sidebar__sections { display: grid; grid-template-columns: minmax(0, 1fr); gap: .1rem; }
+.sidebar-sect, .sidebar-sect__summary, .sidebar-sect__pages { min-width: 0; }
 
 .sidebar-sect { border-radius: var(--radius-sm); }
 .sidebar-sect__summary {
@@ -188,15 +182,19 @@ body[data-nav="open"] .sidebar {
 
 /* chevron leads the row (file-tree style), rotates down when open */
 .sidebar-sect__chevron {
-  width: 15px; height: 15px; flex-shrink: 0; color: var(--muted);
+  width: 13px; height: 13px; flex-shrink: 0; color: var(--muted);
   transition: transform .2s var(--ease);
 }
 .sidebar-sect[open] > .sidebar-sect__summary .sidebar-sect__chevron { transform: rotate(90deg); }
 
 .sidebar-sect__text { display: flex; flex-direction: column; gap: .05rem; min-width: 0; flex: 1; }
-.sidebar-sect__label { color: var(--text); line-height: 1.2; font-weight: 550; }
+/* Lighter and a step smaller than before. With a topbar carrying the brand,
+   search and the tools popover, a heavy 1rem label in the sidebar competed
+   with chrome that already outranks it — the sidebar is a list to scan, not a
+   set of headings to read. */
+.sidebar-sect__label { color: var(--text); line-height: 1.25; font-weight: 500; font-size: .82rem; }
 .sidebar-sect__blurb {
-  font-size: .72rem; color: var(--muted); line-height: 1.2;
+  font-size: .68rem; color: var(--muted); line-height: 1.2;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -205,7 +203,7 @@ body[data-nav="open"] .sidebar {
    hang off the parent's arrow. The rail sits at the chevron's optical centre
    (summary padding .55rem + half the 15px chevron ≈ 1rem from the edge). */
 .sidebar-sect__pages {
-  display: grid; gap: .05rem;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: .05rem;
   margin-left: 1rem;                 /* rail position = chevron centre */
   padding: .1rem 0 .35rem;
   border-left: 1.5px solid var(--border);
@@ -213,6 +211,7 @@ body[data-nav="open"] .sidebar {
 .sidebar-sect__page,
 .sidebar-sect__more {
   position: relative;
+  font-weight: 400;
   /* The connector tick lives INSIDE the box as left padding rather than in a
      negative margin outside it. Truncating long titles needs overflow:hidden,
      which would clip anything drawn outside the box — the ticks vanished. */
@@ -232,7 +231,7 @@ body[data-nav="open"] .sidebar {
 }
 .sidebar-sect__page:hover,
 .sidebar-sect__more:hover { background: var(--surface-2); color: var(--text); }
-.sidebar-sect__page.is-active { color: var(--text); background: var(--accent-soft); font-weight: 650; }
+.sidebar-sect__page.is-active { color: var(--text); background: var(--accent-soft); text-shadow: .3px 0 0 currentColor; }
 /* the active item's connector + a segment of rail glow in the accent */
 .sidebar-sect__page.is-active::before { background: var(--accent); }
 .sidebar-sect__more { color: var(--accent); }
@@ -273,7 +272,6 @@ body[data-nav="open"] .sidebar {
 .sidebar-sect__text { min-width: 0; }
 .sidebar-sect__label,
 .sidebar-sect__blurb,
-.sidebar-sect__page,
 .sidebar__group,
 .sidebar__fixed-label {
   min-width: 0;
@@ -281,39 +279,15 @@ body[data-nav="open"] .sidebar {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Page titles get two lines before truncating — they are the one label here
+   whose tail carries meaning. */
+.sidebar-sect__page {
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+}
 .sidebar__fixed-item { min-width: 0; }
 .brand-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* --- tool rail -----------------------------------------------------------
-   Icon row under the brand, on every page. Previously the tool links only
-   existed on the home sidebar, so reaching Bookmarks or Settings from a doc
-   page meant navigating home first.
-
-   Outside .sidebar__body on purpose: it must not scroll away with a long page
-   list. Icons rather than labels so it costs one row instead of seven and
-   leaves the section list room to breathe — labels live on the tab strip at
-   the top of each tool page. */
-
-.toolrail {
-  display: flex;
-  gap: 2px;
-  padding: .35rem .55rem .5rem;
-  margin: 0 .25rem;
-  border-bottom: 1px solid var(--border);
-  flex: none;
-}
-.toolrail__item {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 0;              /* share the width evenly at any sidebar size */
-  min-width: 0;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  color: var(--muted);
-  transition: color .15s, background .15s;
-
-  svg { width: 16px; height: 16px; }
-  &:hover { color: var(--text); background: var(--surface-2); }
-  &.is-active { color: var(--accent); background: var(--accent-soft); }
-}

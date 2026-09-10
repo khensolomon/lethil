@@ -49,13 +49,6 @@
     </button>
   </div>
 
-  {%- comment -%}
-    The tool rail sits directly under the brand, outside the scrolling body, so
-    it stays put whichever page you are on and however far the page list below
-    it scrolls.
-  {%- endcomment -%}
-  {% include tool-rail.html %}
-
   <div class="sidebar__body">
     {% if include.is_docs %}
     {%- comment -%} ---- Mode 1: pages within the active section ---- {%- endcomment -%}
@@ -75,7 +68,7 @@
       {%- if sect_overview -%}
         <a class="sidebar__link sidebar__link--overview{% if page.url == sect_overview.url %} is-active{% endif %}"
            href="{{ sect_overview.url | relative_url }}">
-          <span class="sidebar__link-text" data-text="Overview">Overview</span>
+          <span class="sidebar__link-text">Overview</span>
         </a>
       {%- endif -%}
       {%- include nav-docs.html key=include.active_section -%}
@@ -110,7 +103,7 @@
         {%- assign f = row | split: "‖" -%}
         {%- if f[5] == "" or f[5] == nil -%}
         <a class="sidebar__link{% if page.url == f[3] %} is-active{% endif %}" href="{{ f[3] | relative_url }}">
-          <span class="sidebar__link-text" data-text="{{ f[2] | escape }}">{{ f[2] }}</span>
+          <span class="sidebar__link-text">{{ f[2] }}</span>
         </a>
         {%- endif -%}
       {%- endfor -%}
@@ -122,7 +115,7 @@
           {%- assign f = row | split: "‖" -%}
           {%- if f[5] == grp -%}
           <a class="sidebar__link{% if page.url == f[3] %} is-active{% endif %}" href="{{ f[3] | relative_url }}">
-            <span class="sidebar__link-text" data-text="{{ f[2] | escape }}">{{ f[2] }}</span>
+            <span class="sidebar__link-text">{{ f[2] }}</span>
           </a>
           {%- endif -%}
         {%- endfor -%}

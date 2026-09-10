@@ -1,0 +1,80 @@
+{%- comment -%}
+  The band under the topbar. It used to hold a tab strip listing the tools,
+  which the Tools popover now does better and from every page. The band itself
+  was worth keeping — it separates the chrome from the content and gives the
+  page a top edge — so it holds what a tab strip never did: the current
+  location, and where to go next.
+
+  Left  — breadcrumb. The section link is the one that was missing: from a
+          page there was no one-click route back to its section index.
+  Right — previous / next within the section, in sidebar order, so a runbook
+          can be walked front to back without returning to the list.
+
+  Tool pages get the tool's own blurb on the right instead: they have no
+  sequence, and the popover already handles moving between them.
+{%- endcomment -%}
+{%- assign cb_tool = site.data.tools | where: "url", page.url | first -%}
+
+<nav class="contextbar" aria-label="Breadcrumb and page navigation">
+  <div class="contextbar__inner">
+    <ol class="contextbar__crumbs">
+      <li><a href="{{ '/' | relative_url }}">Home</a></li>
+
+      {%- if cb_tool -%}
+        <li aria-current="page">{{ cb_tool.label }}</li>
+      {%- else -%}
+        {%- assign cb_meta = site.data.sections | where: "key", page.section | first -%}
+        {%- if cb_meta -%}
+          <li><a href="{{ '/' | append: cb_meta.key | append: '/' | relative_url }}">{{ cb_meta.label }}</a></li>
+        {%- endif -%}
+        {%- unless page.section_overview -%}
+          {%- include doc-title.html doc=page -%}
+          <li aria-current="page">{{ doc_title }}</li>
+        {%- endunless -%}
+      {%- endif -%}
+    </ol>
+
+    {%- if cb_tool -%}
+      <p class="contextbar__blurb">{{ cb_tool.blurb }}</p>
+    {%- elsif page.section_overview -%}
+      {%- comment -%}
+        A section index is not IN its own sequence, so there is no previous or
+        next from here — without this it fell through the walk below and
+        offered a link to the section's last page as "previous".
+      {%- endcomment -%}
+      {%- include nav-docs.html key=page.section -%}
+      <p class="contextbar__blurb">{{ nav_docs | size }} page{% if nav_docs.size != 1 %}s{% endif %}</p>
+    {%- elsif page.section and page.section != "" -%}
+      {%- comment -%} previous / next in the same order the sidebar lists {%- endcomment -%}
+      {%- include nav-docs.html key=page.section -%}
+      {%- assign cb_prev = "" -%}
+      {%- assign cb_next = "" -%}
+      {%- assign cb_seen = false -%}
+      {%- for row in nav_rows -%}
+        {%- assign rf = row | split: "‖" -%}
+        {%- if cb_seen and cb_next == "" -%}{%- assign cb_next = row -%}{%- endif -%}
+        {%- if rf[3] == page.url -%}{%- assign cb_seen = true -%}{%- endif -%}
+        {%- unless cb_seen -%}{%- assign cb_prev = row -%}{%- endunless -%}
+      {%- endfor -%}
+
+      {%- if cb_prev != "" or cb_next != "" -%}
+      <div class="contextbar__steps">
+        {%- if cb_prev != "" -%}
+          {%- assign pf = cb_prev | split: "‖" -%}
+          <a class="contextbar__step" href="{{ pf[3] | relative_url }}" title="{{ pf[2] }}" rel="prev">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+            <span>{{ pf[2] }}</span>
+          </a>
+        {%- endif -%}
+        {%- if cb_next != "" -%}
+          {%- assign nf = cb_next | split: "‖" -%}
+          <a class="contextbar__step contextbar__step--next" href="{{ nf[3] | relative_url }}" title="{{ nf[2] }}" rel="next">
+            <span>{{ nf[2] }}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </a>
+        {%- endif -%}
+      </div>
+      {%- endif -%}
+    {%- endif -%}
+  </div>
+</nav>

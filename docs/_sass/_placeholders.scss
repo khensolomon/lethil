@@ -96,28 +96,69 @@ pre.has-copy:hover .copybtn,
   &[aria-pressed="true"].is-on,
   &.is-on { color: var(--accent); svg { fill: currentColor; } }
 }
-.pageact[data-ph-toggle][aria-pressed="false"] { opacity: .55; }
+/* The values toggle reads its state the same way the Save button does — a
+   filled accent chip when on — instead of a dimmed icon that looked disabled
+   rather than off. Off adds a slash across the icon so the two states differ
+   in shape, not only in colour. */
+.pageact[data-ph-toggle] { position: relative; }
+.pageact[data-ph-toggle][aria-pressed="false"]::after {
+  content: "";
+  position: absolute;
+  left: 6px; right: 6px; top: 50%;
+  height: 1.5px;
+  background: currentColor;
+  transform: rotate(-45deg);
+  opacity: .8;
+}
 
 // --- settings: keys ---------------------------------------------------------
 // Sort sits in the header of the column it sorts. The select is transparent
 // and unbordered so the header still reads as a header, with a caret hinting
 // it is interactive.
-.phsort { display: inline-flex; align-items: center; gap: .3rem; cursor: pointer; }
-.phsort__label { pointer-events: none; }
-.phsort select {
-  padding: 0 .2rem;
+.phsort {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+}
+.phsort__label { flex: none; }
+
+/* Custom trigger; the real select sits on top of it, invisible, so the platform
+   still owns the menu. */
+.phsort__control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  max-width: 100%;
+  padding: .1rem .3rem;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: transparent;
   color: var(--muted);
-  font: inherit;
-  font-size: .64rem;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   cursor: pointer;
 
   &:hover { border-color: var(--border); color: var(--text); }
-  &:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  // Focus lives on the invisible select, so the ring has to be drawn here.
+  &:focus-within { border-color: var(--accent); color: var(--text); }
+}
+.phsort__icon { width: 13px; height: 13px; flex: none; }
+.phsort__value {
+  font-size: .64rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.phsort select {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  border: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .phform {
@@ -136,10 +177,14 @@ pre.has-copy:hover .copybtn,
   th:first-child { width: 42%; }
   td {
     padding: .35rem .5rem .35rem 0;
-    border-bottom: 1px solid var(--border);
     vertical-align: top;
   }
   td:last-child { padding-right: 0; }
+
+  /* The rule belongs to the ROW, not to each cell. Per-cell borders meant the
+     two columns drew their own line at their own content height, so an
+     expanded key cell left the two halves of the rule at different heights. */
+  tbody tr { border-bottom: 1px solid var(--border); }
 }
 .phform__loading { padding: .8rem 0; font-size: .78rem; }
 
@@ -147,37 +192,72 @@ pre.has-copy:hover .copybtn,
 // takes column 1 and the collapsible takes column 2. When expanded the list
 // grows inside column 2, under its own summary, instead of pushing a second
 // line into every row whether used or not.
-.phrow__keycell {
-  padding-top: .5rem !important;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: .45rem;
-  align-items: baseline;
-}
+.phrow__keycell { padding-top: .5rem !important; }
+
 .phrow__key {
   font-family: var(--font-mono);
   font-size: .8rem;
   color: var(--accent);
   word-break: break-all;
 }
+
+/* Use count as a superscript badge on the key itself. */
+.phrow__count {
+  margin-left: .15rem;
+  font-family: var(--font-mono);
+  font-size: .58rem;
+  color: var(--muted);
+  vertical-align: super;
+  line-height: 0;
+  &.is-zero { opacity: .45; }
+}
 .phrow.is-target td { background: var(--accent-soft); }
 
 // where a key is used — collapsed by default, 48 rows stay scannable
+// The key IS the disclosure: one target, one thing to read.
 .phuses { min-width: 0; }
 .phuses__summary {
-  cursor: pointer; list-style: none;
-  font-size: .66rem; color: var(--muted); opacity: .8;
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: baseline;
   &::-webkit-details-marker { display: none; }
-  &::before { content: "▸ "; }
-  &:hover { color: var(--text); }
+  &::before {
+    content: "▸";
+    margin-right: .25rem;
+    font-size: .6rem;
+    color: var(--muted);
+    opacity: .6;
+  }
+  &:hover .phrow__key { text-decoration: underline; text-underline-offset: 2px; }
 }
-.phuses[open] .phuses__summary::before { content: "▾ "; }
-.phuses__list {
-  list-style: none; margin: .25rem 0 .2rem; padding: 0 0 0 .8rem;
-  border-left: 1px solid var(--border);
-  display: grid; gap: .1rem;
+.phuses[open] .phuses__summary::before { content: "▾"; }
 
-  a { font-size: .72rem; color: var(--muted); text-decoration: none; }
+// Inline and numbered: a handful of short titles read better as a wrapped run
+// than as a column of one-item lines. The counter carries the numbering so the
+// markers can sit inside each link's hit area.
+.phuses__list {
+  counter-reset: phuse;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .15rem .5rem;
+  margin: .3rem 0 .25rem;
+  padding: 0 0 0 .9rem;
+  border-left: 1px solid var(--border);
+
+  li { counter-increment: phuse; min-width: 0; }
+  a {
+    font-size: .71rem;
+    color: var(--muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  a::before {
+    content: counter(phuse) ".";
+    margin-right: .2rem;
+    opacity: .55;
+  }
   a:hover { color: var(--accent); }
 }
 
@@ -257,59 +337,269 @@ pre.has-copy:hover .copybtn,
 }
 
 @media (max-width: 620px) {
-  .phform th:first-child { width: 38%; }
+  .phform th:first-child { width: 44%; }
   .phrow__key { font-size: .74rem; }
+
+  /* Icon only. The chosen order is visible in the rows themselves, and a
+     wrapped two-word label was overrunning the VALUE column. */
+  .phsort__value { display: none; }
+  .phsort__control { padding: .15rem .25rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .copybtn, .phinput__btn, .pageact { transition: none; }
 }
 
 // ===========================================================================
-// TOOLBAR — the tab strip at the top of each tool page.
+// CONTEXT BAR — the band under the topbar.
 //
-// Turns five separate URLs into one workspace: arriving at any tool shows the
-// others and which one you are on. Scrolls horizontally rather than wrapping,
-// so it stays one row at every width.
+// Keeps the frame the tab strip gave the page (surface, hairline, top edge)
+// but carries orientation instead of a duplicate menu: breadcrumb on the left,
+// step navigation on the right.
 // ===========================================================================
-.toolbar {
+.contextbar {
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
-.toolbar__inner {
+.contextbar__inner {
   display: flex;
-  gap: .15rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   max-width: 76rem;
   margin: 0 auto;
   padding: .4rem var(--gutter);
-  overflow-x: auto;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
+  min-height: 2.1rem;
 }
-.toolbar__tab {
+
+.contextbar__crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .3rem;
+  list-style: none;
+  margin: 0; padding: 0;
+  min-width: 0;
+  font-size: .76rem;
+
+  li { display: flex; align-items: center; gap: .3rem; min-width: 0; }
+  // Separator drawn by CSS so the markup stays a clean ordered list.
+  li + li::before { content: "/"; color: var(--border-hover); }
+  a { color: var(--muted); text-decoration: none; }
+  a:hover { color: var(--accent); }
+  li[aria-current] {
+    color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+}
+
+.contextbar__blurb {
+  margin: 0;
+  font-size: .72rem;
+  color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: none;
+}
+
+.contextbar__steps { display: flex; align-items: center; gap: .15rem; flex: none; }
+.contextbar__step {
   display: inline-flex;
   align-items: center;
-  gap: .35rem;
-  flex: none;
-  padding: .3rem .6rem;
-  border-radius: var(--radius-btn);
+  gap: .2rem;
+  max-width: 11rem;
+  padding: .2rem .4rem;
+  border-radius: var(--radius-sm);
   color: var(--muted);
   text-decoration: none;
-  font-size: .8rem;
-  white-space: nowrap;
+  font-size: .74rem;
   transition: color var(--dur-nav) var(--ease), background var(--dur-nav) var(--ease);
 
-  svg { width: 15px; height: 15px; flex: none; }
+  svg { width: 13px; height: 13px; flex: none; }
+  span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   &:hover { color: var(--text); background: var(--surface-2); }
-  &.is-active { color: var(--accent); background: var(--accent-soft); font-weight: 550; }
 }
 
-@media (max-width: 620px) {
-  // Labels drop away on narrow screens so all six tabs stay reachable without
-  // scrolling; the active one keeps its label for orientation.
-  .toolbar__tab span { display: none; }
-  .toolbar__tab.is-active span { display: inline; }
-  .toolbar__tab { padding: .35rem .55rem; }
+@media (max-width: 720px) {
+  // Only the direction arrows survive: two truncated titles in a narrow bar
+  // read as noise, and the arrow plus its title attribute still says enough.
+  .contextbar__step span { display: none; }
+  .contextbar__step { max-width: none; }
+  .contextbar__blurb { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .contextbar__step { transition: none; } }
+
+// ===========================================================================
+// TOOL MENU — the topbar popover.
+//
+// Anchored under its button on desktop. On narrow screens it becomes a
+// full-width sheet under the header instead: a 260px box pinned to the right
+// edge of a 360px viewport is most of the screen anyway, and pretending
+// otherwise just makes it cramped and easy to miss.
+// ===========================================================================
+.toolmenu { position: relative; flex: none; }
+
+.toolmenu__panel {
+  position: absolute;
+  top: calc(100% + .45rem);
+  right: 0;
+  z-index: 5;
+  width: 16.5rem;
+  padding: .35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+
+  &[hidden] { display: none; }
+}
+
+// The little arrow pointing back at the button.
+.toolmenu__panel::before {
+  content: "";
+  position: absolute;
+  top: -5px; right: 11px;
+  width: 9px; height: 9px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+
+.toolmenu__title {
+  margin: .2rem .45rem .35rem;
+  font-size: .62rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .7;
+}
+
+.toolmenu__item {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  padding: .4rem .45rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--dur-nav) var(--ease);
+
+  &:hover { background: var(--surface-2); }
+  &.is-active { background: var(--accent-soft); }
+  &.is-active .toolmenu__label { color: var(--accent); }
+}
+.toolmenu__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px;
+  flex: none;
+  margin-top: 1px;
+  color: var(--muted);
+
+  svg { width: 16px; height: 16px; }
+}
+.toolmenu__item:hover .toolmenu__icon,
+.toolmenu__item.is-active .toolmenu__icon { color: var(--accent); }
+
+.toolmenu__text { min-width: 0; display: flex; flex-direction: column; }
+.toolmenu__label { font-size: .84rem; font-weight: 500; line-height: 1.25; }
+.toolmenu__blurb {
+  font-size: .7rem;
+  color: var(--muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolmenu.is-open .toolmenu__btn { color: var(--accent); background: var(--accent-soft); }
+
+@media (max-width: 560px) {
+  .toolmenu__panel {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0; right: 0;
+    width: auto;
+    border-radius: 0;
+    border-left: 0; border-right: 0;
+    padding: .4rem .5rem .6rem;
+  }
+  .toolmenu__panel::before { display: none; }   // nothing left to point at
+  .toolmenu__blurb { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) { .toolmenu__item { transition: none; } }
+
+// ===========================================================================
+// SEARCH HIT BAR — shown when a page is opened from a search result.
+// ===========================================================================
+mark.hit {
+  background: var(--accent-soft);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 .1em;
+}
+mark.hit.is-current {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.hitbar {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  max-width: calc(100vw - 2rem);
+  padding: .3rem .35rem .3rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.hitbar__term {
+  font-size: .76rem;
+  font-weight: 500;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hitbar__count { font-size: .68rem; color: var(--muted); flex: none; }
+.hitbar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+
+  svg { width: 14px; height: 14px; }
+  &:hover { color: var(--text); background: var(--surface-2); }
+}
+
+@media (max-width: 560px) {
+  // Centred and clear of the thumb zone on a phone.
+  .hitbar { left: 1rem; right: 1rem; justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .toolrail__item, .toolbar__tab { transition: none; }
+  mark.hit { scroll-behavior: auto; }
+}
+
+/* The tools glyph leans in a little on hover — the one control that opens a
+   menu rather than performing an action, so it can afford to feel alive. */
+.toolmenu__glyph {
+  transition: transform var(--dur-nav) var(--ease);
+}
+.toolmenu__btn:hover .toolmenu__glyph { transform: scale(1.08); }
+.toolmenu.is-open .toolmenu__glyph { transform: rotate(45deg) scale(.92); }
+
+@media (prefers-reduced-motion: reduce) {
+  .toolmenu__glyph { transition: none; }
+  .toolmenu.is-open .toolmenu__glyph { transform: none; }
 }

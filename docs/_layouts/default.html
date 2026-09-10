@@ -14,7 +14,7 @@
   Defaults: docs + wide viewport = open (session-sticky), everything else = closed.
 {%- endcomment -%}
 {%- comment -%}
-  is_docs = "are we inside any docs section?" (docs, python, linux, …).
+  is_docs = "is this page inside any docs section?" (docs, python, linux, …).
   active_section = which one (from the page's `section`, set per-collection in
   _config.yml). On the home page both are empty/false, and the sidebar shows
   the section directory instead of a single section's pages.
@@ -124,7 +124,7 @@
         Search sits in the trailing cluster on every page. It used to be in the
         leading cluster on docs pages, which left-aligned it there and right-
         aligned it on home — the same control in two places depending on where
-        you were.
+        navigation was headed.
       {%- endcomment -%}
       <div class="topbar__cluster">
         {%- if is_docs -%}
@@ -132,7 +132,7 @@
         {%- include doc-title.html doc=page -%}
         {%- comment -%}
           Page actions live in the sticky topbar so they stay reachable however
-          far down the page you are, and are icon-only so they cost the same
+          far down the page the reader is, and are icon-only so they cost the same
           space on a phone as on a desktop. Each carries a visually-hidden
           label and a title, so the icon is never the only cue.
         {%- endcomment -%}
@@ -152,10 +152,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M9 6l-5 6 5 6"/><path d="M15 6l5 6-5 6"/>
             </svg>
-            <span class="phbar__label visually-hidden">Your values</span>
+            <span class="phbar__label visually-hidden">Stored values</span>
           </button>
         </div>
         {%- endif -%}
+        {% include tool-menu.html %}
         {% include search.html %}
       </div>
     </header>
@@ -173,6 +174,8 @@
   {%- endcomment -%}
   <script src="{{ '/assets/js/bookmarks.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/placeholders.js' | relative_url }}?v={{ v }}" defer></script>
+  <script src="{{ '/assets/js/toolmenu.js' | relative_url }}?v={{ v }}" defer></script>
+  <script src="{{ '/assets/js/highlight.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/activity.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/stars.js' | relative_url }}?v={{ v }}" defer></script>
 </body>

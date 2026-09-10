@@ -230,7 +230,7 @@ sudo python3 setup.py \
 If the tunnel already exists in the Cloudflare dashboard and only the server-side install is needed (Docker, tunnel container, landing nginx), pass the tunnel token directly:
 
 ```bash
-sudo python3 setup.py --cloudflare-token <TUNNEL_TOKEN_FROM_DASHBOARD>
+sudo python3 setup.py --cloudflare-token <TUNNEL_TOKEN>
 ```
 
 This skips all robotic steps; public hostnames, the Access application, the Access policy, and the DNS records must then be added by hand. **Robotic mode is preferred** — manual mode exists for migration cases where the tunnel and DNS already exist.
@@ -411,8 +411,8 @@ For interactive (browser) login, Cloudflare opens a tab the first time the liste
 cloudflared access tcp \
     --hostname ssh.<admin-domain> \
     --url localhost:2222 \
-    --service-token-id <YOUR_TOKEN_ID> \
-    --service-token-secret <YOUR_TOKEN_SECRET> &
+    --service-token-id <TOKEN_ID> \
+    --service-token-secret <TOKEN_SECRET> &
 ssh -p 2222 -i ~/.ssh/prod_server root@localhost
 ```
 
@@ -734,8 +734,8 @@ For non-interactive access (no browser login), add the service token to the list
 cloudflared access tcp \
     --hostname ssh.<admin-domain> \
     --url localhost:2222 \
-    --service-token-id <YOUR_TOKEN_ID> \
-    --service-token-secret <YOUR_TOKEN_SECRET> &
+    --service-token-id <TOKEN_ID> \
+    --service-token-secret <TOKEN_SECRET> &
 ssh -p 2222 -i ~/.ssh/prod_server root@localhost
 ```
 

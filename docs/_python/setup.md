@@ -1,6 +1,7 @@
 ---
 title: "Environment setup"
 description: "venv, pip, and project layout."
+group: "Environment"
 category: "Python"
 nav_order: 1
 tags: [python, venv, tooling]

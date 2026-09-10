@@ -1,6 +1,7 @@
 ---
 title: "Docker Swarm"
 description: "Single-node swarm running the zaideih and myordbok stacks."
+group: "Containers"
 category: "Server"
 nav_order: 3
 tags: [server, docker, swarm]

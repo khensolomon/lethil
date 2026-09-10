@@ -1,6 +1,7 @@
 ---
 title: "Python utilities"
 description: "Small helper scripts kept around between projects."
+group: "Environment"
 category: "Python"
 nav_order: 3
 tags: [python, utility, cli]

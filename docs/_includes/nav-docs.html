@@ -11,10 +11,10 @@
 
   Sets three variables (Liquid lets include-assigned variables leak back out):
 
-    nav_docs       filtered document objects — use when you need .content,
-                   .tags, .description, i.e. the whole page.
-    nav_rows       the same pages, SORTED, as delimited strings — use when you
-                   only need to render a link. Fields, split on "‖":
+    nav_docs       filtered document objects — for when .content,
+                   .tags or .description are needed, i.e. the whole page.
+    nav_rows       the same pages, SORTED, as delimited strings — for when only
+                   a link needs rendering. Fields, split on "‖":
                        [0] sort key   internal, ignore
                        [1] sort title internal, ignore
                        [2] title      resolved (front matter or filename)

@@ -5,7 +5,7 @@ layout: default
   Landing page for a section that has no hand-written one.
 
   This replaces the old redirect indexes. A redirect meant /server/ existed but
-  could never be looked at: the back button bounced you forward again, a shared
+  could never be looked at: the back button bounced forward again, a shared
   link always landed somewhere else than intended, and there was nowhere to see
   what a section actually contained without opening a page first.
 
@@ -15,6 +15,8 @@ layout: default
 {%- endcomment -%}
 {%- assign sec_meta = site.data.sections | where: "key", page.section | first -%}
 {%- include nav-docs.html key=page.section -%}
+
+{% include contextbar.html %}
 
 <div class="section-index">
   <header class="section-index__head">

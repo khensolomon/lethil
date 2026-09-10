@@ -23,7 +23,7 @@
     body.setAttribute("data-nav", open ? "open" : "closed");
     if (navBtn) navBtn.setAttribute("aria-expanded", String(open));
     // Only docs remembers the choice (per tab), so navigating between docs
-    // pages keeps the sidebar where you left it. Home always starts closed.
+    // pages keeps the sidebar as it was left. Home always starts closed.
     if (remember && isDocs) {
       try { sessionStorage.setItem("nav:docs", open ? "open" : "closed"); } catch (e) {}
     }
@@ -37,7 +37,7 @@
   /* Leaving home for a section page: start the destination with the sidebar
      collapsed. The home sidebar is a directory of the whole site; a section
      sidebar is a list of one section's pages. Carrying the open state across
-     that boundary lands you in a different-looking panel mid-navigation, which
+     that boundary lands the reader in a different-looking panel mid-navigation, which
      reads as a glitch rather than a transition.
 
      The destination decides its own initial state from sessionStorage before

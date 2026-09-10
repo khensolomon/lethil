@@ -1,6 +1,7 @@
 ---
 title: "Cloudflare Tunnel"
 description: "Outbound-only ingress with cloudflared — no open ports."
+group: "Ingress"
 category: "Server"
 nav_order: 4
 tags: [server, cloudflare, networking, tunnel]

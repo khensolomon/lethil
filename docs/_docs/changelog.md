@@ -7,10 +7,314 @@ title: "Changelog"
 description: "Notable changes, newest first."
 group: "Documentations"
 category: "Reference"
+# Indexed by title only. The changelog describes changes to the site itself, so
+# its text matches almost every query and crowds out the pages being searched
+# for — every entry mentioning "search" or "tunnel" is noise to someone looking
+# for the search or tunnel docs.
+search_content: false
 nav_order: 99
 ---
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
+
+## 26.09.10c
+
+- Rewrote the README without first- or second-person pronouns, and swept the
+  same rule through page copy, interface strings, and code comments. Roughly
+  forty instances across includes, layouts, scripts, and Sass.
+- Interface labels changed with it: the code-block toggle reads "Stored values"
+  rather than "Your values", and the settings and bookmarks copy describes what
+  happens rather than addressing the reader.
+- Older changelog entries were corrected too, so the convention holds
+  throughout the file rather than only from this point.
+
+## 26.09.10b
+
+- Rewrote the README: what the site does, how to add a page or a section, what
+  is needed to run it locally, and the logo situation.
+- Documented that `_config.yml` is read once at startup — `serve --livereload`
+  watches content, not configuration, so a new collection or `defaults` entry
+  needs a restart. This has cost real time more than once.
+- Recorded that Jekyll cannot read files outside its `source` directory, so
+  `docs/assets/logo.svg` cannot be sourced from the repository root. Symlinks
+  do not work either: a normal build copies the link into `_site` where it
+  dangles, and a `--safe` build — which is what GitHub Pages uses — drops it
+  silently. Both were tested rather than assumed. The README gives a `Makefile`
+  recipe that makes the copy a prerequisite of serving and updating, so a stale
+  logo cannot ship.
+
+## 26.09.10
+
+- Fixed long section blurbs overflowing the home sidebar. `.sidebar__sections`
+  is a grid, and a grid item's default `min-width` is `auto` — it refuses to
+  shrink below its own content. Each row was therefore as wide as its longest
+  blurb and ran past the panel, so the text was clipped by the sidebar's
+  overflow instead of truncating inside its own box: a hard cut, no ellipsis.
+  The tracks are `minmax(0, 1fr)` now, and the same fix went to the section nav
+  and the page lists, which had the same latent problem.
+- Grouped the remaining sections the way Docs already was. Server splits into
+  Containers, Ingress, Serving & storage and Automation; Linux into System,
+  Desktop and Remote & VMs; Python into Environment and Building; SQL into
+  Reference and Operations. Groups come from the same `group:` front matter, so
+  the section landing pages picked them up with no extra work.
+- Left Mobile, Notes, Quotes and Plex ungrouped: with one to three pages each,
+  a heading per group would outnumber the pages under it.
+
+## 26.09.09e
+
+- Lightened the search scrim, and moved it behind a `--scrim` token instead of
+  a hardcoded rgba dimmed by an opacity multiplier. The two dim layers — page
+  and topbar — have to agree exactly or the seam between them shows, and the
+  right strength differs per theme: a dark UI needs a heavier veil to read as
+  dimmed at all, so light and dark carry different values rather than sharing
+  one and being scaled.
+- Added `--radius-xs` (5px) for chips and badges. `--radius-sm` is tuned for
+  panels; on a 20px badge it rounds away most of the shape.
+- Moved the result rounding from the `<li>` to the `<a>`. The anchor is the
+  hover target, so the radius on the row wrapper rounded nothing visible.
+  The list gained a little padding so the rounded hover clears the panel edge.
+- Section chips are filled with no outline: eleven bordered pills in one strip
+  read as a row of empty boxes. Escalation is by fill alone — quiet, hover,
+  selected.
+- Kept the tint on the SELECTED chip rather than on the resting ones. Tinting
+  every chip by default and greying the active one inverts the signal; the
+  state that matters should be the state that stands out.
+- New Tools glyph: three rounded squares and a circle — a set of different
+  things, which is what the menu holds. The old bulleted-list mark was generic
+  and confusable with the Directory icon listed inside the menu itself. It
+  leans in slightly on hover and turns 45° while open.
+
+## 26.09.09d
+
+- Fixed sidebar labels being chopped mid-word. The cause was the bold-width
+  reservation added earlier: it rendered a hidden bold copy of the label inside
+  the label, and that copy was a block-level child, which silently disables
+  `text-overflow: ellipsis` on a box's inline content. Long titles therefore
+  had no ellipsis to fall back on.
+- Replaced the reservation with a faux bold. A `text-shadow` offset by a
+  fraction of a pixel thickens the strokes while leaving every metric
+  untouched, so the active row still stands out, still cannot reflow, and needs
+  nothing reserved. The `data-text` attributes are gone from the markup.
+- Sidebar page titles now wrap to two lines before truncating. They are the one
+  label whose tail carries meaning — "Lai Siangtho — e-book & presentation
+  suite" has no useful prefix to cut to.
+- Reworked the search field. It was an outlined white box inside a white
+  topbar, which reads as a form control bolted on. It is now a soft filled
+  well that lifts to a real surface, border and shadow only once focused.
+- The results panel detaches from the field by a small gap and is fully
+  rounded, instead of being welded to it with flattened corners. Joined, the
+  two read as one tall control; separated, the field stays a field and the
+  panel is clearly a surface floating over the page.
+- The shortcut hint is one chip instead of four. "/ or Ctrl + K" spelled out
+  every option inside the field; a single shortcut is hint enough, and "/"
+  still works.
+
+## 26.09.09c
+
+- Fixed the bright hairline between the header and the breadcrumb while search
+  is open. The topbar's dim overlay used `inset: 0`, which stops at the padding
+  box — the topbar's own `border-bottom` sat outside it and stayed lit. The
+  overlay now extends 1px past the bottom.
+- Removed the reserved scrollbar space from the section chip strip, which was
+  what pushed the chips up and left dead space beneath them. Styling
+  `::-webkit-scrollbar` forces the classic space-reserving scrollbar; in a
+  strip one line tall the track is thicker than the gap it lives in. The
+  scrollbar is gone entirely there — wheel, trackpad and drag still scroll it,
+  and a partly visible chip at the edge does the work of saying "more this
+  way". Chips are vertically centred.
+- Chip corners are `--radius-sm` (9px) instead of fully round.
+- The result count in the panel foot is vertically centred with symmetric
+  padding; it had been sitting against the top of its band.
+- Scrollbar thumbs elsewhere are inset by a transparent border so they read as
+  slim overlay pills, and arrow buttons stay removed.
+- The changelog is indexed by **title only**. It describes changes to the site
+  itself, so its text matched almost every query — every entry mentioning
+  "search" or "tunnel" crowded out the pages actually being looked for.
+  Searching "changelog" still finds the page. Added a `search_content: false`
+  front matter flag for any page that should behave the same way. The index
+  dropped from 363 records at 211KB to 297 at 149KB.
+
+## 26.09.09b
+
+- **Fixed the search index fusing words together.** It did
+  `strip_html | strip_newlines`, but stripping tags from `<p>a</p><p>b</p>`
+  yields "ab" with no separator, and strip_newlines removed the only thing
+  keeping blocks apart. The index literally contained "healthcheckcd" and
+  "hash.pyp". That broke snippets and matching alike: "healthcheck" and "cd"
+  no longer existed as separate words. A space before each tag before
+  stripping is the whole fix.
+- Also stripped raw `[[wikilinks]]` and decoded HTML entities, which were
+  reaching snippets as "[[Docker Swarm]]" and "ssh.&lt;ID&gt;" — `doc.content`
+  is the page before wikilinks.html runs.
+- **The index is now per heading**, not per page. Each `<h2>`/`<h3>` gets its
+  own record and anchor, so a result points at the section rather than the top
+  of a long runbook — 363 records, 211KB. Searching "hash" now returns one
+  result, Getting started › Hash, linking to `#hash`.
+- A page-level record is still emitted and ranked above heading records, so
+  searching a page by name finds the page, not one of its sections. At most
+  three rows come from any one page.
+- Snippets trim to word boundaries instead of a fixed ±40 characters, which
+  routinely cut through a path.
+- Result rows adopt the tools-menu rhythm: the section badge from
+  `sections.yml` as a leading mark, then "Page › Heading", then the snippet.
+- The panel uses `--border` and the same shadow as the tools card. Against the
+  dim, the heavier `--border-hover` read as a hard outline rather than an edge.
+- **The dim now covers the topbar.** The topbar sits above the dim layer, so
+  while the page darkened it stayed lit and looked like the selected element.
+  It gets its own overlay in the same colour, under the search box's z-index,
+  so the box and panel stay bright and the dim reads as one continuous surface.
+
+## 26.09.09
+
+- Opening a page from a search result now jumps to the match. The term travels
+  on the link as `?q=`, and the destination marks every occurrence, scrolls the
+  first into view, and shows a small bar to step between them or clear. A
+  query parameter rather than a `#:~:text=` fragment: the fragment syntax is
+  not supported everywhere, and a parameter survives being copied or reloaded.
+  Clearing also strips `?q=` so a shared link stays clean.
+- The highlighter skips placeholder spans. Their text is rewritten by
+  placeholders.js, so anything wrapped inside one would be discarded on the
+  next repaint.
+- Rebuilt the sort control on the settings page. A bare styled `<select>`
+  shrank to its own text and overran the VALUE column on narrow screens, and
+  its open menu sat over the heading. The native select is kept for the picker
+  — it is the right control on a phone — but rendered transparently over a custom
+  own trigger, so the appearance is ours and the menu stays the platform's.
+- Below 620px that trigger is icon-only: the chosen order is already visible in
+  the rows, and a two-word label had nowhere to go.
+
+## 26.09.08f
+
+- Fixed clicking a section chip closing the search panel. The click handler
+  rebuilt the whole chip strip, which removed the very button that had been
+  clicked; the document-level outside-click listener then ran, asked
+  `box.contains(e.target)` about a node no longer in the document, concluded
+  the click was outside, and closed the panel. Chips are now repainted in
+  place. The outside-click listener also ignores detached targets, so
+  re-rendering anything inside the panel cannot resurface this.
+- Fixed refocusing an empty search box showing nothing, which made a page
+  reload the only way to get the panel back. The focus handler still had the
+  old `if (input.value.trim())` guard from when an empty box meant "close" —
+  it browses now.
+- Added a thin scrollbar to the chip strip and the result list. No track, no
+  arrow buttons, and the thumb only appears on hover or while the pane has
+  keyboard focus. The thumb is transparent rather than absent when idle, so
+  revealing it does not reflow the content.
+- The chip strip scrolls with a plain mouse wheel. Wheels have no horizontal
+  axis, so past the fifth chip the rest were unreachable for anyone not on a
+  trackpad.
+
+## 26.09.08e
+
+- The search panel now browses as well as searches, so the directory is
+  reachable from every page without leaving the current one. An empty box
+  used to close the panel and show nothing; it now lists every page, with
+  section chips above it. Type and the same list filters; the active chip
+  keeps constraining the results.
+- Chips are the only control in the panel, deliberately. The point was to make
+  browsing available everywhere, not to grow a search form with options.
+- Both indexes load in parallel on first use — `search.json` for text matching
+  and snippets, `directory.json` for the section, description and tags that
+  browsing needs. Neither is fetched until the box is used.
+- The chosen section persists for the tab, so moving between pages keeps the
+  filter last browsed under.
+- Browsing can list every page, so the result area scrolls; search results are
+  capped at eight and never reach that height. In the phone overlay the cap is
+  removed and the list owns the screen.
+- Wrote the height as an interpolated `min()` so Sass emits it literally —
+  libsass rejects mixing `vh` and `rem` inside its own `min()`, the same
+  limitation already worked around in the hero.
+
+## 26.09.08d
+
+- Settings rows: the key itself is now the disclosure, with its use count as a
+  superscript badge. A separate "N pages" summary beside it was a second thing
+  to read and a second thing to aim at for the same action.
+- The usage list is an `<ol>` rendered inline and wrapped, with the number
+  drawn by a CSS counter inside each link's hit area. A handful of short titles
+  reads better as a wrapped run than as a column of one-item lines.
+- Fixed the row rule breaking across the two columns. The border was on each
+  `td`, so the columns drew their own line at their own content height and an
+  expanded key cell left the two halves at different heights. It belongs to the
+  row.
+- The values toggle now shows its state the way Save does — a filled accent
+  chip when on — plus a slash across the icon when off, so the two states
+  differ in shape and not only in colour. Dimming alone read as disabled rather
+  than off.
+- Redrew the tool icons. Directory was four equal tiles that said "grid" rather
+  than "catalogue"; Graph was three loose circles with no anchor; Todo could
+  have been a checklist or a slider; Settings used a gear where the page is
+  really a list of named values. Now: a tile beside list rows, a rooted node
+  tree, a clipboard with a tick, and sliders.
+- Renamed placeholders in the deployment guide: `YOUR_TOKEN_ID` to `TOKEN_ID`,
+  `YOUR_TOKEN_SECRET` to `TOKEN_SECRET`, `TUNNEL_TOKEN_FROM_DASHBOARD` to
+  `TUNNEL_TOKEN`.
+
+## 26.09.08c
+
+- Replaced the tool tab strip with a **context bar**, keeping the band under
+  the topbar but giving it something the popover does not already do. The strip
+  listed the tools; the Tools popover now does that from every page, so the
+  strip was a second copy on six of them.
+- The band now carries a **breadcrumb** on the left and **previous / next
+  within the section** on the right, in the same order the sidebar lists. The
+  section link was the piece genuinely missing: from a page there was no
+  one-click route back to its section index.
+- Tool pages show the tool's blurb instead of steps — they have no sequence.
+  Section indexes show their page count, and are excluded from the step walk:
+  a section index is not in its own sequence, and without the exclusion it
+  offered the section's last page as "previous".
+- Under 720px only the direction arrows remain; two truncated titles in a
+  narrow bar read as noise, and the arrow plus its title still says enough.
+- Lightened the sidebar. Section labels drop from 550 weight at full size to
+  500 at .82rem, blurbs and the chevron shrink to match, and page links are
+  explicitly normal weight. With a topbar carrying the brand, search and the
+  tools popover, a heavy label in the sidebar was competing with chrome that
+  already outranks it — the sidebar is a list to scan, not a set of headings.
+
+## 26.09.08b
+
+- Replaced the sidebar tool rail with a **Tools popover in the topbar**. The
+  rail duplicated the tab strip already at the top of every tool page — the
+  same menu twice, in two visual languages. One button costs a fixed 30px
+  on any page, so the sidebar keeps its full height for the section's
+  pages, and the menu itself can afford labels and blurbs again.
+- Header contents are now: Tools and search everywhere, plus Save and the
+  values toggle on documentation pages.
+- The popover is a disclosure, not an ARIA menu: its contents are ordinary
+  links, so `aria-expanded` is the honest description and there is no
+  arrow-key model to learn. Escape closes it and returns focus to the button;
+  clicking outside or tabbing past the last link closes it without stealing
+  focus back from wherever navigation was headed.
+- On screens under 560px it becomes a full-width sheet under the header rather
+  than a narrow anchored box, which on a 360px viewport would have taken most
+  of the width anyway while being harder to hit.
+- The tab strip on tool pages is unchanged; both still come from
+  `_data/tools.yml`.
+
+## 26.09.08
+
+Corrected instructions that had gone stale. Verified against current package
+sources rather than from memory.
+
+- `qemu-kvm` no longer exists on Ubuntu 24.04 or Debian 11 and later — it was a
+  transitional package and has been removed. Replaced with `qemu-system-x86`,
+  noted `qemu-system-x86-hwe` for hardware enablement kernels, and mentioned
+  `qemu-system` for the architecture-agnostic case.
+- Dropped `bridge-utils` from the same install. It is deprecated, `brctl` is
+  superseded by `ip link` and `bridge link`, and libvirt does not need it — the
+  provisioning page already uses the replacements.
+- The NodeSource `setup_current.x` one-liner is deprecated: it prints a banner,
+  waits, and is slated to stop working. Replaced with the current keyring and
+  `nodistro` repo setup, where the version is chosen by `NODE_MAJOR` rather
+  than by the script name.
+- `python-is-python3` instead of hand-symlinking `/usr/bin/python`. An
+  unmanaged symlink survives upgrades that move its target and conflicts with
+  the package.
+- Noted that MariaDB's tools are `mariadb`, `mariadb-dump` and `mariadb-admin`
+  since 10.5; the `mysql*` names are legacy symlinks.
+- Flagged the pinned Flutter and Android SDK download URLs as version-pinned,
+  since both 404 once rotated out.
 
 ## 26.09.07f
 
@@ -76,7 +380,7 @@ Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
   looked identical to a broken one. An unset `<PLACEHOLDER>` is now a link:
   clicking it opens Settings scrolled to that exact row with the cursor in the
   field. Filled ones lose the dashed underline and read as content.
-- Every token carries a title explaining its state — no value set, showing your
+- Every token carries a title explaining its state — no value set, showing the stored
   value, or showing the placeholder because the toggle is off.
 - The values/placeholders toggle is hidden on pages that contain no
   placeholders, instead of sitting there doing nothing.
@@ -158,7 +462,7 @@ Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 - Leaving home for a section page starts the destination with the sidebar
   collapsed. The home sidebar is a directory of the whole site and a section
   sidebar is a list of one section's pages; carrying the open state across that
-  boundary landed you in a different-looking panel mid-navigation. The state is
+  boundary landed the reader in a different-looking panel mid-navigation. The state is
   written before navigating and read before the next page paints, so there is
   no flash. Moving between section pages still remembers the choice.
 - Search sits in the trailing topbar cluster on every page. It was in the
@@ -353,7 +657,7 @@ Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 ## 26.08.03h
 
 - Redesigned the facet chips so the label and count read as different things.
-  The label (what you filter by) is now the prominent text, and the count (how
+  The label (the thing filtered by) is now the prominent text, and the count (how
   many pages have it) sits in its own small rounded badge beside it — on a
   selected chip the badge inverts to a translucent capsule. No more "Guide 1"
   reading as one run-on token.
@@ -371,7 +675,7 @@ Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 - Reworked the Browse page layout and filtering. Removed the search box and
   the awkward two-column split; the category and tag facets now sit together in
   one full-width panel with proper phrase labels ("Filter by category", "Filter
-  by tag") instead of bare words. Both facets are multi-select now — you can
+  by tag") instead of bare words. Both facets are multi-select now — it is possible to
   pick Plex and Server together (categories combine with OR to broaden; tags
   combine with AND to narrow). A "Clear filters" button appears once anything is
   selected, and the current filters are reflected in the URL so a filtered view
@@ -517,7 +821,7 @@ Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
   settle — starting gently zoomed out and gliding into the fitted view — so the
   unfolding and the zoom-to-frame are a single smooth movement that ends
   exactly where it should. Panning, zooming, or dragging during the intro hands
-  control to you immediately, and Reset replays the smooth frame-in.
+  control back immediately, and Reset replays the smooth frame-in.
 - Tightened the vertical centring of the legend dot against its label.
 - The theme button is now two clicks instead of three. From auto it applies a
   single manual override to the opposite of whatever the device prefers (so on
@@ -562,7 +866,7 @@ Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
 ## 26.07.28c
 
-- Graph View is now fully interactive and "natural". You can drag empty space
+- Graph View is now fully interactive and "natural". Dragging empty space
   to pan, scroll to zoom (centred on the cursor), use the on-screen plus,
   minus, and reset buttons, drag a node to reposition it, and click a node to
   open its page — click and drag are told apart by a small movement threshold.
@@ -670,7 +974,7 @@ Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
   has already starred a repo has no star button on it at all; it now opens
   the repo's real page. Also removed a detail that didn't hold up: the star
   used to visually mark itself as given after any click, which claimed
-  something we can't actually know. It now instead quietly re-checks the real
+  something not actually knowable. It now instead quietly re-checks the real
   count when the visitor returns to the tab, and only celebrates if the count
   genuinely went up.
 - Every stylesheet, script, and the search index now carries a build-time
@@ -702,7 +1006,7 @@ Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
   quoted a Liquid tag as a literal code example inside backticks, but Jekyll
   runs Liquid over every Markdown file's raw text before Markdown ever sees
   the backticks — so the quoted tag was parsed as a real, invalid one and
-  broke the build. My first attempt at a fix made it worse: I tried escaping
+  broke the build. A first attempt at a fix made it worse: I tried escaping
   it with Liquid's own raw-text tag, written *unescaped*, which Liquid then
   paired with an unrelated closing tag later in this same file and silently
   swallowed everything in between — no crash, just missing content. The
@@ -736,7 +1040,7 @@ Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
   site's existing card/feature visual language instead of plain text rows.
 - Search can be focused from anywhere with `/` or `Ctrl`/`Cmd`+`K`, and
   unfocused with `Escape` — with a small `/` hint chip that disappears once
-  you start typing. Typing `/` inside any other field still types a literal
+  typing starts. Typing `/` inside any other field still enters a literal
   slash.
 - The rest of the page now dims behind the search box while results are
   showing on desktop, so the open state reads as clearly in-focus.

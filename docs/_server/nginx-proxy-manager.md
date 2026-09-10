@@ -1,6 +1,7 @@
 ---
 title: "Nginx Proxy Manager"
 description: "One proxy in front of every stack, on a shared external network."
+group: "Ingress"
 category: "Server"
 nav_order: 6
 tags: [server, nginx, proxy, networking, ssl]

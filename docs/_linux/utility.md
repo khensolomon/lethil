@@ -1,6 +1,7 @@
 ---
 title: "Linux utilities"
 description: "Desktop tweaks and command-line helpers."
+group: "System"
 category: "Linux"
 nav_order: 3
 tags: [utility, customization, UI]

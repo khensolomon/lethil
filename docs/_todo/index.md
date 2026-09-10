@@ -18,8 +18,8 @@ excerpt_separator: ""
 
 {%- comment -%}
   The Todo section index is a BOARD, not a redirect — every other section index
-  bounces you to its first page, but the whole point of this one is the
-  overview, so it renders in full.
+  bounces to its first page, but the whole point of this one is the overview,
+  so it renders in full.
 
   Two layouts are available (kanban columns / stacked list) and the toggle in
   the header switches between them. Both are rendered from the SAME markup —

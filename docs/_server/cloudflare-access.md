@@ -1,6 +1,7 @@
 ---
 title: "Cloudflare Access"
 description: "SSH through Access - interactive, CI, and short-lived certificates."
+group: "Ingress"
 category: "Server"
 nav_order: 5
 tags: [server, cloudflare, ssh, access, ci]

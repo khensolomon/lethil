@@ -1,6 +1,7 @@
 ---
 title: "Self-hosted runner"
 description: "Running the GitHub Actions runner on the VM, with Docker access."
+group: "Automation"
 category: "Server"
 nav_order: 9
 tags: [server, github-actions, ci, docker]
@@ -19,7 +20,7 @@ sudo ./svc.sh status
 
 ## Give the runner Docker access
 
-The runner usually runs as its own user, not the one you are logged in as.
+The runner usually runs as its own user, not the account used to log in.
 
 ```bash
 # Find the user the runner runs as

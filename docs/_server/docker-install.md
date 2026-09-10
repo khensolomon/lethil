@@ -1,6 +1,7 @@
 ---
 title: "Docker installation"
 description: "Installing Docker Engine from the official repository, plus production hardening."
+group: "Containers"
 category: "Server"
 nav_order: 1
 tags: [server, docker, install]

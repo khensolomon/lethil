@@ -24,13 +24,23 @@
   gap: .15rem;
   height: var(--btn);
   width: clamp(13rem, 26vw, 28rem);      /* fluid: grows with the viewport */
-  padding-left: .5rem;
-  background: var(--surface);            /* SAME colour as the results panel */
-  border: 1px solid var(--border);
+  padding-left: .55rem;
+  /* Recessed rather than outlined. A bordered white box in a white topbar
+     reads as a form control bolted on; a soft filled well reads as part of the
+     bar, and lifts to a real surface only once it is focused. */
+  background: var(--surface-2);
+  border: 1px solid transparent;
   border-radius: var(--radius-btn);
-  transition: border-color .2s, box-shadow .2s;
+  transition: background .18s var(--ease), border-color .18s var(--ease),
+              box-shadow .18s var(--ease);
 }
-.search__bar:hover { border-color: var(--border-hover); }
+.search__bar:hover { background: var(--surface-3); }
+.search:focus-within .search__bar,
+.search.has-results .search__bar {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
 .search__bar:focus-within { border-color: var(--border-hover); box-shadow: var(--shadow); }
 
 .search__toggle {
@@ -73,7 +83,7 @@
   }
 }
 .search__hint kbd {
-  padding: .08rem .4rem;
+  padding: .1rem .4rem;
   font-family: var(--font-mono);
   line-height: 1.35;
   color: var(--muted);
@@ -81,8 +91,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
 }
-.search__hint-sep { font-size: .68rem; }
-.search__hint-plus { font-size: .68rem; margin: 0 -.05rem; }
+.search__hint-sep, .search__hint-plus { display: none; }
 .search__bar:focus-within .search__hint,
 .search__input:not(:placeholder-shown) ~ .search__hint { display: none; }
 .search__back  { display: none; }        /* only appears in the phone overlay */
@@ -94,7 +103,7 @@
   height: 100%;
   padding: 0 .7rem 0 .2rem;
   color: var(--text);
-  background: var(--surface);
+  background: transparent;   /* the bar carries the fill now */
   border: none;
   border-radius: inherit;
 }
@@ -104,36 +113,64 @@
 /* --- results panel: joins the bar into one box --------------------------- */
 .search__panel {
   position: absolute;
-  top: 100%;                             /* touches the bar — no gap, no overlap */
-  left: 0; right: 0;                     /* exactly the bar's width */
-  background: var(--surface);            /* SAME colour as the bar */
-  border: 1px solid var(--border-hover);
-  border-top: none;                      /* the bar's bottom edge is the divider */
-  border-radius: 0 0 var(--radius-btn) var(--radius-btn);
+  /* A small gap instead of welding the panel to the bar. The joined shape made
+     the two read as one tall control; separated, the bar stays a field and the
+     panel is clearly a result surface floating over the page. */
+  top: calc(100% + .4rem);
+  left: 0; right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   overflow: hidden;
   z-index: $z-search;
 }
 
-/* active: bar + panel read as a single continuous, shadowed box — the top of
-   the panel and the bottom of the bar are flat where they meet, the outer
-   corners stay round, and the shadow wraps the whole thing (the seam sits
-   hidden between the two opaque surfaces). */
-.search.has-results .search__bar {
-  border-color: var(--border-hover);
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  box-shadow: var(--shadow);
-}
-
 /* --- result rows --------------------------------------------------------- */
 .search__results { list-style: none; margin: 0; padding: .35rem; max-height: 60vh; overflow-y: auto; }
 .search__results li { border-radius: var(--radius-sm); }
-.search__results a { display: block; padding: .6rem .7rem; }
+/* Same rhythm as the tools menu: a leading mark, a strong label, a muted
+   second line. The mark is the section badge from _data/sections.yml. */
+.search__results { padding: .25rem; }
+.search__results a {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  padding: .5rem .55rem;
+  border-radius: var(--radius-sm);
+}
 .search__results a:hover, .search__results a.is-focused { background: var(--surface-2); }
-.search__rtitle { font-weight: 550; }
-.search__rcat   { font-family: var(--font-mono); font-size: .7rem; color: var(--accent); }
-.search__rsnip  { color: var(--muted); font-size: .85rem; margin-top: .15rem;
+
+.search__badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px;
+  margin-top: 1px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-3);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  text-transform: uppercase;
+}
+.search__results a:hover .search__badge,
+.search__results a.is-focused .search__badge { background: var(--accent-soft); color: var(--accent); }
+
+.search__rbody { min-width: 0; display: flex; flex-direction: column; }
+.search__rtitle {
+  font-weight: 550;
+  font-size: .88rem;
+  line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Page › Heading. The page name stays dominant so a result still reads as
+   "which document", with the section as the qualifier. */
+.search__rsep  { margin: 0 .3rem; color: var(--border-hover); font-weight: 400; }
+.search__rhead { font-weight: 400; color: var(--muted); }
+.search__rcat  { font-family: var(--font-mono); font-size: .7rem; color: var(--accent); }
+.search__rsnip  { color: var(--muted); font-size: .78rem; margin-top: .1rem; line-height: 1.45;
                   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .search__rsnip mark { background: var(--accent-soft); color: var(--text); border-radius: 3px; padding: 0 .1em; }
 .search__empty { padding: 1rem .8rem; color: var(--muted); font-size: .9rem; }
@@ -225,17 +262,107 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: $z-dim;
-  background: rgba(10, 12, 16, .4);
+  background: var(--scrim);
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s var(--ease);
 }
 body.search-dim::before { opacity: 1; }
 
-/* the search box's own siblings within the topbar (brand, nav button, theme
-   toggle) — everything in the header EXCEPT the search box itself */
-body.search-dim .topbar__cluster > :not(.search) {
-  opacity: .4;
+/* The page dim cannot reach the topbar: the topbar sits at a higher z-index,
+   so while everything else darkened it stayed lit and looked like the selected
+   thing. It gets its own overlay in the same colour, layered under the search
+   box's z-index so the box and its panel stay bright and the dim reads as one
+   continuous surface across the whole window. */
+.topbar::after {
+  content: "";
+  position: absolute;
+  /* -1px at the bottom so the topbar's own border-bottom is covered too:
+     `inset: 0` stops at the padding box, leaving that hairline undimmed as a
+     bright line between the header and the breadcrumb. */
+  inset: 0 0 -1px;
+  z-index: $z-search - 1;
+  background: var(--scrim);
+  opacity: 0;
   pointer-events: none;
   transition: opacity .25s var(--ease);
+}
+body.search-dim .topbar::after { opacity: 1; }
+body.search-dim .topbar__cluster > :not(.search) { pointer-events: none; }
+
+/* --- browse mode ---------------------------------------------------------
+   The panel does double duty: empty box browses, typing filters. The chips are
+   the only control, so browsing never turns into a form full of options.     */
+
+.search__facets {
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+  margin: 0 .25rem;
+  padding: .4rem .25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+
+  /* No scrollbar at all in this strip. Styling ::-webkit-scrollbar forces the
+     classic space-reserving kind, which is what left the chips sitting high
+     with dead space beneath them. The row is one line tall — a track would be
+     thicker than the gap it lives in. Scrolling still works: wheel is mapped
+     to horizontal in search.js, and trackpad and drag are untouched. */
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+  &:empty { display: none; }
+}
+
+/* A partly-visible chip at the trailing edge is the affordance: it says "more
+   this way" without occupying a row of its own. */
+/* Filled chips with no outline: eleven bordered pills in one strip read as a
+   row of empty boxes. Escalation is by fill only — quiet, hover, selected. */
+.search__facet {
+  flex: none;
+  padding: .22rem .55rem;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: .72rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .15s, background .15s;
+
+  &:hover { color: var(--text); background: var(--surface-3); }
+
+  /* The SELECTED chip is the tinted one, not the resting ones. Tinting every
+     chip by default and greying the active one inverts the signal — the state
+     that matters should be the state that stands out. */
+  &.is-active {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+}
+
+/* Browsing can list every page, so the result area scrolls rather than
+   growing without limit. Search results are capped at eight and never reach
+   this height. */
+/* Interpolated so Sass emits the CSS min() literally instead of trying to
+   evaluate it — libsass rejects mixing vh and rem inside its own min(). */
+.search__results { max-height: #{"min(60vh, 27rem)"}; overflow-y: auto; }
+
+.search__foot {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: .4rem .6rem;
+  border-top: 1px solid var(--border);
+  font-size: .66rem;
+  color: var(--muted);
+  opacity: .8;
+
+  &:empty { display: none; }
+}
+
+@media (max-width: 699.98px) {
+  /* In the full-screen overlay the list owns the remaining height instead of
+     being capped, so the whole directory is reachable by scrolling the page. */
+  .search__results { max-height: none; }
 }

@@ -1,6 +1,7 @@
 ---
 title: "Clearing bot spam"
 description: "Deleting bot-inserted keyword rows by Unicode script, in batches."
+group: "Operations"
 category: "SQL"
 nav_order: 4
 tags: [mysql, regex, spam, maintenance]

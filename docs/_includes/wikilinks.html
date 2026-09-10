@@ -20,7 +20,7 @@
   blocks (<pre><code>) with that tag, so one split covers both.
 
   Splitting on "[[" then "]]" avoids any regex (Liquid has none). Each odd
-  segment after the first split is link-or-tail; we cut it at "]]".
+  segment after the first split is link-or-tail, cut at "]]".
 {%- endcomment -%}
 {%- assign wl_final = "" -%}
 {%- assign wl_chunks = include.text | split: "<code" -%}
