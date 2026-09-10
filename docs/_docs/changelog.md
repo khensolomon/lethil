@@ -17,6 +17,52 @@ nav_order: 99
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.09.10e
+
+- Added **page notes**: marking what needs fixing, on the page where it needs
+  fixing. A flag in the header captures a kind (outdated, unclear, missing,
+  typo) and a note, anchored to the nearest heading — so a note reads as
+  "Cloudflare Tunnel › Configure is outdated" rather than "the cloudflare page
+  needs work". Flagged headings carry a marker showing their count.
+- Collected at **`/todo/review/`**, a sibling of the board rather than a part
+  of it. The project board is untouched: same items, same statuses, same
+  progress. It gains only a quiet link across. Merging the two would have made
+  "fix a typo" count the same as "migrate off GCE".
+- Notes survive their heading being renamed. Anchors derive from heading text,
+  so an edit changes the id and would orphan every note on it — which is
+  exactly when the note matters. The heading text is stored alongside the id: a
+  renamed-but-recognisable heading re-attaches silently, and a note matching
+  neither is surfaced at the top of the page rather than dropped.
+- **Findings** on the same page, computed from the site's own indexes on each
+  visit, so they need no upkeep: pages with no description, duplicate titles
+  (which silently break wiki-links), pages with no inbound links, and tags used
+  exactly once. Currently 22 pages with no inbound links and 65 single-use
+  tags.
+- Export writes **markdown, not JSON** — a checkbox list grouped by page, with
+  the deep link under each item. A note that never leaves the browser never
+  becomes a commit, and this is the form that pastes straight into a board item
+  or a commit message.
+
+## 26.09.10d
+
+- Replaced the category eyebrow with a reading estimate and the page's group.
+  The breadcrumb already names the section, so the eyebrow was repeating it as
+  a link.
+- The estimate counts command blocks, not just prose. Measured first: most
+  pages here run two to three hundred words, so a plain words-per-minute figure
+  rounded almost everything to "1 min" and said nothing. Each block is weighted
+  at roughly thirty words of effort, which tracks what running one costs.
+- Headings gained anchor links, revealed on hover or keyboard focus. Kramdown
+  was already emitting the ids; there was simply no way to reach one without
+  reading the markup. Clicking copies the full URL.
+- Added a reading-progress bar under the topbar on long pages, throttled to
+  animation frames rather than firing on every scroll event.
+- Added a print stylesheet. Navigation, search, the tool menu, backlinks and
+  copy buttons are dropped; headings avoid breaking away from the text that
+  follows; command blocks avoid splitting across sheets and wrap instead of
+  being cut off at the margin; external links have their destination written
+  out, internal ones do not, since a bare path helps nobody holding paper.
+
 ## 26.09.10c
 
 - Rewrote the README without first- or second-person pronouns, and swept the

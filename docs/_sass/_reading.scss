@@ -1,0 +1,88 @@
+// ===========================================================================
+// READING AIDS — heading links, progress, and print.
+// ===========================================================================
+
+.docs__meta { color: var(--muted); }
+
+// --- heading links ----------------------------------------------------------
+// Hidden until the heading is hovered or the link itself is focused, so the
+// prose stays clean but the anchor is still reachable by keyboard.
+.prose {
+  h2, h3 { position: relative; }
+}
+.headlink {
+  margin-left: .4rem;
+  color: var(--border-hover);
+  text-decoration: none;
+  font-weight: 400;
+  opacity: 0;
+  transition: opacity var(--dur-nav) var(--ease), color var(--dur-nav) var(--ease);
+
+  &:hover { color: var(--accent); }
+  &:focus-visible { opacity: 1; }
+  &.is-copied::after {
+    content: "copied";
+    margin-left: .35rem;
+    font-family: var(--font-mono);
+    font-size: .6rem;
+    color: var(--accent);
+  }
+}
+h2:hover .headlink,
+h3:hover .headlink { opacity: 1; }
+
+@media (hover: none) { .headlink { opacity: .4; } }
+
+// --- reading progress -------------------------------------------------------
+// Pinned under the topbar rather than at the very top, so it tracks the
+// article and not the window chrome.
+.readbar {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0; right: 0;
+  height: 2px;
+  z-index: 4;
+  pointer-events: none;
+  background: transparent;
+}
+.readbar__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+// ===========================================================================
+// PRINT — a runbook is something people print or save as PDF.
+// ===========================================================================
+@media print {
+  // Everything that exists to navigate the site is noise on paper.
+  .topbar, .sidebar, .contextbar, .readbar, .hitbar, .search,
+  .toolmenu, .pageacts, .backlinks, .docs__tags, .footer,
+  .copybtn, .headlink, .todopage__nav { display: none !important; }
+
+  html, body { background: #fff; color: #000; }
+  .docs, .docs__content, .prose { max-width: none; padding: 0; margin: 0; }
+
+  // Page breaks: never orphan a heading at the foot of a sheet, and never
+  // split a command block across two.
+  h1, h2, h3 { break-after: avoid-page; }
+  pre, table, figure, blockquote { break-inside: avoid-page; }
+
+  // A code block's meaning is its content, not its fill.
+  pre {
+    border: 1px solid #ccc;
+    background: transparent !important;
+    white-space: pre-wrap;      // long commands would otherwise be cut off
+    word-break: break-word;
+  }
+
+  // Inline links lose their destination on paper unless it is written out.
+  // Internal ones are skipped: a bare path helps nobody holding a sheet.
+  .prose a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: .85em;
+    word-break: break-all;
+  }
+}

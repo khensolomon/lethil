@@ -1,0 +1,228 @@
+// ===========================================================================
+// REVIEW — page notes in place, and collected at /todo/review/.
+// ===========================================================================
+
+// --- capture ----------------------------------------------------------------
+.reviewadd { position: relative; flex: none; }
+.reviewform {
+  position: absolute;
+  top: calc(100% + .45rem);
+  right: 0;
+  z-index: 5;
+  width: 16rem;
+  padding: .55rem;
+  display: grid;
+  gap: .4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+
+  &[hidden] { display: none; }
+}
+.reviewform__where {
+  margin: 0;
+  font-size: .66rem;
+  color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+
+  span { color: var(--text); }
+}
+.reviewform__type,
+.reviewform__text {
+  width: 100%;
+  padding: .3rem .45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: .8rem;
+
+  &:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+}
+.reviewform__text { resize: vertical; line-height: 1.45; }
+.reviewform__save {
+  padding: .3rem .6rem;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: .78rem;
+  cursor: pointer;
+
+  &:hover { filter: brightness(1.08); }
+}
+
+// --- markers in the article -------------------------------------------------
+// Always visible, unlike the heading anchor link: a marker exists only when
+// something is flagged, so hiding it until hover would hide the signal.
+.notemark {
+  margin-left: .45rem;
+  padding: .05rem .35rem;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  vertical-align: middle;
+  cursor: pointer;
+
+  &:hover { background: var(--accent); color: #fff; }
+}
+
+.notelist { display: grid; gap: .25rem; margin: .4rem 0 1rem; }
+
+.noterow {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  flex-wrap: wrap;
+  padding: .4rem .55rem;
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  background: var(--surface-2);
+  font-size: .82rem;
+}
+.noterow__type {
+  flex: none;
+  font-size: .6rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+
+  // Kind is carried by colour as well as the word, so a long list can be
+  // skimmed by type without reading every row.
+  &[data-type="outdated"] { color: var(--status-blocked); }
+  &[data-type="missing"]  { color: var(--status-active); }
+}
+.noterow__where {
+  flex: none;
+  font-size: .66rem;
+  color: var(--muted);
+  text-decoration: none;
+  &:hover { color: var(--accent); }
+}
+.noterow__text { flex: 1 1 12rem; min-width: 0; line-height: 1.45; }
+.noterow__done {
+  flex: none;
+  padding: .1rem .4rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: .68rem;
+  cursor: pointer;
+
+  &:hover { color: var(--accent); border-color: var(--border); }
+}
+
+// Notes whose heading vanished — surfaced rather than dropped.
+.noteorphan {
+  margin: 0 0 1.5rem;
+  padding: .6rem .7rem;
+  border: 1px dashed var(--border-hover);
+  border-radius: var(--radius-sm);
+}
+.noteorphan__head {
+  margin: 0 0 .4rem;
+  font-size: .66rem;
+  color: var(--status-blocked);
+}
+
+// --- the collected page -----------------------------------------------------
+.review {
+  max-width: var(--measure);
+  padding: 2.4rem var(--gutter) 3rem;
+}
+.review__head { margin-bottom: 1.8rem; }
+.review__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  letter-spacing: -.02em;
+}
+.review__lede { margin: .4rem 0 0; color: var(--muted); font-size: .9rem; }
+
+.review__block { margin-top: 2rem; }
+.review__block-title {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin: 0 0 .2rem;
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: .75;
+}
+.review__count { font-size: .66rem; opacity: .8; }
+.review__block-note { margin: 0 0 .8rem; font-size: .78rem; color: var(--muted); }
+.review__empty { color: var(--muted); font-size: .85rem; }
+.review__actions { margin-top: 1rem; }
+
+.review__page { margin-bottom: 1.2rem; }
+.review__page-title {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin: 0 0 .3rem;
+  font-size: .9rem;
+
+  a { text-decoration: none; color: inherit; }
+  a:hover { color: var(--accent); }
+}
+.review__page-count { font-size: .66rem; color: var(--muted); }
+
+// --- findings ---------------------------------------------------------------
+.finding {
+  border-bottom: 1px solid var(--border);
+  padding: .1rem 0;
+}
+.finding__summary {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  padding: .45rem .1rem;
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker { display: none; }
+  &::before { content: "▸"; color: var(--muted); font-size: .7rem; }
+}
+.finding[open] .finding__summary::before { content: "▾"; }
+.finding__title { font-size: .88rem; font-weight: 500; }
+.finding__count {
+  font-size: .66rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: .05rem .4rem;
+}
+.finding__why {
+  margin: 0 0 .4rem 1rem;
+  font-size: .76rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.finding__list {
+  list-style: none;
+  margin: 0 0 .6rem;
+  padding: 0 0 0 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .15rem .6rem;
+
+  a { font-size: .76rem; color: var(--muted); text-decoration: none; }
+  a:hover { color: var(--accent); }
+}
+
+.todo__crosslink {
+  margin-left: .5rem;
+  color: var(--accent);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}

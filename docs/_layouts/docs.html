@@ -13,7 +13,27 @@ layout: default
     {%- comment -%} Resolve the title before the header: the Save button needs it. {%- endcomment -%}
     {%- include doc-title.html doc=page -%}
     <header class="docs__head">
-      {% if page.category %}<a class="eyebrow mono accent docs__category" href="{{ '/directory/' | relative_url }}#category={{ page.category | url_encode }}">{{ page.category }}</a>{% endif %}
+      {%- comment -%}
+        The eyebrow used to repeat the category as a link to the directory.
+        The breadcrumb above already says where the page sits, so it was
+        saying the same thing twice; it now carries what the breadcrumb
+        cannot — how long the page is.
+
+        Prose words alone are a poor estimate here: most pages are only two
+        or three hundred words, so nearly every one rounded to "1 min" and the
+        figure said nothing. Runbook time goes on the commands, not the
+        sentences — each block is counted as roughly thirty words of effort,
+        which is closer to what running one actually costs. Rounded up, so a
+        short page never reads as zero.
+      {%- endcomment -%}
+      {%- assign wc = content | strip_html | number_of_words -%}
+      {%- assign blocks = content | split: "<pre" | size | minus: 1 -%}
+      {%- assign weighted = blocks | times: 30 | plus: wc | plus: 179 -%}
+      {%- assign mins = weighted | divided_by: 180 -%}
+      <p class="eyebrow mono docs__meta">
+        {{ mins }} min read
+        {%- if page.group %} · {{ page.group }}{% endif -%}
+      </p>
       <h1>{{ doc_title }}</h1>
       {%- comment -%}
         `status` is optional and only Todo pages set it today, but nothing here

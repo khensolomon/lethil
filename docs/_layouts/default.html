@@ -147,6 +147,34 @@
             </svg>
             <span class="bookmark__label visually-hidden">Save</span>
           </button>
+          {%- comment -%}
+            Note capture. Sits beside Save because both act on the page being
+            read, and both are only meaningful on a documentation page.
+          {%- endcomment -%}
+          <div class="reviewadd">
+            <button class="pageact" type="button" data-review-add aria-expanded="false"
+                    title="Note something to fix on this page" aria-label="Note something to fix on this page">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 21V4.5"/><path d="M5 5.2c3.5-1.9 6.5.9 10-.6v8.2c-3.5 1.5-6.5-1.3-10 .6z"/>
+              </svg>
+            </button>
+            <div class="reviewform" data-review-form hidden>
+              <p class="reviewform__where mono">
+                On: <span data-review-where>this page</span>
+              </p>
+              <label class="visually-hidden" for="review-type">Kind of note</label>
+              <select id="review-type" class="reviewform__type">
+                <option value="outdated">Outdated</option>
+                <option value="unclear">Unclear</option>
+                <option value="missing">Missing</option>
+                <option value="typo">Typo</option>
+              </select>
+              <label class="visually-hidden" for="review-text">Note</label>
+              <textarea id="review-text" class="reviewform__text" rows="3"
+                        placeholder="What needs changing here?"></textarea>
+              <button class="reviewform__save" type="button" data-review-save>Add note</button>
+            </div>
+          </div>
           <button class="pageact" type="button" data-ph-toggle aria-pressed="true" hidden
                   data-ph-settings="{{ '/settings/' | relative_url }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -176,6 +204,8 @@
   <script src="{{ '/assets/js/placeholders.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/toolmenu.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/highlight.js' | relative_url }}?v={{ v }}" defer></script>
+  <script src="{{ '/assets/js/reading.js' | relative_url }}?v={{ v }}" defer></script>
+  <script src="{{ '/assets/js/review.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/activity.js' | relative_url }}?v={{ v }}" defer></script>
   <script src="{{ '/assets/js/stars.js' | relative_url }}?v={{ v }}" defer></script>
 </body>
