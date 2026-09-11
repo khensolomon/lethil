@@ -3,7 +3,7 @@ title: "Flutter"
 description: "Flutter SDK on top of the command-line Android toolchain."
 category: "Mobile"
 nav_order: 2
-tags: [flutter, dart, android]
+tags: [toolchain, android]
 ---
 
 Requires the JDK and SDK from [[Android toolchain]].

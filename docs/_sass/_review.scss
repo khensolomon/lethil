@@ -20,14 +20,20 @@
 
   &[hidden] { display: none; }
 }
-.reviewform__where {
-  margin: 0;
-  font-size: .66rem;
-  color: var(--muted);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 
-  span { color: var(--text); }
+/* Same arrow as the tools popover, so the two read as one kind of object. */
+.reviewform::before {
+  content: "";
+  position: absolute;
+  top: -5px; right: 11px;
+  width: 9px; height: 9px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  transform: rotate(45deg);
 }
+
+.reviewform__where,
 .reviewform__type,
 .reviewform__text {
   width: 100%;
@@ -225,4 +231,35 @@
   color: var(--accent);
   text-decoration: none;
   &:hover { text-decoration: underline; }
+}
+
+// The note form gets the same treatment as the tools popover below 560px: a
+// full-width sheet under the header rather than an anchored box. A 16rem panel
+// pinned to the right of a 360px viewport is most of the width anyway, and it
+// contains a textarea — the one control that most wants room to type in.
+@media (max-width: 560px) {
+  .reviewform {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0; right: 0;
+    width: auto;
+    border-radius: 0;
+    border-left: 0; border-right: 0;
+    padding: .6rem .7rem .8rem;
+    gap: .5rem;
+  }
+  .reviewform::before { display: none; }   // nothing left to point at
+
+  // Bigger targets, and a taller field now that the width allows it.
+  .reviewform__where,
+  .reviewform__type { padding: .45rem .5rem; font-size: .85rem; }
+  .reviewform__text { min-height: 5.5rem; font-size: .9rem; }
+  .reviewform__save { padding: .5rem .7rem; font-size: .85rem; }
+}
+
+// The note list under a heading can run wide on a phone; let rows wrap rather
+// than forcing the article to scroll sideways.
+@media (max-width: 560px) {
+  .noterow { gap: .35rem .5rem; }
+  .noterow__text { flex-basis: 100%; }
 }

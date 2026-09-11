@@ -4,7 +4,7 @@ description: "SSH through Access - interactive, CI, and short-lived certificates
 group: "Ingress"
 category: "Server"
 nav_order: 5
-tags: [server, cloudflare, ssh, access, ci]
+tags: [server, cloudflare, ssh, ci, remote, secrets]
 ---
 
 Reaching a host that has no open port 22, over the tunnel from

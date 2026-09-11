@@ -4,7 +4,7 @@ description: "QEMU/KVM with a GUI - snapshots, ISO installs, bridged networking.
 group: "Remote & VMs"
 category: "Linux"
 nav_order: 6
-tags: [kvm, qemu, virtualization, vm]
+tags: [vm]
 ---
 
 Full VM control including snapshots and ISO installs. For a throwaway VM with

@@ -48,13 +48,28 @@
     return article ? article.querySelectorAll("h2[id], h3[id]") : [];
   }
 
-  /* The heading currently being read: the last one scrolled past. */
+  /* The heading currently being read.
+
+     "Last one scrolled past the top" alone cannot reach the final headings of
+     a short page: once the document bottom is on screen, scrolling stops and
+     those headings never cross the threshold, so they could never be chosen.
+     Two fallbacks fix that — at the end of the document the last heading wins
+     outright, and otherwise the topmost heading still visible is used. */
   function nearestHeading() {
-    var hs = headings(), found = null;
+    var hs = headings();
+    if (!hs.length) return null;
+
+    var atBottom = (window.innerHeight + window.scrollY) >=
+                   (document.documentElement.scrollHeight - 2);
+    if (atBottom) return hs[hs.length - 1];
+
+    var passed = null, visible = null;
     for (var i = 0; i < hs.length; i++) {
-      if (hs[i].getBoundingClientRect().top < 140) found = hs[i];
+      var top = hs[i].getBoundingClientRect().top;
+      if (top < 140) passed = hs[i];
+      else if (!visible && top < window.innerHeight) visible = hs[i];
     }
-    return found;
+    return passed || visible;
   }
 
   /* Re-attach a note whose heading id no longer exists.
@@ -158,16 +173,67 @@
                   : "Note something to fix on this page";
   }
 
+  /* Notes attach to headings in an article, so there is nothing to attach to
+     on a board, an index, or a tool page. The button is disabled and says why
+     rather than hidden: a control that appears and disappears between pages
+     makes the header feel unstable, and one that looks live but does nothing
+     reads as a bug. */
+  if (btn && !article) {
+    btn.disabled = true;
+    btn.title = "Notes can only be added on a documentation page";
+    if (panel) panel.hidden = true;
+  }
+
   if (btn && panel && article) {
     var ta = panel.querySelector("textarea");
     var where = panel.querySelector("[data-review-where]");
-    var sel = panel.querySelector("select");
-    var target = null;
+    var sel = panel.querySelector("[data-review-type]");
+    var touched = false;    // set once the section is chosen by hand
+
+    function cleanText(h) {
+      return h.textContent.replace(/⚑.*$/, "").replace(/#$/, "").trim();
+    }
+
+    /* The section is a real control, not a label: auto-detection covers the
+       common case, and the list covers every case it cannot — including
+       headings the page is too short to ever scroll past. */
+    function fillWhere() {
+      var cur = where.value;
+      where.textContent = "";
+      var top = document.createElement("option");
+      top.value = "";
+      top.textContent = "Top of the page";
+      where.appendChild(top);
+      headings().forEach(function (h) {
+        var o = document.createElement("option");
+        o.value = h.id;
+        o.textContent = (h.tagName === "H3" ? "— " : "") + cleanText(h);
+        where.appendChild(o);
+      });
+      if (cur) where.value = cur;
+    }
+
+    function syncWhere() {
+      if (touched) return;               // a manual choice is never overridden
+      var h = nearestHeading();
+      where.value = h ? h.id : "";
+    }
+
+    where.addEventListener("change", function () { touched = true; });
+
+    /* Follow the page while the form is open, so the section shown is always
+       the one being looked at rather than the one in view when it opened. */
+    var pending = false;
+    window.addEventListener("scroll", function () {
+      if (panel.hidden || touched || pending) return;
+      pending = true;
+      requestAnimationFrame(function () { pending = false; syncWhere(); });
+    }, { passive: true });
 
     function openForm() {
-      target = nearestHeading();
-      where.textContent = target ? target.textContent.replace(/⚑.*$/, "").replace(/#$/, "").trim()
-                                 : "top of the page";
+      touched = false;
+      fillWhere();
+      syncWhere();
       panel.hidden = false;
       btn.setAttribute("aria-expanded", "true");
       ta.value = "";
@@ -195,14 +261,15 @@
     panel.querySelector("[data-review-save]").addEventListener("click", function () {
       var text = ta.value.trim();
       if (!text) { ta.focus(); return; }
+      var chosen = where.value ? article.querySelector('[id="' + CSS.escape(where.value) + '"]') : null;
       var list = read();
       list.push({
         id: uid(),
         url: pageUrl,
         title: (document.querySelector(".docs__content h1") || {}).textContent || document.title,
         section: (document.querySelector(".contextbar__crumbs li:nth-child(2)") || {}).textContent || "",
-        headingId: target ? target.id : "",
-        headingText: target ? target.textContent.replace(/⚑.*$/, "").replace(/#$/, "").trim() : "",
+        headingId: chosen ? chosen.id : "",
+        headingText: chosen ? cleanText(chosen) : "",
         type: TYPES.indexOf(sel.value) > -1 ? sel.value : "outdated",
         text: text,
         createdAt: new Date().toISOString()

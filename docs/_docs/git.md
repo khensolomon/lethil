@@ -4,7 +4,7 @@ description: "Everyday git commands, setup, and recovering from mistakes."
 group: "Reference"
 category: "Guide"
 nav_order: 50
-tags: [git]
+tags: [tooling, cli]
 ---
 
 git archive processes the repository locally before pushing to GitHub

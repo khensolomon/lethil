@@ -84,7 +84,7 @@ excerpt_separator: ""
         <h1 class="todo__title">Todo</h1>
         <p class="todo__lede mono muted">
           Where this is heading, and how far along it is.
-          <a class="todo__crosslink" href="{{ '/todo/review/' | relative_url }}">Page notes →</a>
+          <a class="todo__crosslink" href="{{ '/review/' | relative_url }}">Page notes →</a>
         </p>
       </div>
 

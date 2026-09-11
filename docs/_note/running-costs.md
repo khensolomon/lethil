@@ -3,7 +3,7 @@ title: "Running costs"
 description: "Monthly hosting figures used to size the move off GCE."
 category: "Notes"
 nav_order: 3
-tags: [costs, hosting, planning]
+tags: [planning, migration]
 ---
 
 Indicative monthly figures in USD, gathered while planning

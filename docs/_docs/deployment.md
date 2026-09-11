@@ -4,7 +4,7 @@ description: "Provision a production server from a fresh Ubuntu/Debian host to a
 group: "Server"
 category: "Guide"
 nav_order: 2
-tags: [deployment]
+tags: [deployment, secrets, provisioning]
 ---
 
 **Stack:** Django · MySQL · Nginx · Docker Swarm · Cloudflare Tunnel · GitHub Actions

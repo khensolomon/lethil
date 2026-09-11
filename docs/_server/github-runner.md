@@ -4,7 +4,7 @@ description: "Running the GitHub Actions runner on the VM, with Docker access."
 group: "Automation"
 category: "Server"
 nav_order: 9
-tags: [server, github-actions, ci, docker]
+tags: [server, ci, docker]
 ---
 
 Lets a workflow deploy without exposing SSH, since the runner dials out.

@@ -13,9 +13,103 @@ category: "Reference"
 # for the search or tunnel docs.
 search_content: false
 nav_order: 99
+tags: [jekyll, authoring]
 ---
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
+
+## 26.09.10i
+
+- The note form adapts below 560px the way the tools popover already did: a
+  full-width sheet under the header rather than an anchored box, with the arrow
+  dropped since there is nothing left to point at. A 16rem panel pinned to the
+  right of a 360px viewport was most of the width anyway, and this one contains
+  a textarea — the control that most wants room to type in. Its fields get
+  larger targets and a taller writing area at that size.
+- Note rows under a heading wrap on narrow screens instead of pushing the
+  article sideways.
+
+## 26.09.10h
+
+- Dimmed the reading progress indicator. At full accent it competed with the
+  active sidebar item and the links in the prose for the one colour the page
+  uses to mean "this matters"; it is ambient feedback, not a control.
+- Removed the page count from the context bar on section indexes. The page
+  already prints its own count under the title, so the same figure appeared
+  twice a few pixels apart. Tool pages keep their blurb there, which is not
+  repeated anywhere else.
+- The note form now points at its button with the same arrow as the tools
+  popover, so the two read as one kind of object.
+- **Every heading can be noted against.** "The last heading scrolled past"
+  could never reach the final headings of a short page: once the document
+  bottom is on screen scrolling stops, and those headings never cross the
+  threshold. At the end of the document the last heading now wins outright,
+  and otherwise the topmost heading still visible is used.
+- The section is a select rather than a label, listing every heading with H3s
+  indented, so anything auto-detection cannot reach can still be chosen. On the
+  deployment guide that is 77 headings.
+- It follows the page while the form is open, updating on scroll so the section
+  shown is the one being looked at rather than the one in view when the form
+  opened. Choosing by hand stops the tracking, so a deliberate pick is never
+  overridden.
+
+## 26.09.10g
+
+- Graph hover eases instead of flashing. Every node and edge switched between
+  two fixed alphas on the same frame the pointer crossed a circle, so moving
+  across the graph read as flickering rather than as focus moving. Each node
+  and edge now carries a focus value eased toward its target every frame, and
+  nothing in the draw call tests hover directly — colour, width, alpha and
+  labels all read from that one value, so an edge brightens and thickens
+  together. Labels crossfade rather than appearing outright.
+- Fade-in runs faster than fade-out (about 430ms against 820ms), which keeps a
+  hover feeling responsive while settling gently when the pointer leaves. The
+  largest single-frame change is now 0.22 where it used to be a full 1.0 jump.
+- **Cut the tag vocabulary from 89 to 32, with none used only once** — it was
+  65 single-use tags before. A tag on one page groups nothing; it only adds
+  rows to the tag index and noise to the directory.
+- Removed tags that restated the page title (`multipass` on Multipass, `gnome`
+  on GNOME, `git` on Git, `mariadb` on MariaDB setup, `netplan` on Static
+  networking) and tags that restated the section.
+- Merged synonyms into the concept they share: `kvm`/`qemu`/`virtualization`
+  into `vm`, `rdp`/`vnc`/`remmina` into `remote`, `r2`/`rclone`/`virtiofs`
+  into `storage`, `flatpak`/`ventoy`/`iso` into `desktop`, `java`/`sdk`/
+  `emulator`/`dart` into `toolchain`, `github-actions` into `ci`.
+- Added tags where a genuinely cross-cutting one was missing from pages that
+  share the subject — `secrets` now spans the secrets manager, Access service
+  tokens and the deployment guide; `dns` spans the tunnel and domain pages;
+  `backup` spans the database dumps and the storage they sync to.
+- Three pages had no tags at all and now do.
+
+## 26.09.10f
+
+- Page actions that do not apply to the current page are disabled and labelled
+  rather than left live. The note button needs an article to anchor to, so on a
+  board, an index or a tool page it did nothing while still hovering and
+  clicking — which reads as a bug. Interaction is removed outright, and the
+  reason is in the title.
+- The values toggle behaves the same way instead of hiding itself. A control
+  that appears and disappears between pages makes the header change shape as
+  navigation moves; a stable header with a clearly unavailable button is
+  steadier.
+- Redesigned the sidebar tree. No hover fill anywhere in it: a filled row is
+  how the ACTIVE page is marked, so using the same device for "the cursor is
+  here" made the two compete, and on an already-open parent it implied the row
+  itself was a target. Hover now moves colour only — nothing fills, nothing
+  shifts, so no item changes position or size under the pointer.
+- The rail ends at its last entry. Each item has a short tick into the rail,
+  and the last one masks the rail below itself, so the tree stops instead of
+  running on into empty space.
+- The chevron became a smaller, lighter caret that reads as a disclosure rather
+  than a navigation arrow, and its rotation is the animation. Expanding animates
+  where the browser can size a `<details>` content box, and snaps elsewhere,
+  which is the previous behaviour.
+- The active page is marked by colour and a filled tick rather than a
+  background, which keeps the tree quiet.
+- Moved Review from `/todo/review/` to `/review/`. The nested path implied it
+  was part of the project board, while its breadcrumb read "Home / Review" —
+  the URL and the page disagreed. Review is site maintenance, not project work,
+  and every other tool sits at the top level. The board keeps its link across.
 
 ## 26.09.10e
 

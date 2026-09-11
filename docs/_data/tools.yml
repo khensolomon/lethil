@@ -34,7 +34,7 @@
 
 - key: review
   label: "Review"
-  url: "/todo/review/"
+  url: "/review/"
   blurb: "Page notes and site findings"
   icon: >-
     <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H15l5 5v9.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z"/><path d="M14.5 4v5.5H20"/><path d="M8 13.5l2 2 4-4"/>

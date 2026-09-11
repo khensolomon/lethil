@@ -4,7 +4,7 @@ description: "Conventions behind the docs site - sections, front matter, and wik
 category: "Guide"
 group: "Documentations"
 nav_order: 10
-tags: [jekyll, authoring, docs]
+tags: [jekyll, authoring]
 ---
 
 Every docs section — `docs`, `python`, `linux`, `server`, and so on — is a

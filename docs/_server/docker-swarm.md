@@ -4,7 +4,7 @@ description: "Single-node swarm running the zaideih and myordbok stacks."
 group: "Containers"
 category: "Server"
 nav_order: 3
-tags: [server, docker, swarm]
+tags: [server, docker]
 ---
 
 Production runs a single-node swarm with [[Cloudflare Tunnel]] for ingress, so

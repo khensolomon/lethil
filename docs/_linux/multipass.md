@@ -4,7 +4,7 @@ description: "Disposable Ubuntu VMs for testing production deploys locally."
 group: "Remote & VMs"
 category: "Linux"
 nav_order: 7
-tags: [multipass, vm, testing, ci]
+tags: [vm, ci]
 ---
 
 Faster to stand up than [[Virtual Machine Manager]] when the VM is throwaway.

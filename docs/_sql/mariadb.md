@@ -4,7 +4,7 @@ description: "Installing and securing MariaDB on the host."
 group: "Operations"
 category: "SQL"
 nav_order: 3
-tags: [mysql, mariadb, install]
+tags: [mysql, install]
 ---
 
 ```bash

@@ -603,3 +603,13 @@ mark.hit.is-current {
   .toolmenu__glyph { transition: none; }
   .toolmenu.is-open .toolmenu__glyph { transform: none; }
 }
+
+/* A page action that does not apply here. Interaction is removed outright —
+   no hover, no pointer, not focusable — so the control reads as unavailable
+   rather than broken. The title attribute carries the reason. */
+.pageact:disabled {
+  opacity: .35;
+  cursor: default;
+  pointer-events: none;
+}
+.pageact:disabled:hover { background: transparent; color: var(--muted); }

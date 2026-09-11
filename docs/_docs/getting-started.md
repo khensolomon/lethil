@@ -4,7 +4,7 @@ description: "Take a fresh machine to a running deployment."
 category: "Guide"
 group: "Server"
 nav_order: 1
-tags: [setup, deployment]
+tags: [deployment]
 ---
 
 The steps below run in order on a new machine. Each block is copy-paste ready;

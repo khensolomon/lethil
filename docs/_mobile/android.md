@@ -3,7 +3,7 @@ title: "Android toolchain"
 description: "JDK, command-line SDK, and emulator images without Android Studio."
 category: "Mobile"
 nav_order: 1
-tags: [android, java, sdk, emulator]
+tags: [android, toolchain]
 ---
 
 Command-line only. Android Studio is never installed — `flutter doctor`

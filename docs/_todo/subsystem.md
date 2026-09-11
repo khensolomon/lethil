@@ -4,7 +4,7 @@ description: "Finding a WSL-like workflow on a Linux desktop — isolated, dispo
 category: "Todo"
 status: "planned"
 nav_order: 4
-tags: [containers, vm, tooling]
+tags: [vm, tooling]
 ---
 
 The goal is a WSL-style workflow on an Ubuntu or Debian desktop: an isolated,

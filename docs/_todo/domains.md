@@ -4,7 +4,7 @@ description: "Registrations, expiry dates, and the Squarespace to Cloudflare tra
 category: "Todo"
 status: "active"
 nav_order: 2
-tags: [domains, dns, cloudflare]
+tags: [dns, cloudflare]
 ---
 
 Part of [[Move off Google Cloud]].

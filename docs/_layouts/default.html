@@ -159,11 +159,10 @@
               </svg>
             </button>
             <div class="reviewform" data-review-form hidden>
-              <p class="reviewform__where mono">
-                On: <span data-review-where>this page</span>
-              </p>
+              <label class="visually-hidden" for="review-where">Section this note is about</label>
+              <select id="review-where" class="reviewform__where" data-review-where></select>
               <label class="visually-hidden" for="review-type">Kind of note</label>
-              <select id="review-type" class="reviewform__type">
+              <select id="review-type" class="reviewform__type" data-review-type>
                 <option value="outdated">Outdated</option>
                 <option value="unclear">Unclear</option>
                 <option value="missing">Missing</option>

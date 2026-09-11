@@ -4,7 +4,7 @@ description: "venv, pip, and project layout."
 group: "Environment"
 category: "Python"
 nav_order: 1
-tags: [python, venv, tooling]
+tags: [python, tooling]
 ---
 
 Notes on setting up a clean Python environment with `venv` and stdlib-only

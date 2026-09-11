@@ -215,7 +215,10 @@
       b.addEventListener("click", function () { setShowReal(!showReal()); paint(); });
     });
   } else {
-    document.querySelectorAll("[data-ph-toggle]").forEach(function (b) { b.hidden = true; });
+    document.querySelectorAll("[data-ph-toggle]").forEach(function (b) {
+      b.disabled = true;
+      b.title = "No placeholders on this page";
+    });
   }
 
   /* =======================================================================

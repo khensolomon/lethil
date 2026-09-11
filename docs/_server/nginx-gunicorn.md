@@ -4,7 +4,7 @@ description: "Serving Django directly from systemd, without containers."
 group: "Serving & storage"
 category: "Server"
 nav_order: 7
-tags: [server, nginx, gunicorn, django, systemd]
+tags: [server, nginx, django]
 ---
 
 The pre-container setup, kept for hosts that run Django straight on the OS.

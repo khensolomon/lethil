@@ -4,7 +4,7 @@ description: "virtiofs shares into a VM, and R2 over rclone."
 group: "Serving & storage"
 category: "Server"
 nav_order: 8
-tags: [server, storage, rclone, r2, virtiofs]
+tags: [server, storage, backup]
 ---
 
 Media and database dumps live outside the VM disk so a rebuild does not lose

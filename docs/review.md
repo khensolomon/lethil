@@ -1,9 +1,8 @@
 ---
 layout: tool
-permalink: /todo/review/
+permalink: /review/
 title: "Review"
 description: "Page notes and automatic findings for this site."
-section: "todo"
 sitemap: false
 excerpt_separator: ""
 ---

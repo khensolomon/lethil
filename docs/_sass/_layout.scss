@@ -171,92 +171,116 @@ body[data-nav="open"] .sidebar {
 .sidebar-sect, .sidebar-sect__summary, .sidebar-sect__pages { min-width: 0; }
 
 .sidebar-sect { border-radius: var(--radius-sm); }
+
+/* --- expand / collapse ---------------------------------------------------
+   No hover fill anywhere in this tree. A filled row is how the ACTIVE page is
+   marked; using the same device for "the cursor is here" made the two compete,
+   and on a parent that was already open it implied the row itself was a
+   target. Hover moves colour only — nothing fills, nothing shifts, so no item
+   changes position or size under the pointer.
+
+   The open/close itself animates where the browser can size a <details>
+   content box; elsewhere it snaps, which is the pre-existing behaviour. */
+:root { interpolate-size: allow-keywords; }
+
+.sidebar-sect::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition: block-size .26s var(--ease), content-visibility .26s allow-discrete;
+}
+.sidebar-sect[open]::details-content { block-size: auto; }
+
 .sidebar-sect__summary {
   display: flex; align-items: center; gap: .45rem;
-  padding: .45rem .55rem; border-radius: var(--radius-sm);
+  padding: .45rem .55rem;
   cursor: pointer; list-style: none;
-  transition: background .15s;
+  color: var(--muted);
+  transition: color .15s;
 }
-.sidebar-sect__summary::-webkit-details-marker { display: none; }   /* drop the default triangle */
-.sidebar-sect__summary:hover { background: var(--surface-2); }
+.sidebar-sect__summary::-webkit-details-marker { display: none; }
+.sidebar-sect__summary:hover { color: var(--text); }
+.sidebar-sect__summary:hover .sidebar-sect__chevron { color: var(--accent); }
+.sidebar-sect__summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-xs); }
 
-/* chevron leads the row (file-tree style), rotates down when open */
+/* A caret, not a chevron: smaller, lighter, and it reads as a disclosure
+   rather than a navigation arrow. Rotation is the whole animation. */
 .sidebar-sect__chevron {
-  width: 13px; height: 13px; flex-shrink: 0; color: var(--muted);
-  transition: transform .2s var(--ease);
+  width: 9px; height: 9px; flex-shrink: 0;
+  color: var(--border-hover);
+  transition: transform .26s var(--ease), color .15s;
 }
 .sidebar-sect[open] > .sidebar-sect__summary .sidebar-sect__chevron { transform: rotate(90deg); }
+.sidebar-sect[open] > .sidebar-sect__summary { color: var(--text); }
 
 .sidebar-sect__text { display: flex; flex-direction: column; gap: .05rem; min-width: 0; flex: 1; }
-/* Lighter and a step smaller than before. With a topbar carrying the brand,
-   search and the tools popover, a heavy 1rem label in the sidebar competed
-   with chrome that already outranks it — the sidebar is a list to scan, not a
-   set of headings to read. */
-.sidebar-sect__label { color: var(--text); line-height: 1.25; font-weight: 500; font-size: .82rem; }
+.sidebar-sect__label { color: inherit; line-height: 1.25; font-weight: 500; font-size: .82rem; }
 .sidebar-sect__blurb {
   font-size: .68rem; color: var(--muted); line-height: 1.2;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: .8;
+}
+.sidebar-sect__dot {
+  display: inline-block; width: 5px; height: 5px; margin-left: .3rem;
+  border-radius: 50%; background: var(--accent); vertical-align: middle;
 }
 
-/* page previews as a file tree: a vertical rail drops from beneath the chevron
-   and each item gets a short horizontal connector, so the sub-items visually
-   hang off the parent's arrow. The rail sits at the chevron's optical centre
-   (summary padding .55rem + half the 15px chevron ≈ 1rem from the edge). */
+/* --- the tree ------------------------------------------------------------
+   The rail hangs from the caret's optical centre. Each item gets a short tick
+   into it, and the LAST item's tick is an elbow that also masks the rail
+   below itself — so the tree ends at its final entry instead of running on
+   into empty space. */
 .sidebar-sect__pages {
   display: grid; grid-template-columns: minmax(0, 1fr); gap: .05rem;
-  margin-left: 1rem;                 /* rail position = chevron centre */
-  padding: .1rem 0 .35rem;
-  border-left: 1.5px solid var(--border);
+  margin-left: .95rem;
+  padding: .15rem 0 .3rem;
+  position: relative;
 }
+.sidebar-sect__pages::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: .3rem;
+  width: 1px;
+  background: var(--border);
+}
+
 .sidebar-sect__page,
 .sidebar-sect__more {
   position: relative;
-  font-weight: 400;
-  /* The connector tick lives INSIDE the box as left padding rather than in a
-     negative margin outside it. Truncating long titles needs overflow:hidden,
-     which would clip anything drawn outside the box — the ticks vanished. */
-  padding: .3rem .5rem .3rem 1.05rem;
-  border-radius: var(--radius-sm);
-  font-size: .84rem; color: var(--muted);
-  transition: background .15s, color .15s;
+  padding: .28rem .5rem .28rem 1rem;
+  font-size: .84rem;
+  color: var(--muted);
+  transition: color .15s;
 }
-/* the horizontal connector from the rail to each item */
+/* tick into the rail */
 .sidebar-sect__page::before,
 .sidebar-sect__more::before {
   content: "";
   position: absolute;
   left: 0; top: 50%;
-  width: .5rem; height: 1.5px;
+  width: .6rem; height: 1px;
   background: var(--border);
 }
+/* elbow: hide the rail past the last entry */
+.sidebar-sect__pages > :last-child::after {
+  content: "";
+  position: absolute;
+  left: -1px; top: calc(50% + 1px); bottom: -.4rem;
+  width: 3px;
+  /* Matches the sidebar's own fill, so the masked rail is invisible. */
+  background: var(--surface);
+}
+
 .sidebar-sect__page:hover,
-.sidebar-sect__more:hover { background: var(--surface-2); color: var(--text); }
-.sidebar-sect__page.is-active { color: var(--text); background: var(--accent-soft); text-shadow: .3px 0 0 currentColor; }
-/* the active item's connector + a segment of rail glow in the accent */
-.sidebar-sect__page.is-active::before { background: var(--accent); }
-.sidebar-sect__more { color: var(--accent); }
+.sidebar-sect__more:hover { color: var(--text); }
+.sidebar-sect__page:hover::before { background: var(--border-hover); }
 
-/* --- home sidebar: fixed overview items (Graph View, Documentation) ------ */
-.sidebar__fixed { display: grid; gap: .1rem; margin-bottom: .5rem; }
-.sidebar__fixed-item {
-  display: flex; align-items: center; gap: .6rem;
-  padding: .5rem .55rem; border-radius: var(--radius-sm);
-  color: var(--text); transition: background .15s;
-}
-.sidebar__fixed-item:hover { background: var(--surface-2); }
-.sidebar__fixed-icon { display: grid; place-items: center; flex-shrink: 0; width: 1.6rem; height: 1.6rem; color: var(--muted); }
-.sidebar__fixed-icon svg { width: 17px; height: 17px; }
-.sidebar__fixed-item:hover .sidebar__fixed-icon { color: var(--accent); }
-.sidebar__fixed-label { font-weight: 550; }
+/* Active page: colour and a filled tick, no background — the fill is reserved
+   for nothing here, so the tree stays quiet and the current page still reads
+   at a glance. */
+.sidebar-sect__page.is-active { color: var(--accent); }
+.sidebar-sect__page.is-active::before { background: var(--accent); width: .75rem; }
 
-.sidebar__divider { height: 1px; background: var(--border); margin: .35rem .3rem .8rem; }
-
-/* accent dot marking a highlighted section (replaces the old pinned group) */
-.sidebar-sect__dot {
-  display: inline-block; width: 6px; height: 6px; margin-left: .4rem;
-  border-radius: 50%; background: var(--accent);
-  vertical-align: middle;
-}
+.sidebar-sect__more { font-size: .72rem; opacity: .75; }
 
 /* --- sidebar: no horizontal scrollbar ------------------------------------
    Long page titles ("Lai Siangtho — e-book & presentation suite") were wider

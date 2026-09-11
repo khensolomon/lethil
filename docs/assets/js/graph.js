@@ -151,35 +151,41 @@
 
     // edges
     edges.forEach(function (e) {
-      var lit = hoverSet && (e.s.id === hoverId || e.t.id === hoverId);
+      // `e.f` is how lit this edge currently is, eased toward its target in
+      // easeFocus(). Colour, width and alpha all read from it, so an edge
+      // brightens and thickens together instead of switching state.
+      var f = e.f;
       ctx.beginPath();
       ctx.moveTo(e.s.x, e.s.y);
       ctx.lineTo(e.t.x, e.t.y);
-      ctx.strokeStyle = lit ? cssVar("--accent", "#3457e0")
-        : (hoverSet ? cssVar("--border", "#e6e6e0") : cssVar("--border-hover", "#d3d3ca"));
-      ctx.globalAlpha = hoverSet && !lit ? 0.35 : 1;
-      ctx.lineWidth = (lit ? 1.8 : 1) / cam.k;
+      ctx.strokeStyle = f > 0.02 ? cssVar("--accent", "#3457e0")
+                                 : cssVar("--border-hover", "#d3d3ca");
+      // Base alpha falls as the hover takes hold (h), so the unrelated edges
+      // recede rather than blinking out; lit edges ride back up on f.
+      ctx.globalAlpha = mix(1, 0.3, hoverAmt) + (1 - mix(1, 0.3, hoverAmt)) * f;
+      ctx.lineWidth = mix(1, 1.8, f) / cam.k;
       ctx.stroke();
     });
     ctx.globalAlpha = 1;
 
     // nodes
     nodes.forEach(function (n) {
-      var dim = hoverSet && !hoverSet[n.id];
       var r = nodeRadius(n);
       ctx.beginPath();
       ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
       ctx.fillStyle = color(n.section, n.highlight);
-      ctx.globalAlpha = dim ? 0.25 : 1;
+      ctx.globalAlpha = mix(0.22, 1, n.f);
       ctx.fill();
-      if (n.id === hoverId) {
+      if (n.ring > 0.02) {
+        ctx.globalAlpha = n.ring;
         ctx.lineWidth = 2 / cam.k;
         ctx.strokeStyle = cssVar("--bg", "#fff");
         ctx.stroke();
       }
-      var showLabel = n.id === hoverId || (hoverSet && hoverSet[n.id]) || (!hoverSet && n.deg >= 3);
-      if (showLabel) {
-        ctx.globalAlpha = dim ? 0.4 : 1;
+      // Labels crossfade on the same value rather than appearing outright:
+      // `n.lab` carries whether this node should be captioned right now.
+      if (n.lab > 0.02) {
+        ctx.globalAlpha = n.lab * mix(0.35, 1, n.f);
         ctx.fillStyle = cssVar("--text", "#16181d");
         ctx.font = (12 / cam.k) + "px -apple-system, system-ui, sans-serif";
         ctx.textAlign = "center";
@@ -189,6 +195,58 @@
     });
 
     ctx.restore();
+  }
+
+  /* --- hover easing --------------------------------------------------------
+     Hover used to switch every node and edge between two fixed alphas on the
+     same frame the pointer crossed a circle, so moving across the graph read
+     as flashing rather than as focus moving. Each node and edge now carries a
+     focus value eased toward its target every frame; nothing in the draw call
+     tests hover directly, it only reads these.
+
+     RATE is per-frame at 60fps. Fade-in is quicker than fade-out, which is
+     what makes a hover feel responsive while still settling gently when the
+     pointer leaves.                                                        */
+  var IN_RATE = 0.22, OUT_RATE = 0.12;
+  var hoverAmt = 0;           // 0 = nothing hovered, 1 = fully in hover mode
+
+  function mix(a, b, t) { return a + (b - a) * t; }
+
+  function ease(cur, target) {
+    var rate = target > cur ? IN_RATE : OUT_RATE;
+    var next = cur + (target - cur) * rate;
+    return Math.abs(target - next) < 0.002 ? target : next;
+  }
+
+  function easeFocus() {
+    var set = (hoverId != null && adj[hoverId]) ? adj[hoverId] : null;
+    var inSet = {};
+    if (set) { inSet[hoverId] = 1; set.forEach(function (id) { inSet[id] = 1; }); }
+
+    hoverAmt = ease(hoverAmt, set ? 1 : 0);
+
+    var moving = hoverAmt !== (set ? 1 : 0);
+    nodes.forEach(function (n) {
+      var t = set ? (inSet[n.id] ? 1 : 0) : 1;
+      var was = n.f; n.f = ease(n.f == null ? 1 : n.f, t);
+      if (n.f !== was) moving = true;
+
+      var rt = n.id === hoverId ? 1 : 0;
+      was = n.ring; n.ring = ease(n.ring == null ? 0 : n.ring, rt);
+      if (n.ring !== was) moving = true;
+
+      // captioned when hovered or adjacent, and otherwise only if well connected
+      var lt = set ? (inSet[n.id] ? 1 : 0) : (n.deg >= 3 ? 1 : 0);
+      was = n.lab; n.lab = ease(n.lab == null ? (n.deg >= 3 ? 1 : 0) : n.lab, lt);
+      if (n.lab !== was) moving = true;
+    });
+
+    edges.forEach(function (e) {
+      var t = set && (e.s.id === hoverId || e.t.id === hoverId) ? 1 : 0;
+      var was = e.f; e.f = ease(e.f == null ? 0 : e.f, t);
+      if (e.f !== was) moving = true;
+    });
+    return moving;
   }
 
   var introDone = false;      // becomes true once the intro settle+frame finishes
@@ -221,6 +279,7 @@
     } else if (dragging) {
       step();
     }
+    easeFocus();
     draw();
     raf = requestAnimationFrame(tick);
   }

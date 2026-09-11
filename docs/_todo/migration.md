@@ -4,7 +4,7 @@ description: "GCE commitment ends September 2026 — move compute, storage and d
 category: "Todo"
 status: "active"
 nav_order: 1
-tags: [migration, gce, cloudflare, digitalocean]
+tags: [migration, cloudflare]
 ---
 
 The GCE instance runs on a three-year commitment that ends **25 September

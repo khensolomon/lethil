@@ -4,7 +4,7 @@ description: "Deleting bot-inserted keyword rows by Unicode script, in batches."
 group: "Operations"
 category: "SQL"
 nav_order: 4
-tags: [mysql, regex, spam, maintenance]
+tags: [mysql, maintenance]
 ---
 
 The `log_keyword` table on MyOrdbok collected roughly 1.4 million bot rows in

@@ -48,7 +48,11 @@ h3:hover .headlink { opacity: 1; }
 .readbar__fill {
   display: block;
   height: 100%;
+  /* Dimmed well down: this is ambient feedback, not a control. At full accent
+     it competed with the active sidebar item and the links in the prose for
+     the one colour the page uses to mean "this matters". */
   background: var(--accent);
+  opacity: .28;
   transform: scaleX(0);
   transform-origin: 0 50%;
 }

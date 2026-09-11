@@ -4,7 +4,7 @@ description: "Everyday Compose commands for the Django stacks, plus cleanup."
 group: "Containers"
 category: "Server"
 nav_order: 2
-tags: [server, docker, compose, django]
+tags: [server, docker, django]
 ---
 
 Used for local development. Production runs the same images under

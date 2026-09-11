@@ -4,7 +4,7 @@ description: "Locked architecture decisions, current repo layout, and outstandin
 group: "Server"
 category: "Guide"
 nav_order: 4
-tags: [summary]
+tags: [deployment, planning]
 ---
 
 ## What this project is

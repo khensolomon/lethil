@@ -4,7 +4,7 @@ description: "A desktop e-book reader and study app with a native presenter mode
 category: "Todo"
 status: "planned"
 nav_order: 1
-tags: [electron, desktop, scripture, presenter]
+tags: [desktop, planning]
 ---
 
 ## 1. Project Profile & Identity

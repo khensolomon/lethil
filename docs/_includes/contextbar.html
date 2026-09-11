@@ -42,8 +42,11 @@
         next from here — without this it fell through the walk below and
         offered a link to the section's last page as "previous".
       {%- endcomment -%}
-      {%- include nav-docs.html key=page.section -%}
-      <p class="contextbar__blurb">{{ nav_docs | size }} page{% if nav_docs.size != 1 %}s{% endif %}</p>
+      {%- comment -%}
+        Nothing on the right here. A section index prints its own page count
+        under its title, and repeating it in the bar put the same figure on
+        screen twice, a few pixels apart.
+      {%- endcomment -%}
     {%- elsif page.section and page.section != "" -%}
       {%- comment -%} previous / next in the same order the sidebar lists {%- endcomment -%}
       {%- include nav-docs.html key=page.section -%}

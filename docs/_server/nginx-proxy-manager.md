@@ -4,7 +4,7 @@ description: "One proxy in front of every stack, on a shared external network."
 group: "Ingress"
 category: "Server"
 nav_order: 6
-tags: [server, nginx, proxy, networking, ssl]
+tags: [server, nginx, networking]
 ---
 
 Several stacks need port 80. A shared external network lets NPM own the port

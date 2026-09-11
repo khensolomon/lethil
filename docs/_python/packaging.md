@@ -4,7 +4,7 @@ description: "Shipping small CLI tools."
 group: "Building"
 category: "Python"
 nav_order: 2
-tags: [python, packaging, cli]
+tags: [python, cli]
 ---
 
 How the CLI scripts here are structured — stdlib-only, dry-run by default,

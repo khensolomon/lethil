@@ -4,7 +4,7 @@ description: "Flatpak, Ventoy install media, and the post-reinstall app checklis
 group: "Desktop"
 category: "Linux"
 nav_order: 8
-tags: [flatpak, ventoy, desktop, iso]
+tags: [desktop]
 ---
 
 ## Flatpak

@@ -3,7 +3,7 @@ title: "Import the Obsidian vault"
 description: "Bring the existing .obsidian notes into the site's collections without losing links, tags, or history."
 category: "Todo"
 nav_order: 2
-tags: [obsidian, import, migration]
+tags: [migration]
 ---
 
 Move the working notes out of the Obsidian vault and into this site, so a single

@@ -3,7 +3,7 @@ title: "Infrastructure log"
 description: "Dated record of infrastructure changes."
 category: "Notes"
 nav_order: 2
-tags: [log, infrastructure, history]
+tags: [migration, planning]
 ---
 
 Newest first. Forward-looking work lives on the [Todo board](/todo/), not here.
