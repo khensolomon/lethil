@@ -249,11 +249,13 @@
   }
 
   function showPanel() {
+    if (window.lethilLayers) window.lethilLayers.opened("search", hidePanel);
     panel.hidden = false;
     box.classList.add("has-results");
     if (!mqPhone.matches) document.body.classList.add("search-dim");
   }
   function hidePanel() {
+    if (window.lethilLayers) window.lethilLayers.closed("search");
     panel.hidden = true;
     box.classList.remove("has-results");
     document.body.classList.remove("search-dim");

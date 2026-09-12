@@ -18,6 +18,137 @@ tags: [jekyll, authoring]
 
 Versions use `yy.mm.dd` — the date the change shipped. Newest at the top.
 
+## 26.09.11f
+
+- Both lists on `/review/` now follow changes as they happen. The `storage`
+  event only fires in OTHER tabs, so a page editing its own localStorage gets
+  no notification — which is why the drafts list sat stale while the composer,
+  open on that very page, had already saved, and why resolving a page note
+  needed a reload to disappear.
+- Every writer now announces itself and every list listens. Saving in the
+  composer, starting a new draft, or resolving a note repaints the affected
+  list immediately; the cross-tab `storage` event is still handled, so two
+  windows stay in step too.
+- Resolve no longer repaints only the surface it was pressed on. It used to
+  refresh the in-page markers whether or not that was the view being looked at,
+  and never the collected list. The listener repaints whichever views are
+  present, so the markers, the page count and the collected list cannot
+  disagree.
+
+## 26.09.11e
+
+- The composer no longer scrolls the page behind it. `overscroll-behavior:
+  contain` covers a pane that can scroll and has reached its end, but not a
+  pane with nothing to scroll at all — that box is not a scrolling container,
+  so the wheel passes straight through to the document. That was the case being
+  hit: a window taller than its own content, sliding the page away underneath.
+  A wheel handler now stops the gesture at the window edge, while still letting
+  a scrollable pane scroll normally.
+- Fixed the preview being narrower than its window. `.prose` caps at the site's
+  reading measure and that cap landed on the pane, which is also the scroll
+  container — so the preview sat inboard of the frame with its scrollbar
+  floating in the middle of the window. The pane fills the window now; a
+  reading measure belongs to a page, not to a panel already sized by hand.
+
+## 26.09.11d
+
+- The composer launcher now shows whether the window is open, and pressing it
+  while the window is off screen pulls it back instead of closing it. A window
+  dragged past an edge — or restored from a position saved on a larger display
+  — was indistinguishable from no window at all, so the button appeared to do
+  nothing.
+- The composer survives navigation. Nothing here is a single-page app, so
+  following a link used to throw away an open draft window mid-thought; the
+  state is remembered and the window returns on the next page with the draft
+  that was being edited. Focus is deliberately not taken on restore — the
+  reader asked for the page, not the textarea.
+- Added a layer registry, so the surfaces coordinate instead of each guessing.
+  Two kinds: the composer is a persistent window, while search, tools, the page
+  actions and the note form are transient.
+- A transient surface is raised above the composer for as long as it is open,
+  since it was just asked for; hiding it behind a window that happens to
+  overlap the header would be the wrong answer. Raising the whole topbar is
+  what does it — a popover anchored inside a sticky header is capped at that
+  header's rank whatever z-index the panel itself carries.
+- Opening one transient surface now closes any other. Two popovers at once has
+  no meaning, and stale ones are how a header ends up with three panels hanging
+  off it. The composer is never closed by any of them.
+
+## 26.09.11c
+
+- **Fixed Maximise.** The class sets left, top, width and height, but drag and
+  restore write those as inline styles, which always win — so toggling it
+  changed the class and nothing on screen. The inline geometry is now stashed
+  and cleared while maximised, and put back on restore.
+- **Fixed the overflow menu not restoring on a wider window.** Each moved
+  button remembered the node that followed it, but those buttons are siblings
+  of each other, so the remembered node had itself been moved into the panel
+  and `insertBefore` threw "child not found in parent". A placeholder left in
+  the original position cannot go stale.
+- Write, Preview, New and Export are icons. The title bar holds nine controls,
+  and four words of button text were most of the width the draft name needed.
+- The kind selector moved to the left of the title, where it reads as what the
+  draft *is* rather than as another action.
+- Title and save message now shrink and truncate; the controls never do. Both
+  were taking their natural width, so a long draft name or an "Exported …"
+  message pushed the buttons off the end of the bar.
+- "Page settings" is now "Meta".
+
+## 26.09.11b
+
+- Fixed Maximise and Close doing nothing. The title bar is also the drag
+  handle, and its pointer capture swallowed the click that followed — the press
+  started a zero-distance drag and the button never saw it. A press that starts
+  on a control inside the bar no longer begins a drag.
+- Fixed Preview appearing not to work. The write pane sets `display: flex`,
+  which beats the `hidden` attribute's user-agent rule, so it stayed on screen
+  underneath the preview. `[hidden]` now wins.
+- Consolidated the composer into one title bar: name, save state, kind,
+  Write/Preview, New, Export, Maximise and Close all on a single line. The
+  separate toolbar and footer rows are gone, which is roughly 70px of height
+  returned to the writing area.
+- Front matter is collapsed behind a disclosure, since it is set once and the
+  body is written for the rest of the session. A note has none at all, so the
+  section is removed rather than collapsed.
+- Added an overflow menu for the page actions below 600px. The bar had grown to
+  Save, note, values, composer, tools and search, which is fine on a tablet and
+  too much at 360px.
+- The buttons are MOVED into the overflow panel rather than copied. Every
+  script here binds with `querySelector`, so a duplicate would look live and do
+  nothing — the first match would keep the handler. Moving keeps one element,
+  one handler, one state, and the note form travels with its button. Rows are
+  tappable across their full width, and a disabled action reads as unavailable
+  there the same way it does in the bar.
+
+## 26.09.11
+
+- Moved the reading progress indicator to the very top of the window, above the
+  header, where it reads as a property of the page rather than of the topbar.
+- **Fixed the topbar scrolling away on phones.** `overflow-x: hidden` on
+  `html`/`body` makes them a scroll container, and a sticky descendant then
+  sticks to a scrollport that never scrolls — which is why it held on desktop
+  and failed on mobile. `overflow-x: clip` clips without creating that scroll
+  container, so the off-screen shell stays hidden and sticky works.
+- **Fixed the tools popover refusing to close on a second tap.** A touch tap
+  moves focus to nothing, so `focusout` fired with a null `relatedTarget` on
+  the way to the button's own click: the panel closed, then the click reopened
+  it. Focus going nowhere is not focus leaving; real outside taps were already
+  covered by the document handler.
+- Added the **composer**: a movable, resizable window available from every
+  page, with a maximise that leaves the page visible around it rather than
+  going full screen. On phones it becomes a sheet, since moving and resizing a
+  window there is meaningless.
+- One form, two kinds of draft. A page carries the front matter fields and
+  exports a ready-to-save `.md` with them already written; a note keeps a title
+  and a body, and the front matter rows are removed rather than shown inert.
+- Markdown preview from a small built-in renderer rather than a library —
+  headings, fenced and inline code, lists, task boxes, quotes, rules, links,
+  emphasis and `[[wiki-links]]`. Input is escaped before anything else runs, so
+  a draft cannot inject markup into its own preview.
+- Drafts autosave and are listed on `/review/` by row id, with open, export and
+  delete. Opening the composer resumes the most recently edited draft; opening
+  a row from the manager loads that one.
+
 ## 26.09.10i
 
 - The note form adapts below 560px the way the tools popover already did: a

@@ -45,7 +45,12 @@ body[data-nav="open"] .sidebar {
 /* mobile: shell is pushed as one piece; clip the off-screen part */
 @media (max-width: #{$bp-phone}) {
   body { --side-w: min(78vw, 17rem); }
-  html, body { overflow-x: hidden; }
+  /* `clip`, not `hidden`. overflow-x: hidden on html/body makes them a scroll
+     container, and a sticky descendant then sticks to a scrollport that never
+     scrolls — which is why the topbar scrolled away on phones while working on
+     desktop. overflow: clip clips without creating that scroll container, so
+     the off-screen shell is still hidden and sticky keeps working. */
+  html, body { overflow-x: clip; }
   body[data-nav="open"] .shell { transform: translateX(var(--side-w)); }
 
   /* the header's own theme toggle has no room on phones; the sidebar head's

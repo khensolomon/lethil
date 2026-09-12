@@ -1,0 +1,325 @@
+// ===========================================================================
+// COMPOSER — the movable writing window, and its rows on /review/.
+// ===========================================================================
+
+.cmp {
+  position: fixed;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  z-index: 80;                 // above the topbar, below nothing
+  width: 30rem;
+  height: 28rem;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .18), 0 2px 8px rgba(0, 0, 0, .08);
+  overflow: hidden;
+  overscroll-behavior: contain;
+
+  &[hidden] { display: none; }
+}
+
+// Maximised, not full screen: the page stays visible around it, which is the
+// point of a window that sits over documentation being referenced.
+.cmp.is-max {
+  left: 3vw; right: 3vw; top: 3vh; bottom: 3vh;
+  width: auto; height: auto;
+}
+.cmp.is-max .cmp__btn[data-cmp-max] { color: var(--accent); }
+
+.cmp__bar {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .3rem .35rem .3rem .6rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;          // the pointer drag owns the gesture
+  flex-wrap: nowrap;
+
+  &:active { cursor: grabbing; }
+}
+.cmp.is-max .cmp__bar { cursor: default; }
+
+/* Title and status shrink; the controls never do. Both were allowed to take
+   their natural width, so a long draft name or a "Exported …" message pushed
+   the buttons off the end of the bar. */
+.cmp__title {
+  flex: 0 1 auto;
+  min-width: 1.5rem;
+  font-size: .78rem;
+  font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cmp__status {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 8rem;
+  font-size: .62rem;
+  color: var(--accent);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cmp__spacer { flex: 1 1 .25rem; min-width: .25rem; }
+
+.cmp__btn {
+  width: 24px; height: 24px;
+  flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-xs);
+  background: transparent; color: var(--muted);
+  cursor: pointer;
+
+  svg { width: 13px; height: 13px; }
+  &:hover { background: var(--surface-3); color: var(--text); }
+}
+.cmp__btn[data-cmp-close]:hover { color: var(--status-blocked); }
+
+.cmp__kind {
+  flex: none;
+  padding: .15rem .25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit; font-size: .7rem;
+}
+
+.cmp__tabs {
+  display: inline-flex;
+  flex: none;
+  gap: 1px;
+  padding: 1px;
+  background: var(--surface-3);
+  border-radius: var(--radius-xs);
+}
+.cmp__tab {
+  flex: none;
+  width: 24px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: calc(var(--radius-xs) - 1px);
+  background: transparent; color: var(--muted);
+  cursor: pointer;
+
+  svg { width: 13px; height: 13px; }
+  &:hover { color: var(--text); }
+}
+.cmp__tab.is-on { color: var(--accent); background: var(--surface); }
+
+.cmp__body { flex: 1; min-height: 0; }
+.cmp__pane {
+  height: 100%;
+  overflow: auto;
+  /* Keep a wheel inside the window. Without this, reaching the end of the
+     pane — or having nothing to scroll at all — hands the gesture to the page
+     underneath, and the document slides away behind a window being read. */
+  overscroll-behavior: contain;
+}
+.cmp__pane[data-cmp-pane="write"] { display: flex; flex-direction: column; }
+/* An explicit `display` beats the `hidden` attribute's UA rule, so the write
+   pane stayed on screen when Preview was selected and the preview looked
+   broken. Restore the attribute's meaning. */
+.cmp__pane[hidden] { display: none; }
+.cmp__pane[data-cmp-pane="preview"] {
+  padding: .8rem 1rem;
+  font-size: .88rem;
+  /* .prose caps at the site's reading measure, and that cap landed on the
+     PANE — which is also the scroll container. The result was a preview
+     narrower than the window with its scrollbar floating inboard of the
+     frame. The pane fills the window; the measure belongs to a page, not to
+     a panel the reader has already sized by hand. */
+  max-width: none;
+  width: 100%;
+}
+
+/* Collapsed by default: the front matter is set once and the body is written
+   for the rest of the session, so the writing area gets the height. */
+.cmp__meta {
+  border-bottom: 1px solid var(--border);
+  flex: none;
+
+  &[hidden] { display: none; }
+}
+.cmp__meta-summary {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .7rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: .64rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+
+  &::-webkit-details-marker { display: none; }
+  &::before { content: "▸"; font-size: .7rem; }
+  &:hover { color: var(--text); }
+}
+.cmp__meta[open] .cmp__meta-summary::before { content: "▾"; }
+.cmp__id { margin-left: auto; text-transform: none; letter-spacing: 0; opacity: .55; }
+
+.cmp__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .3rem .5rem;
+  padding: 0 .7rem .6rem;
+
+  // A note has no front matter, so the fields are removed rather than shown
+  // disabled — an empty grid of dead inputs is worse than no grid.
+  &[data-kind="note"] .cmp__field:not(:first-child) { display: none; }
+  &[data-kind="note"] { grid-template-columns: minmax(0, 1fr); }
+}
+.cmp__field { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.cmp__label { font-size: .6rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); opacity: .8; }
+.cmp__field input {
+  width: 100%;
+  padding: .25rem .4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit; font-size: .78rem;
+
+  &:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+}
+
+.cmp__text {
+  flex: 1; min-height: 0;
+  overscroll-behavior: contain;
+  width: 100%;
+  padding: .7rem;
+  border: 0;
+  resize: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .82rem;
+  line-height: 1.6;
+
+  &:focus { outline: none; }
+}
+
+// Resize grip: two hairlines, which is enough to read as a corner handle.
+.cmp__grip {
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 16px; height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background:
+    linear-gradient(135deg, transparent 46%, var(--border-hover) 46%, var(--border-hover) 54%, transparent 54%),
+    linear-gradient(135deg, transparent 66%, var(--border-hover) 66%, var(--border-hover) 74%, transparent 74%);
+}
+.cmp.is-max .cmp__grip { display: none; }
+
+.cmp-wiki { color: var(--accent); }
+
+// On a phone a floating window is a worse editor than a sheet: it fills the
+// screen below the header, and moving or resizing it is meaningless.
+@media (max-width: 560px) {
+  .cmp, .cmp.is-max {
+    left: 0; right: 0; top: var(--topbar-h); bottom: 0;
+    width: auto; height: auto;
+    border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0;
+  }
+  .cmp__bar { cursor: default; }
+  .cmp__grip, .cmp__btn[data-cmp-max] { display: none; }
+
+  .cmp__fields { grid-template-columns: minmax(0, 1fr); }
+}
+
+// --- drafts on /review/ -----------------------------------------------------
+.draftrow {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+  padding: .45rem .2rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .84rem;
+}
+.draftrow__kind {
+  flex: none;
+  font-size: .6rem; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-radius: var(--radius-xs);
+  padding: .05rem .35rem;
+
+  &[data-kind="note"] { color: var(--status-active); }
+}
+.draftrow__title { flex: 1 1 10rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.draftrow__id { flex: none; font-size: .62rem; color: var(--muted); opacity: .65; }
+.draftrow__btn {
+  flex: none;
+  padding: .12rem .4rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent; color: var(--muted);
+  font: inherit; font-size: .7rem; cursor: pointer;
+
+  &:hover { color: var(--accent); border-color: var(--border); }
+}
+.draftrow__btn--danger:hover { color: var(--status-blocked); }
+
+// ===========================================================================
+// OVERFLOW ACTIONS — the page actions, stacked, on narrow screens.
+// ===========================================================================
+.moreacts { position: relative; flex: none; }
+.moreacts[hidden] { display: none; }
+.moreacts.is-open .moreacts__btn { color: var(--accent); }
+
+.moreacts__panel {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0; right: 0;
+  z-index: 6;
+  padding: .3rem .4rem .5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+
+  &[hidden] { display: none; }
+}
+.moreacts__row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .15rem .3rem;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+
+  &:hover { background: var(--surface-2); }
+}
+.moreacts__label { font-size: .85rem; color: var(--text); }
+// A disabled action keeps its row but reads as unavailable, the same way it
+// does in the bar.
+.moreacts__row:has(.pageact:disabled) { opacity: .45; cursor: default; }
+.moreacts__row:has(.pageact:disabled):hover { background: transparent; }
+
+// The note form inside the sheet anchors to the row, not the topbar corner.
+.moreacts__panel .reviewform {
+  position: static;
+  width: auto;
+  margin-top: .4rem;
+  box-shadow: none;
+  &::before { display: none; }
+}
+
+/* The launcher carries the window's state. Without it, a window dragged off
+   the edge of the screen is indistinguishable from no window at all, and the
+   button appears to do nothing. */
+.pageact[data-composer-open].is-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Layer discipline. The composer sits above the page; a transient popover
+   sits above the composer for as long as it is open, because it was just
+   asked for. Raising the whole topbar is what does it — a popover anchored
+   inside a sticky header is capped at that header's rank no matter what
+   z-index the panel itself carries. */
+body.has-popover .topbar { z-index: 90; }

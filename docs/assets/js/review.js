@@ -23,8 +23,9 @@
     } catch (e) { return []; }
   }
   function write(list) {
-    try { localStorage.setItem(KEY, JSON.stringify(list)); return true; }
-    catch (e) { return false; }
+    try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { return false; }
+    if (window.lethilStore) window.lethilStore.changed(KEY);
+    return true;
   }
   function forPage(url) {
     return read().filter(function (n) { return n.url === url; });
@@ -140,10 +141,10 @@
     done.title = "Remove this note";
     done.addEventListener("click", function () {
       write(read().filter(function (x) { return x.id !== n.id; }));
-      renderMarkers();
       var pop = document.querySelector(".notelist");
       if (pop) pop.remove();
-      paintCount();
+      // Both views are repainted by the store listener below, so this handler
+      // does not need to know which page it is running on.
     });
     row.appendChild(done);
     return row;
@@ -238,10 +239,12 @@
       btn.setAttribute("aria-expanded", "true");
       ta.value = "";
       ta.focus();
+      if (window.lethilLayers) window.lethilLayers.opened("note", closeForm);
     }
     function closeForm() {
       panel.hidden = true;
       btn.setAttribute("aria-expanded", "false");
+      if (window.lethilLayers) window.lethilLayers.closed("note");
     }
 
     btn.addEventListener("click", function (e) {
@@ -282,6 +285,14 @@
 
     renderMarkers();
     paintCount();
+  }
+
+  // Any change to the note store repaints the in-page markers and count.
+  if (window.lethilStore) {
+    window.lethilStore.onChange(KEY, function () {
+      if (article) renderMarkers();
+      paintCount();
+    });
   }
 
   /* =======================================================================
@@ -408,6 +419,7 @@
   });
 
   renderNotes();
+  if (window.lethilStore) window.lethilStore.onChange(KEY, renderNotes);
 
   /* --- export / import / clear ------------------------------------------- */
   var ex = root.querySelector("[data-review-export]");
@@ -473,4 +485,85 @@
     renderNotes();
     say("All notes removed.");
   });
+})();
+
+/* ===========================================================================
+ * Drafts manager — the composer's rows, listed on /review/.
+ * Separate IIFE: it shares the page but not the note store.
+ * ======================================================================== */
+(function () {
+  "use strict";
+  var host = document.querySelector("[data-draft-list]");
+  if (!host) return;
+
+  var KEY = "lethil:drafts";
+  var countEl = document.querySelector("[data-draft-count]");
+
+  function read() {
+    try { var a = JSON.parse(localStorage.getItem(KEY) || "[]"); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
+  }
+  function write(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (e) {} }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function render() {
+    var list = read().sort(function (a, b) {
+      return (b.updatedAt || "").localeCompare(a.updatedAt || "");
+    });
+    if (countEl) countEl.textContent = list.length + (list.length === 1 ? " draft" : " drafts");
+
+    if (!list.length) {
+      host.innerHTML = '<p class="review__empty">No drafts yet. Open the composer from any page.</p>';
+      return;
+    }
+    host.textContent = "";
+    list.forEach(function (d) {
+      var row = document.createElement("div");
+      row.className = "draftrow";
+      row.innerHTML =
+        '<span class="draftrow__kind mono" data-kind="' + esc(d.kind) + '">' + esc(d.kind) + '</span>' +
+        '<span class="draftrow__title">' + esc(d.title || "Untitled") + '</span>' +
+        '<span class="draftrow__id mono">' + esc(d.id) + '</span>';
+
+      function act(label, title, fn) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "draftrow__btn";
+        b.textContent = label; b.title = title;
+        b.addEventListener("click", fn);
+        return b;
+      }
+      row.appendChild(act("Open", "Edit in the composer", function () {
+        if (window.lethilComposer) window.lethilComposer.open(d.id);
+      }));
+      row.appendChild(act("Export", "Download as markdown", function () {
+        if (!window.lethilComposer) return;
+        var blob = new Blob([window.lethilComposer.markdown(d)], { type: "text/markdown" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = (d.title || "untitled").toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + ".md";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }));
+      var del = act("Delete", "Remove this draft", function () {
+        if (!window.confirm("Delete draft " + d.id + "? This cannot be undone.")) return;
+        write(read().filter(function (x) { return x.id !== d.id; }));
+        render();
+      });
+      del.classList.add("draftrow__btn--danger");
+      row.appendChild(del);
+      host.appendChild(row);
+    });
+  }
+
+  render();
+  // The composer writes to this key from this same page, so the list follows
+  // every save as it happens rather than waiting for the window to be left
+  // and returned to.
+  if (window.lethilStore) window.lethilStore.onChange(KEY, render);
+  else window.addEventListener("focus", render);
 })();

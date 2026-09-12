@@ -30,6 +30,18 @@ excerpt_separator: ""
 
   <section class="review__block">
     <h2 class="review__block-title mono">
+      Drafts
+      <span class="review__count mono" data-draft-count>0 drafts</span>
+    </h2>
+    <p class="review__block-note">
+      Written in the composer, identified by row id. Stored on this device;
+      export writes a markdown file with its front matter already in place.
+    </p>
+    <div data-draft-list></div>
+  </section>
+
+  <section class="review__block">
+    <h2 class="review__block-title mono">
       Page notes
       <span class="review__count mono" data-review-count>0 notes</span>
     </h2>

@@ -25,6 +25,7 @@
     root.classList.add("is-open");
     var first = panel.querySelector("a");
     if (first) first.focus();
+    if (window.lethilLayers) window.lethilLayers.opened("tools", function () { close(false); });
   }
 
   function close(returnFocus) {
@@ -34,6 +35,7 @@
     // Only pull focus back when the panel was dismissed rather than followed —
     // otherwise clicking a link would yank focus off the page being left.
     if (returnFocus) btn.focus();
+    if (window.lethilLayers) window.lethilLayers.closed("tools");
   }
 
   btn.addEventListener("click", function (e) {
@@ -52,6 +54,12 @@
   // Focus leaving the panel entirely closes it, so tabbing past the last link
   // does not leave an open panel floating behind the page.
   root.addEventListener("focusout", function (e) {
+    // A touch tap moves focus to nothing, so relatedTarget is null and this
+    // fired on the way to the button's own click — closing the panel, which
+    // the click then reopened. Tapping the button twice appeared to do
+    // nothing. Focus going nowhere is not focus leaving; real outside taps are
+    // already covered by the document click handler.
+    if (!e.relatedTarget) return;
     if (isOpen() && !root.contains(e.relatedTarget)) close(false);
   });
 })();

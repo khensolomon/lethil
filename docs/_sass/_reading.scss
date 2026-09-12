@@ -38,10 +38,13 @@ h3:hover .headlink { opacity: 1; }
 // article and not the window chrome.
 .readbar {
   position: fixed;
-  top: var(--topbar-h);
+  top: 0;
   left: 0; right: 0;
   height: 2px;
-  z-index: 4;
+  /* Above the topbar: at the very top edge of the window it reads as a
+     property of the page rather than of the header, and it no longer moves
+     when the header does. */
+  z-index: 70;
   pointer-events: none;
   background: transparent;
 }
